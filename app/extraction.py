@@ -39,6 +39,10 @@ DATE_PATTERN = re.compile(
     r"(?i)\b(?:\d{1,2}[./ -](?:\d{1,2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[./, -]*\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})\b"
 )
 ROLLING_PATTERN = re.compile(r"(?i)\b(rolling basis|no fixed deadline|applications? accepted throughout the year|open year[- ]round)\b")
+OPEN_PATTERN = re.compile(r"(?i)\b(applications? (?:are now )?open|now accepting applications|apply now)\b")
+UPCOMING_PATTERN = re.compile(r"(?i)\b(applications? (?:will|are expected to) open|opens? for applications)\b")
+DISCONTINUED_PATTERN = re.compile(r"(?i)\b(discontinued|programme has ended|program has ended|no longer offered)\b")
+SHORTLISTED_PATTERN = re.compile(r"(?i)\b(shortlisted candidates|shortlist announced|interview shortlist)\b")
 
 
 @dataclass
@@ -49,6 +53,8 @@ class ExtractedPage:
     fields: dict[str, str] = field(default_factory=dict)
     criteria: list[tuple[str, str, str]] = field(default_factory=list)
     evidence: list[tuple[str, str]] = field(default_factory=list)
+    application_status: str = "unknown"
+    applicant_category: str = "unknown"
 
 
 def _clean(value: str) -> str:
@@ -144,6 +150,40 @@ def _find_labeled_text(content_root: BeautifulSoup, labels: tuple[str, ...], fie
                 continue
             return value
     return None
+def _classify_application_status(body_text: str, deadline_date: str | None) -> str:
+    """Classify this application cycle only; never infer openness from a future date."""
+    if DISCONTINUED_PATTERN.search(body_text):
+        return "discontinued"
+    if SHORTLISTED_PATTERN.search(body_text):
+        return "shortlisted_only"
+    if deadline_date:
+        try:
+            if datetime.strptime(deadline_date, "%Y-%m-%d").date() < datetime.utcnow().date():
+                return "closed"
+        except ValueError:
+            pass
+    if OPEN_PATTERN.search(body_text):
+        return "open"
+    if UPCOMING_PATTERN.search(body_text):
+        return "upcoming"
+    return "unknown"
+
+
+def _classify_applicant_category(body_text: str) -> str:
+    text = body_text.lower()
+    if re.search(r"\b(universit(?:y|ies)|institutions?|organisations?|organizations?) (?:may|can) apply\b", text):
+        return "institution"
+    if re.search(r"\b(faculty members?|professors?|academic staff)\b", text):
+        return "faculty"
+    if re.search(r"\b(mid[- ]career professionals?|working professionals?|employed professionals?|professionals with)\b", text):
+        return "professional"
+    if re.search(r"\b(recent graduates?|alumni|postgraduate applicants?)\b", text):
+        return "graduate"
+    if re.search(r"\b(undergraduate students?|graduate students?|currently enrolled students?|students currently enrolled)\b", text):
+        return "student"
+    return "unknown"
+
+
 def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None = None) -> ExtractedPage | None:
     soup = BeautifulSoup(html, "html.parser")
     content_root = _remove_site_chrome(soup)
@@ -167,8 +207,6 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
 
     if not _is_opportunity(candidate_title or title, page_title or title, page_url, body_text):
         return None
-    if not fields:
-        return None
 
     # Avoid site-wide meta descriptions and boilerplate organization copy.
     description = None
@@ -183,6 +221,12 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             description = candidate[:1200]
             break
 
+    # A deadline by itself is not enough to establish a meaningful opportunity.
+    if not any(name != "deadline_text" for name in fields) and not description:
+        return None
+    if not any(name != "deadline_text" for name in fields) and len(description or "") < 100:
+        return None
+
     # Do not mistake the website operator (og:site_name) for the scholarship
     # provider. Populate this only from an explicit provider label on the page.
     provider = fields.get("provider_name")
@@ -194,7 +238,11 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
 
     if description:
         evidence.append(("description", description))
-    return ExtractedPage(title[:300], description, provider, fields, criteria, evidence)
+    deadline_date = _parse_deadline_date(fields.get("deadline_text"))
+    application_status = _classify_application_status(body_text, deadline_date)
+    applicant_category = _classify_applicant_category(body_text)
+    return ExtractedPage(title[:300], description, provider, fields, criteria, evidence,
+                         application_status, applicant_category)
 
 
 async def _fetch_page(client: httpx.AsyncClient, url: str) -> tuple[str | None, str | None]:
@@ -262,8 +310,8 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                     cursor = connection.execute(
                         """INSERT INTO scholarships
                            (source_id, title, provider_name, funding_summary, deadline_text, deadline_date,
-                            status, source_record_url)
-                           VALUES (?, ?, ?, ?, ?, ?, 'unverified', ?)
+                            status, source_record_url, application_status, applicant_category)
+                           VALUES (?, ?, ?, ?, ?, ?, 'unverified', ?, ?, ?)
                            ON CONFLICT(source_id, source_record_url) DO UPDATE SET
                                title = excluded.title,
                                provider_name = excluded.provider_name,
@@ -274,13 +322,15 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                                deadline_text = excluded.deadline_text,
                                deadline_date = excluded.deadline_date,
                                status = 'unverified',
+                               application_status = excluded.application_status,
+                               applicant_category = excluded.applicant_category,
                                last_checked_at = CURRENT_TIMESTAMP,
                                updated_at = CURRENT_TIMESTAMP
                            RETURNING id""",
                         (candidate["source_id"], parsed.title, parsed.provider_name,
                          parsed.fields.get("funding_summary"), parsed.fields.get("deadline_text"),
                          _parse_deadline_date(parsed.fields.get("deadline_text")),
-                         candidate["candidate_url"]),
+                         candidate["candidate_url"], parsed.application_status, parsed.applicant_category),
                     ).fetchone()
                     scholarship_id = cursor["id"]
                     connection.execute("DELETE FROM scholarship_evidence WHERE scholarship_id = ?", (scholarship_id,))
@@ -316,6 +366,7 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                                provider_name = NULL, country = NULL, study_destination = NULL,
                                funding_summary = NULL, application_url = NULL,
                                deadline_text = NULL, deadline_date = NULL,
+                               application_status = 'unknown', applicant_category = 'unknown',
                                last_checked_at = CURRENT_TIMESTAMP,
                                updated_at = CURRENT_TIMESTAMP
                                WHERE id = ?""",
