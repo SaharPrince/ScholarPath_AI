@@ -98,9 +98,12 @@ async def _fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult
         before = connection.total_changes
         for url, title in links:
             connection.execute(
-                """INSERT OR IGNORE INTO discovery_candidates
+                """INSERT INTO discovery_candidates
                    (source_id, title, candidate_url, status)
-                   VALUES (?, ?, ?, 'candidate')""",
+                   VALUES (?, ?, ?, 'candidate')
+                   ON CONFLICT(source_id, candidate_url) DO UPDATE SET
+                       title = excluded.title,
+                       last_seen_at = CURRENT_TIMESTAMP""",
                 (source["id"], title[:300], url),
             )
         inserted = connection.total_changes - before
