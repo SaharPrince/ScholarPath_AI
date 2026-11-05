@@ -112,6 +112,7 @@ def get_scholarship(scholarship_id: int) -> dict:
             """SELECT s.id, s.title, s.provider_name, s.country,
                       s.study_destination, s.funding_summary, s.application_url,
                       s.deadline_text, s.deadline_date, s.status,
+                      s.application_status, s.applicant_category,
                       src.name AS source_name, s.source_record_url AS source_url
                FROM scholarships AS s
                JOIN sources AS src ON src.id = s.source_id
