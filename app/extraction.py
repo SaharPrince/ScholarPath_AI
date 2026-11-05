@@ -268,7 +268,9 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                             (scholarship_id, criterion_type, label, requirement, candidate["candidate_url"]),
                         )
                     connection.execute("UPDATE discovery_candidates SET status = 'promoted' WHERE id = ?", (candidate["id"],))
-                else:
+                elif not error:
+                    # A successfully fetched page that lacks opportunity evidence
+                    # is rejected. A network/HTTP failure must not erase prior facts.
                     rejected_row = connection.execute(
                         """SELECT id FROM scholarships
                            WHERE source_id = ? AND source_record_url = ?""",
