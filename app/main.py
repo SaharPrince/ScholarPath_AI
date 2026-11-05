@@ -123,3 +123,31 @@ def get_scholarship(scholarship_id: int) -> dict:
         for item in criteria
     ]
     return result
+
+
+
+@app.get("/api/discovery/candidates", tags=["discovery"])
+def list_discovery_candidates(
+    status: str = Query(default="candidate"),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> list[dict]:
+    """List candidate links found on configured sources; candidates are not scholarships."""
+    allowed_statuses = {"candidate", "reviewed", "rejected", "promoted", "all"}
+    if status not in allowed_statuses:
+        raise HTTPException(status_code=422, detail="Unsupported candidate status")
+
+    where_sql = "" if status == "all" else "WHERE c.status = ?"
+    parameters: list[object] = [] if status == "all" else [status]
+    parameters.extend([limit, offset])
+    query = f"""SELECT c.id, c.title, c.candidate_url, c.status,
+                       c.first_seen_at, c.last_seen_at,
+                       s.name AS source_name, s.official_url AS source_homepage
+                FROM discovery_candidates AS c
+                JOIN sources AS s ON s.id = c.source_id
+                {where_sql}
+                ORDER BY c.first_seen_at DESC, c.id DESC
+                LIMIT ? OFFSET ?"""
+    with get_connection() as connection:
+        rows = connection.execute(query, parameters).fetchall()
+    return [dict(row) for row in rows]
