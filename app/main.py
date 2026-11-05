@@ -153,3 +153,41 @@ def list_discovery_candidates(
     with get_connection() as connection:
         rows = connection.execute(query, parameters).fetchall()
     return [dict(row) for row in rows]
+
+
+@app.get("/api/scholarships/{scholarship_id}/evidence", tags=["scholarships"])
+def get_scholarship_evidence(scholarship_id: int) -> list[dict]:
+    """Return captured source snippets supporting extracted scholarship details."""
+    with get_connection() as connection:
+        exists = connection.execute(
+            "SELECT 1 FROM scholarships WHERE id = ?", (scholarship_id,)
+        ).fetchone()
+        if exists is None:
+            raise HTTPException(status_code=404, detail="Scholarship not found")
+        rows = connection.execute(
+            """SELECT field_name, evidence_text, evidence_url, captured_at
+               FROM scholarship_evidence
+               WHERE scholarship_id = ?
+               ORDER BY id""",
+            (scholarship_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+@app.get("/api/discovery/extraction-attempts", tags=["discovery"])
+def list_extraction_attempts(
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> list[dict]:
+    """Show extraction outcomes, including pages needing manual review."""
+    with get_connection() as connection:
+        rows = connection.execute(
+            """SELECT a.id, a.candidate_id, c.title AS candidate_title,
+                      c.candidate_url, a.status, a.message, a.attempted_at
+               FROM extraction_attempts a
+               JOIN discovery_candidates c ON c.id = a.candidate_id
+               ORDER BY a.attempted_at DESC, a.id DESC
+               LIMIT ? OFFSET ?""",
+            (limit, offset),
+        ).fetchall()
+    return [dict(row) for row in rows]
