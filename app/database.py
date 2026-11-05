@@ -65,8 +65,29 @@ CREATE TABLE IF NOT EXISTS discovery_candidates (
     UNIQUE (source_id, candidate_url)
 );
 
+CREATE TABLE IF NOT EXISTS scholarship_evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scholarship_id INTEGER NOT NULL,
+    field_name TEXT NOT NULL,
+    evidence_text TEXT NOT NULL,
+    evidence_url TEXT NOT NULL,
+    captured_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (scholarship_id) REFERENCES scholarships(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS extraction_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    candidate_id INTEGER NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('extracted', 'insufficient_evidence', 'failed', 'skipped')),
+    message TEXT,
+    attempted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (candidate_id) REFERENCES discovery_candidates(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_discovery_candidates_status
     ON discovery_candidates(status);
+CREATE INDEX IF NOT EXISTS idx_extraction_attempts_candidate
+    ON extraction_attempts(candidate_id);
 
 CREATE INDEX IF NOT EXISTS idx_scholarships_status
     ON scholarships(status);
