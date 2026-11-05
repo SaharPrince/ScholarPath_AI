@@ -269,12 +269,31 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                         )
                     connection.execute("UPDATE discovery_candidates SET status = 'promoted' WHERE id = ?", (candidate["id"],))
                 else:
-                    connection.execute(
-                        """UPDATE scholarships SET status = 'rejected',
-                           last_checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                    rejected_row = connection.execute(
+                        """SELECT id FROM scholarships
                            WHERE source_id = ? AND source_record_url = ?""",
                         (candidate["source_id"], candidate["candidate_url"]),
-                    )
+                    ).fetchone()
+                    if rejected_row:
+                        scholarship_id = rejected_row["id"]
+                        connection.execute(
+                            """UPDATE scholarships SET status = 'rejected',
+                               provider_name = NULL, country = NULL, study_destination = NULL,
+                               funding_summary = NULL, application_url = NULL,
+                               deadline_text = NULL, deadline_date = NULL,
+                               last_checked_at = CURRENT_TIMESTAMP,
+                               updated_at = CURRENT_TIMESTAMP
+                               WHERE id = ?""",
+                            (scholarship_id,),
+                        )
+                        connection.execute(
+                            "DELETE FROM scholarship_evidence WHERE scholarship_id = ?",
+                            (scholarship_id,),
+                        )
+                        connection.execute(
+                            "DELETE FROM eligibility_criteria WHERE scholarship_id = ?",
+                            (scholarship_id,),
+                        )
                     connection.execute("UPDATE discovery_candidates SET status = 'reviewed' WHERE id = ?", (candidate["id"],))
                 connection.execute(
                     """INSERT INTO extraction_attempts (candidate_id, status, message)
