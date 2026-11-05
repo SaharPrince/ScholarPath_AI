@@ -18,6 +18,7 @@ from app.database import get_connection
 MAX_RESPONSE_BYTES = 2_000_000
 USER_AGENT = "ScholarPathAI/0.3 (+official scholarship detail extractor)"
 FIELD_LABELS = {
+    "provider_name": ("scholarship provider", "offered by", "administered by", "sponsor"),
     "deadline_text": ("application deadline", "application closes", "deadline", "apply by", "closing date"),
     "funding_summary": ("funding", "scholarship value", "financial support", "tuition fee", "stipend"),
     "eligibility": ("eligibility", "who can apply", "eligible applicants"),
@@ -152,10 +153,9 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             if candidate and len(candidate) >= 35:
                 description = candidate[:1200]
 
-    provider = None
-    site_node = soup.find("meta", attrs={"property": "og:site_name"})
-    if site_node:
-        provider = _clean(str(site_node.get("content", ""))) or None
+    # Do not mistake the website operator (og:site_name) for the scholarship
+    # provider. Populate this only from an explicit provider label on the page.
+    provider = fields.get("provider_name")
 
     criteria: list[tuple[str, str, str]] = []
     for field_name in ("eligibility", "study_level", "nationality", "academic_requirements", "age_limit"):
@@ -237,6 +237,9 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                            ON CONFLICT(source_id, source_record_url) DO UPDATE SET
                                title = excluded.title,
                                provider_name = excluded.provider_name,
+                               country = NULL,
+                               study_destination = NULL,
+                               application_url = NULL,
                                funding_summary = excluded.funding_summary,
                                deadline_text = excluded.deadline_text,
                                deadline_date = excluded.deadline_date,
