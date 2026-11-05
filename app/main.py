@@ -24,7 +24,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     description="Official-source scholarship discovery and eligibility matching.",
-    version="0.3.1",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
@@ -84,6 +84,7 @@ def list_scholarships(
     query = f"""SELECT s.id, s.title, s.provider_name, s.country,
                       s.study_destination, s.funding_summary, s.application_url,
                       s.deadline_text, s.deadline_date, s.status,
+                      s.application_status, s.applicant_category,
                       src.name AS source_name, s.source_record_url AS source_url
                FROM scholarships AS s
                JOIN sources AS src ON src.id = s.source_id
