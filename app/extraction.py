@@ -33,9 +33,9 @@ GENERIC_PAGE_TERMS = (
 )
 OPPORTUNITY_TERMS = ("scholarship", "fellowship", "grant", "studentship", "award", "programme", "program", "ugrad", "fulbright", "humphrey", "flta", "epos")
 DATE_PATTERN = re.compile(
-    r"(?i)\\b(?:\\d{1,2}[./ -](?:\\d{1,2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[./, -]*\\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s+\\d{1,2},?\\s+\\d{4}|\\d{1,2}\\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s+\\d{4})\\b"
+    r"(?i)\b(?:\d{1,2}[./ -](?:\d{1,2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[./, -]*\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})\b"
 )
-ROLLING_PATTERN = re.compile(r"(?i)\\b(rolling basis|no fixed deadline|applications? accepted throughout the year|open year[- ]round)\\b")
+ROLLING_PATTERN = re.compile(r"(?i)\b(rolling basis|no fixed deadline|applications? accepted throughout the year|open year[- ]round)\b")
 
 
 @dataclass
@@ -80,7 +80,7 @@ def _find_labeled_text(soup: BeautifulSoup, labels: tuple[str, ...], field_name:
     for node in soup.find_all(["p", "li", "td", "th", "dt", "dd"]):
         text = _clean(node.get_text(" ", strip=True))
         for label in labels:
-            match = re.search(rf"(?<!\\w){re.escape(label)}\\s*[:–—-]\\s*(.+)", text, re.I)
+            match = re.search(rf"(?<!\w){re.escape(label)}\s*[:–—-]\s*(.+)", text, re.I)
             value = _clean(match.group(1)) if match else ""
             if not value and _clean(text).lower().rstrip(":") == label:
                 sibling = node.find_next(["p", "li", "td", "dd"])
@@ -179,7 +179,8 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
     """Visit candidates; optionally reprocess old attempts and replace prior extracted rows."""
     with get_connection() as connection:
         if reprocess:
-            connection.execute("DELETE FROM scholarships WHERE source_record_url IN (SELECT candidate_url FROM discovery_candidates)")
+            # Preserve historical rows and evidence. Re-run candidates and update
+            # matching records in place; rejected pages remain auditable.
             connection.execute("DELETE FROM extraction_attempts")
             connection.execute("UPDATE discovery_candidates SET status = 'candidate'")
         candidates = [dict(row) for row in connection.execute(
@@ -244,6 +245,12 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                         )
                     connection.execute("UPDATE discovery_candidates SET status = 'promoted' WHERE id = ?", (candidate["id"],))
                 else:
+                    connection.execute(
+                        """UPDATE scholarships SET status = 'rejected',
+                           last_checked_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                           WHERE source_id = ? AND source_record_url = ?""",
+                        (candidate["source_id"], candidate["candidate_url"]),
+                    )
                     connection.execute("UPDATE discovery_candidates SET status = 'reviewed' WHERE id = ?", (candidate["id"],))
                 connection.execute(
                     """INSERT INTO extraction_attempts (candidate_id, status, message)
