@@ -97,30 +97,58 @@ def _is_opportunity(candidate_title: str, page_title: str, page_url: str, body_t
     return has_opportunity_identity and has_specific_fact
 
 
-def _find_labeled_text(soup: BeautifulSoup, labels: tuple[str, ...], field_name: str) -> str | None:
-    """Read only explicit label/value pairs; deadlines additionally need a date or rolling rule."""
-    for node in soup.find_all(["p", "li", "td", "th", "dt", "dd"]):
+def _remove_site_chrome(soup: BeautifulSoup) -> BeautifulSoup:
+    """Remove shared navigation and layout regions before reading programme facts."""
+    for node in soup(["script", "style", "noscript", "svg", "nav", "footer", "aside"]):
+        node.decompose()
+
+    for node in soup.find_all(True):
+        role = str(node.get("role", "")).lower()
+        aria_label = str(node.get("aria-label", "")).lower()
+        classes_value = node.get("class", [])
+        classes = " ".join(classes_value).lower() if isinstance(classes_value, list) else str(classes_value).lower()
+        node_id = str(node.get("id", "")).lower()
+        marker = " ".join((role, aria_label, classes, node_id))
+        if role in {"navigation", "contentinfo"} or any(
+            term in marker for term in ("breadcrumb", "sidebar", "site-nav", "navbar", "main-menu", "footer-menu")
+        ):
+            node.decompose()
+
+    return soup.find("main") or soup.find("article") or soup.body or soup
+
+
+def _find_labeled_text(content_root: BeautifulSoup, labels: tuple[str, ...], field_name: str) -> str | None:
+    """Extract facts only from programme content, not navigation or generic headings."""
+    for node in content_root.find_all(["p", "li", "td", "th", "dt", "dd"]):
         text = _clean(node.get_text(" ", strip=True))
         for label in labels:
-            match = re.search(rf"(?<!\w){re.escape(label)}\s*[:–—-]\s*(.+)", text, re.I)
+            # Labels must begin the field text. A label appearing midway through
+            # a navigation sentence is not a reliable field/value pair.
+            match = re.match(rf"^\s*{re.escape(label)}\s*[:–—-]\s*(.+)$", text, re.I)
             value = _clean(match.group(1)) if match else ""
-            if not value and _clean(text).lower().rstrip(":") == label:
+            if not value and text.lower().rstrip(":") == label:
                 sibling = node.find_next(["p", "li", "td", "dd"])
                 value = _clean(sibling.get_text(" ", strip=True)) if sibling else ""
             if not value or len(value) > 1200:
                 continue
+            if field_name == "eligibility":
+                # Reject short title-like labels such as "University Partnerships".
+                meaningful_terms = (
+                    "applicant", "citizen", "national", "resident", "degree", "enrolled",
+                    "graduate", "undergraduate", "bachelor", "master", "phd", "doctor",
+                    "age", "years", "experience", "must", "minimum", "completed",
+                )
+                if len(value.split()) < 3 and not any(term in value.lower() for term in meaningful_terms):
+                    continue
             if field_name == "deadline_text" and not (DATE_PATTERN.search(value) or ROLLING_PATTERN.search(value)):
                 continue
             return value
     return None
-
-
 def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None = None) -> ExtractedPage | None:
     soup = BeautifulSoup(html, "html.parser")
-    for node in soup(["script", "style", "noscript", "svg"]):
-        node.decompose()
+    content_root = _remove_site_chrome(soup)
 
-    h1 = soup.find("h1")
+    h1 = content_root.find("h1")
     title_node = h1 or soup.find("title")
     page_title = _clean(title_node.get_text(" ", strip=True)) if title_node else ""
     candidate_title = _clean(candidate_title or "")
@@ -128,11 +156,11 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     if not title or _is_generic_title(title):
         return None
 
-    body_text = _clean(soup.get_text(" ", strip=True))
+    body_text = _clean(content_root.get_text(" ", strip=True))
     fields: dict[str, str] = {}
     evidence: list[tuple[str, str]] = []
     for field_name, labels in FIELD_LABELS.items():
-        value = _find_labeled_text(soup, labels, field_name)
+        value = _find_labeled_text(content_root, labels, field_name)
         if value:
             fields[field_name] = value[:1200]
             evidence.append((field_name, value[:1200]))
@@ -142,16 +170,18 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     if not fields:
         return None
 
+    # Avoid site-wide meta descriptions and boilerplate organization copy.
     description = None
-    description_node = soup.find("meta", attrs={"name": re.compile("^description$", re.I)})
-    if description_node:
-        description = _clean(str(description_node.get("content", ""))) or None
-    if not description:
-        first_paragraph = soup.find("p")
-        if first_paragraph:
-            candidate = _clean(first_paragraph.get_text(" ", strip=True))
-            if candidate and len(candidate) >= 35:
-                description = candidate[:1200]
+    for paragraph in content_root.find_all("p"):
+        candidate = _clean(paragraph.get_text(" ", strip=True))
+        lowered = candidate.lower()
+        if len(candidate) < 50:
+            continue
+        if "provides opportunities and scholarships" in lowered or "welcome to" in lowered:
+            continue
+        if any(term in lowered for term in ("scholarship", "fellowship", "grant", "programme", "program")):
+            description = candidate[:1200]
+            break
 
     # Do not mistake the website operator (og:site_name) for the scholarship
     # provider. Populate this only from an explicit provider label on the page.
