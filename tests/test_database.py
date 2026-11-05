@@ -35,6 +35,22 @@ class DatabaseSchemaTests(unittest.TestCase):
         self.assertIn("application_status", columns)
         self.assertIn("applicant_category", columns)
 
+    def test_new_classification_columns_default_to_unknown(self) -> None:
+        with database.get_connection() as connection:
+            connection.execute(
+                "INSERT INTO sources (name, official_url) VALUES (?, ?)",
+                ("Example source", "https://example.org"),
+            )
+            connection.execute(
+                "INSERT INTO scholarships (source_id, title, source_record_url) VALUES (1, ?, ?)",
+                ("Example scholarship", "https://example.org/scholarship"),
+            )
+            row = connection.execute(
+                "SELECT application_status, applicant_category FROM scholarships WHERE id = 1"
+            ).fetchone()
+        self.assertEqual(row["application_status"], "unknown")
+        self.assertEqual(row["applicant_category"], "unknown")
+
     def test_scholarship_requires_a_source(self) -> None:
         with self.assertRaises(Exception):
             with database.get_connection() as connection:
