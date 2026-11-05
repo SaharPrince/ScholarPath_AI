@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Query
 
 from app.config import settings
 from app.database import database_is_ready, get_connection, init_db
+from app.source_catalog import seed_official_sources
 from app.schemas import (
     EligibilityCriterion,
     HealthResponse,
@@ -16,6 +17,7 @@ from app.schemas import (
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    seed_official_sources()
     yield
 
 
