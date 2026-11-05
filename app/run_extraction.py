@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import json
 
@@ -9,7 +10,10 @@ from app.extraction import extract_candidate_details
 async def main() -> None:
     init_db()
     seed_official_sources()
-    results = await extract_candidate_details()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--reprocess', action='store_true')
+    args = parser.parse_args()
+    results = await extract_candidate_details(reprocess=args.reprocess)
     print(json.dumps(results, indent=2))
 
 
