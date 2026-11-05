@@ -37,6 +37,10 @@ CREATE TABLE IF NOT EXISTS scholarships (
     last_checked_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    application_status TEXT NOT NULL DEFAULT 'unknown'
+        CHECK (application_status IN ('open', 'upcoming', 'closed', 'discontinued', 'shortlisted_only', 'unknown')),
+    applicant_category TEXT NOT NULL DEFAULT 'unknown'
+        CHECK (applicant_category IN ('student', 'graduate', 'professional', 'faculty', 'institution', 'unknown')),
     FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE RESTRICT,
     UNIQUE (source_id, source_record_url)
 );
@@ -119,6 +123,20 @@ def init_db() -> None:
     """Create the initial schema if it does not already exist."""
     with get_connection() as connection:
         connection.executescript(SCHEMA)
+        # Additive, idempotent migration for databases created before v0.4.
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(scholarships)")}
+        if "application_status" not in columns:
+            connection.execute(
+                """ALTER TABLE scholarships ADD COLUMN application_status TEXT NOT NULL
+                   DEFAULT 'unknown' CHECK (application_status IN
+                   ('open', 'upcoming', 'closed', 'discontinued', 'shortlisted_only', 'unknown'))"""
+            )
+        if "applicant_category" not in columns:
+            connection.execute(
+                """ALTER TABLE scholarships ADD COLUMN applicant_category TEXT NOT NULL
+                   DEFAULT 'unknown' CHECK (applicant_category IN
+                   ('student', 'graduate', 'professional', 'faculty', 'institution', 'unknown'))"""
+            )
 
 
 def database_is_ready() -> bool:
