@@ -372,14 +372,6 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                                WHERE id = ?""",
                             (scholarship_id,),
                         )
-                    connection.execute(
-                            "DELETE FROM scholarship_evidence WHERE scholarship_id = ?",
-                            (scholarship_id,),
-                        )
-                        connection.execute(
-                            "DELETE FROM eligibility_criteria WHERE scholarship_id = ?",
-                            (scholarship_id,),
-                        )
                     connection.execute("UPDATE discovery_candidates SET status = 'reviewed' WHERE id = ?", (candidate["id"],))
                 connection.execute(
                     """INSERT INTO extraction_attempts (candidate_id, status, message)
