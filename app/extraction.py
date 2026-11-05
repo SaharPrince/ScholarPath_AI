@@ -39,7 +39,7 @@ DATE_PATTERN = re.compile(
     r"(?i)\b(?:\d{1,2}[./ -](?:\d{1,2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[./, -]*\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})\b"
 )
 ROLLING_PATTERN = re.compile(r"(?i)\b(rolling basis|no fixed deadline|applications? accepted throughout the year|open year[- ]round)\b")
-OPEN_PATTERN = re.compile(r"(?i)\b(applications? (?:are now )?open|now accepting applications|apply now)\b")
+OPEN_PATTERN = re.compile(r"(?i)\b(applications? (?:(?:are )?(?:now )?)open|now accepting applications|currently accepting applications|apply now)\b")
 UPCOMING_PATTERN = re.compile(r"(?i)\b(applications? (?:will|are expected to) open|opens? for applications)\b")
 DISCONTINUED_PATTERN = re.compile(r"(?i)\b(discontinued|programme has ended|program has ended|no longer offered)\b")
 SHORTLISTED_PATTERN = re.compile(r"(?i)\b(shortlisted candidates|shortlist announced|interview shortlist)\b")
