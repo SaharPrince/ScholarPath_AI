@@ -1,3 +1,4 @@
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -44,6 +45,62 @@ class DatabaseSchemaTests(unittest.TestCase):
             ).fetchone()
         self.assertEqual(row["application_status"], "unknown")
         self.assertEqual(row["applicant_category"], "unknown")
+
+    def test_legacy_database_is_upgraded_without_losing_records(self) -> None:
+        legacy_path = Path(self.temp_dir.name) / "legacy.db"
+        previous_path = settings.database_path
+        settings.database_path = legacy_path
+        try:
+            connection = sqlite3.connect(legacy_path)
+            connection.executescript("""
+                CREATE TABLE sources (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    official_url TEXT NOT NULL UNIQUE,
+                    source_type TEXT NOT NULL DEFAULT 'official',
+                    country TEXT,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+                CREATE TABLE scholarships (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    provider_name TEXT,
+                    country TEXT,
+                    study_destination TEXT,
+                    funding_summary TEXT,
+                    application_url TEXT,
+                    deadline_text TEXT,
+                    deadline_date TEXT,
+                    status TEXT NOT NULL DEFAULT 'candidate',
+                    source_record_url TEXT NOT NULL,
+                    last_checked_at TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (source_id) REFERENCES sources(id),
+                    UNIQUE (source_id, source_record_url)
+                );
+                INSERT INTO sources (name, official_url)
+                VALUES ('Legacy source', 'https://legacy.example.org');
+                INSERT INTO scholarships (source_id, title, source_record_url)
+                VALUES (1, 'Legacy scholarship', 'https://legacy.example.org/scholarship');
+            """)
+            connection.commit()
+            connection.close()
+
+            database.init_db()
+            with database.get_connection() as migrated:
+                row = migrated.execute(
+                    "SELECT title, application_status, applicant_category FROM scholarships WHERE id = 1"
+                ).fetchone()
+            self.assertEqual(row["title"], "Legacy scholarship")
+            self.assertEqual(row["application_status"], "unknown")
+            self.assertEqual(row["applicant_category"], "unknown")
+        finally:
+            settings.database_path = previous_path
+
 
     def test_scholarship_requires_a_source(self) -> None:
         with self.assertRaises(Exception):
