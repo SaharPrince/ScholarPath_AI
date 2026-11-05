@@ -219,6 +219,7 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                                provider_name = COALESCE(excluded.provider_name, scholarships.provider_name),
                                funding_summary = COALESCE(excluded.funding_summary, scholarships.funding_summary),
                                deadline_text = COALESCE(excluded.deadline_text, scholarships.deadline_text),
+                               status = 'unverified',
                                last_checked_at = CURRENT_TIMESTAMP,
                                updated_at = CURRENT_TIMESTAMP
                            RETURNING id""",
