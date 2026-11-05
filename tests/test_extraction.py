@@ -1,6 +1,9 @@
 import unittest
 
-from app.extraction import (\n    _classify_application_status, _classify_applicant_category,\n    _parse_deadline_date, parse_scholarship_page,\n)
+from app.extraction import (
+    _classify_application_status, _classify_applicant_category,
+    _parse_deadline_date, parse_scholarship_page,
+)
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
