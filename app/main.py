@@ -24,7 +24,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     description="Official-source scholarship discovery and eligibility matching.",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -66,6 +66,10 @@ def list_scholarships(
 
     clauses: list[str] = []
     parameters: list[object] = []
+    if status is None:
+        # Keep rejected informational pages and unreviewed candidates out of
+        # the normal scholarship feed; they remain accessible with status filters. 
+        clauses.extend(["s.status <> 'rejected'", "s.status <> 'candidate'"])
     if country:
         clauses.append("LOWER(s.country) = LOWER(?)")
         parameters.append(country.strip())
