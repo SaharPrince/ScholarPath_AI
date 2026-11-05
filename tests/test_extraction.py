@@ -1,6 +1,6 @@
 import unittest
 
-from app.extraction import parse_scholarship_page
+from app.extraction import _parse_deadline_date, parse_scholarship_page
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
@@ -33,6 +33,14 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
                 "https://example.org/",
             )
         )
+
+    def test_normalizes_explicit_deadline_date(self) -> None:
+        self.assertEqual(_parse_deadline_date("August 1, 2020"), "2020-08-01")
+        self.assertEqual(_parse_deadline_date("30 September 2027"), "2027-09-30")
+
+    def test_does_not_invent_date_for_rolling_deadline(self) -> None:
+        self.assertIsNone(_parse_deadline_date("Applications accepted throughout the year"))
+        self.assertIsNone(_parse_deadline_date("All year around"))
 
 
 if __name__ == "__main__":
