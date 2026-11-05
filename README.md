@@ -83,3 +83,28 @@ New endpoint:
 - `GET /api/discovery/candidates` — list candidate links, with optional `status`, `limit`, and `offset`.
 
 Discovery requests have time and response-size limits, do not follow redirects, and only retain links on the configured source's host.
+
+## Scholarship detail extraction (v0.2)
+
+After running homepage discovery, extract visible details from each unprocessed
+candidate page:
+
+```powershell
+python -m app.run_extraction
+```
+
+The extractor conservatively captures page title, description, provider label,
+and clearly labelled deadline, funding, and eligibility-related text. It stores
+source snippets in `scholarship_evidence` and structured eligibility text in
+`eligibility_criteria`. Records created by extraction are always `unverified`;
+this process does not decide whether an application is open or whether a student
+qualifies.
+
+Useful endpoints:
+
+- `GET /api/discovery/extraction-attempts`
+- `GET /api/scholarships/{id}/evidence`
+
+Extraction is deliberately limited to candidate pages on their original HTTPS
+host. It does not follow redirects, fetch external application forms, infer
+missing facts, or treat an informational page as proof of an open scholarship.
