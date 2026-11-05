@@ -52,6 +52,22 @@ CREATE TABLE IF NOT EXISTS eligibility_criteria (
     FOREIGN KEY (scholarship_id) REFERENCES scholarships(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS discovery_candidates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    candidate_url TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'candidate'
+        CHECK (status IN ('candidate', 'reviewed', 'rejected', 'promoted')),
+    first_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE RESTRICT,
+    UNIQUE (source_id, candidate_url)
+);
+
+CREATE INDEX IF NOT EXISTS idx_discovery_candidates_status
+    ON discovery_candidates(status);
+
 CREATE INDEX IF NOT EXISTS idx_scholarships_status
     ON scholarships(status);
 CREATE INDEX IF NOT EXISTS idx_scholarships_country
