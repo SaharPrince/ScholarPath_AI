@@ -29,3 +29,21 @@ ScholarPath AI helps students discover scholarship opportunities from trustworth
 ## Initial development focus
 
 Build a reliable foundation for source discovery, scholarship records, eligibility data, and transparent matching. Keep the product limited to scholarship discovery and eligibility matching; do not add unrelated features.
+
+
+## Run locally
+
+1. Use Python 3.11 or newer.
+2. Create and activate a virtual environment.
+3. Install dependencies with `pip install -r requirements.txt`.
+4. Copy `.env.example` to `.env` if you want to customize local settings.
+5. Start the API with `uvicorn app.main:app --reload`.
+6. Open `http://127.0.0.1:8000/docs` for the API documentation.
+
+The database is created automatically at the path configured by `DATABASE_PATH` (default: `data/scholarpath.db`). The `/api/health` endpoint reports basic API and database readiness.
+
+## Initial tests
+
+Run the standard-library test suite with `python -m unittest discover -s tests`.
+
+The current foundation creates source, scholarship, and eligibility-criteria tables. It does not yet perform live scholarship discovery or claim that any scholarship is verified.
