@@ -5,6 +5,7 @@ contains at least one scholarship-specific fact. Extracted records remain
 unverified. Every populated fact is accompanied by its source evidence.
 """
 from dataclasses import dataclass, field
+from datetime import datetime
 import re
 from urllib.parse import urlparse
 
@@ -51,6 +52,25 @@ class ExtractedPage:
 
 def _clean(value: str) -> str:
     return " ".join(value.split()).strip()
+
+
+def _parse_deadline_date(value: str | None) -> str | None:
+    """Normalize an explicitly extracted English deadline date to ISO format."""
+    if not value:
+        return None
+    match = DATE_PATTERN.search(value)
+    if not match:
+        return None
+    candidate = match.group(0).strip()
+    for date_format in (
+        "%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y",
+        "%d %B %Y", "%d %b %Y", "%Y-%m-%d",
+    ):
+        try:
+            return datetime.strptime(candidate, date_format).date().isoformat()
+        except ValueError:
+            continue
+    return None
 
 
 def _is_generic_title(value: str) -> bool:
@@ -211,20 +231,22 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                 if parsed:
                     cursor = connection.execute(
                         """INSERT INTO scholarships
-                           (source_id, title, provider_name, funding_summary, deadline_text,
+                           (source_id, title, provider_name, funding_summary, deadline_text, deadline_date,
                             status, source_record_url)
-                           VALUES (?, ?, ?, ?, ?, 'unverified', ?)
+                           VALUES (?, ?, ?, ?, ?, ?, 'unverified', ?)
                            ON CONFLICT(source_id, source_record_url) DO UPDATE SET
                                title = excluded.title,
-                               provider_name = COALESCE(excluded.provider_name, scholarships.provider_name),
-                               funding_summary = COALESCE(excluded.funding_summary, scholarships.funding_summary),
-                               deadline_text = COALESCE(excluded.deadline_text, scholarships.deadline_text),
+                               provider_name = excluded.provider_name,
+                               funding_summary = excluded.funding_summary,
+                               deadline_text = excluded.deadline_text,
+                               deadline_date = excluded.deadline_date,
                                status = 'unverified',
                                last_checked_at = CURRENT_TIMESTAMP,
                                updated_at = CURRENT_TIMESTAMP
                            RETURNING id""",
                         (candidate["source_id"], parsed.title, parsed.provider_name,
                          parsed.fields.get("funding_summary"), parsed.fields.get("deadline_text"),
+                         _parse_deadline_date(parsed.fields.get("deadline_text")),
                          candidate["candidate_url"]),
                     ).fetchone()
                     scholarship_id = cursor["id"]
