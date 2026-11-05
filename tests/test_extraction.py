@@ -39,6 +39,42 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertEqual(_parse_deadline_date("August 1, 2020"), "2020-08-01")
         self.assertEqual(_parse_deadline_date("30 September 2027"), "2027-09-30")
 
+
+    def test_ignores_navigation_and_footer_text(self) -> None:
+        html = """
+        <html><body>
+          <nav><p>Eligibility</p><p>University Partnerships</p></nav>
+          <main>
+            <h1>Example Fellowship Programme</h1>
+            <p>Application deadline: 15 March 2027</p>
+            <p>Eligibility: Applicants must be Pakistani citizens with a completed bachelor's degree.</p>
+            <p>Funding: Full tuition and a monthly stipend.</p>
+          </main>
+          <footer><p>Eligibility: University Partnerships</p></footer>
+        </body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/fellowship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertEqual(
+            page.fields["eligibility"],
+            "Applicants must be Pakistani citizens with a completed bachelor's degree.",
+        )
+
+    def test_rejects_title_like_eligibility_value(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Scholarship</h1>
+          <p>Eligibility</p>
+          <p>University Partnerships</p>
+          <p>Application deadline: 15 March 2027</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertNotIn("eligibility", page.fields)
+
     def test_does_not_invent_date_for_rolling_deadline(self) -> None:
         self.assertIsNone(_parse_deadline_date("Applications accepted throughout the year"))
         self.assertIsNone(_parse_deadline_date("All year around"))
