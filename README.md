@@ -96,9 +96,9 @@ python -m app.run_extraction
 The extractor conservatively captures page title, description, provider label,
 and clearly labelled deadline, funding, and eligibility-related text. It stores
 source snippets in `scholarship_evidence` and structured eligibility text in
-`eligibility_criteria`. Records created by extraction are always `unverified`;
-this process does not decide whether an application is open or whether a student
-qualifies.
+`eligibility_criteria`. Records created by extraction are always `unverified`. The extractor separately
+classifies application-cycle status and applicant category only when the page
+contains clear supporting language; it does not decide whether a student qualifies.
 
 Useful endpoints:
 
