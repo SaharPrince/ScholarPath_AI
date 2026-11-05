@@ -31,12 +31,6 @@ class DatabaseSchemaTests(unittest.TestCase):
 
     def test_new_classification_columns_default_to_unknown(self) -> None:
         with database.get_connection() as connection:
-            columns = {row["name"] for row in connection.execute("PRAGMA table_info(scholarships)")}
-        self.assertIn("application_status", columns)
-        self.assertIn("applicant_category", columns)
-
-    def test_new_classification_columns_default_to_unknown(self) -> None:
-        with database.get_connection() as connection:
             connection.execute(
                 "INSERT INTO sources (name, official_url) VALUES (?, ?)",
                 ("Example source", "https://example.org"),
