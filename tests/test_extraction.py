@@ -79,6 +79,32 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertIsNone(_parse_deadline_date("Applications accepted throughout the year"))
         self.assertIsNone(_parse_deadline_date("All year around"))
 
+    def test_past_deadline_marks_that_cycle_closed(self) -> None:
+        self.assertEqual(_classify_application_status("Application deadline: 1 January 2020", "2020-01-01"), "closed")
+
+    def test_future_deadline_alone_does_not_mean_open(self) -> None:
+        self.assertEqual(_classify_application_status("Application deadline: 1 January 2099", "2099-01-01"), "unknown")
+
+    def test_explicit_open_and_upcoming_language(self) -> None:
+        self.assertEqual(_classify_application_status("Applications are now open", None), "open")
+        self.assertEqual(_classify_application_status("Applications will open in October", None), "upcoming")
+
+    def test_rolling_and_discontinued_statuses(self) -> None:
+        self.assertEqual(_classify_application_status("Applications accepted throughout the year", None), "open")
+        self.assertEqual(_classify_application_status("This programme has been discontinued", None), "discontinued")
+
+    def test_applicant_category_requires_clear_language(self) -> None:
+        self.assertEqual(_classify_applicant_category("Designed for mid-career professionals"), "professional")
+        self.assertEqual(_classify_applicant_category("For currently enrolled undergraduate students"), "student")
+        self.assertEqual(_classify_applicant_category("A programme for interested people"), "unknown")
+
+    def test_deadline_only_page_is_not_promoted(self) -> None:
+        html = """<html><body><main>
+          <h1>Example Scholarship</h1>
+          <p>Application deadline: 1 January 2020</p>
+        </main></body></html>"""
+        self.assertIsNone(parse_scholarship_page(html, "https://example.org/scholarship"))
+
 
 if __name__ == "__main__":
     unittest.main()
