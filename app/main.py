@@ -24,7 +24,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     description="Official-source scholarship discovery and eligibility matching.",
-    version="0.3.0",
+    version="0.3.1",
     lifespan=lifespan,
 )
 
@@ -59,21 +59,24 @@ def list_scholarships(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
-    """List stored scholarships with optional country/status filters."""
+    """List stored scholarships with optional country/status filters.
+
+    Use status=all for an audit view that includes every stored status.
+    """
     allowed_statuses = {"candidate", "unverified", "verified", "expired", "rejected"}
-    if status is not None and status not in allowed_statuses:
+    if status is not None and status not in allowed_statuses | {"all"}:
         raise HTTPException(status_code=422, detail="Unsupported scholarship status")
 
     clauses: list[str] = []
     parameters: list[object] = []
     if status is None:
         # Keep rejected informational pages and unreviewed candidates out of
-        # the normal scholarship feed; they remain accessible with status filters. 
+        # the normal scholarship feed; they remain accessible with status filters.
         clauses.extend(["s.status <> 'rejected'", "s.status <> 'candidate'"])
     if country:
         clauses.append("LOWER(s.country) = LOWER(?)")
         parameters.append(country.strip())
-    if status:
+    if status and status != "all":
         clauses.append("s.status = ?")
         parameters.append(status)
 
