@@ -46,7 +46,7 @@ def _find_labeled_text(soup: BeautifulSoup, labels: tuple[str, ...]) -> str | No
         text = _clean(node.get_text(" ", strip=True))
         lowered = text.lower()
         for label in labels:
-            match = re.search(rf"(?<!\\w){re.escape(label)}\\s*[:–—-]\\s*(.+)", text, re.I)
+            match = re.search(rf"(?<!\w){re.escape(label)}\s*[:–—-]\s*(.+)", text, re.I)
             if match:
                 value = _clean(match.group(1))
                 if value and len(value) <= 1200:
