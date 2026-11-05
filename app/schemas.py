@@ -32,6 +32,8 @@ class ScholarshipSummary(BaseModel):
     deadline_text: str | None = None
     deadline_date: str | None = None
     status: str
+    application_status: str = "unknown"
+    applicant_category: str = "unknown"
     source_name: str
     source_url: str
 
