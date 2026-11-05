@@ -30,6 +30,7 @@ GENERIC_PAGE_TERMS = (
     "step by step guide", "scholarship applicants", "find funding",
     "scholarship programmes for", "scholarship programs for",
     "all scholarships", "scholarship index",
+    "promoting mutual understanding through exchanges",
 )
 OPPORTUNITY_TERMS = ("scholarship", "fellowship", "grant", "studentship", "award", "programme", "program", "ugrad", "fulbright", "humphrey", "flta", "epos")
 DATE_PATTERN = re.compile(
