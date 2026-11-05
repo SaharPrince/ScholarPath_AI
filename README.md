@@ -57,3 +57,29 @@ The current foundation creates source, scholarship, and eligibility-criteria tab
 - `GET /api/scholarships/{id}` — one scholarship and its recorded eligibility criteria.
 
 The API is read-only for scholarship data at this stage. No example scholarships or sources are inserted automatically, so an empty database returns empty lists rather than fabricated opportunities. A record's `candidate` or `unverified` status must not be presented as verified.
+
+
+## Official-source discovery foundation
+
+The initial curated source catalog contains official indexes from:
+
+- Higher Education Commission Pakistan
+- Ministry of Federal Education and Professional Training
+- United States Educational Foundation in Pakistan (USEFP)
+- DAAD Pakistan
+
+The catalog stores source homepages/indexes, not scholarship claims. These sources are based on the providers' own official scholarship/funding pages and Pakistan's federal education ministry scholarship directory. The catalog must be reviewed and maintained as providers change their websites.
+
+At application startup, the catalog is inserted without overwriting existing source records. To run a discovery pass locally:
+
+```bash
+python -m app.run_discovery
+```
+
+The first discovery pass only looks for scholarship-related links on each configured source homepage. It saves same-host HTTPS links as review candidates. It does not yet extract full scholarship details, follow external application links, create scholarship records, or decide eligibility. Candidate links are not verified scholarships.
+
+New endpoint:
+
+- `GET /api/discovery/candidates` — list candidate links, with optional `status`, `limit`, and `offset`.
+
+Discovery requests have time and response-size limits, do not follow redirects, and only retain links on the configured source's host.
