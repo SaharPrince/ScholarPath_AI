@@ -47,3 +47,13 @@ The database is created automatically at the path configured by `DATABASE_PATH` 
 Run the standard-library test suite with `python -m unittest discover -s tests`.
 
 The current foundation creates source, scholarship, and eligibility-criteria tables. It does not yet perform live scholarship discovery or claim that any scholarship is verified.
+
+
+## Initial API endpoints
+
+- `GET /api/health` — API/database readiness.
+- `GET /api/sources` — active configured sources.
+- `GET /api/scholarships` — stored scholarships, with optional `country`, `status`, `limit`, and `offset` filters.
+- `GET /api/scholarships/{id}` — one scholarship and its recorded eligibility criteria.
+
+The API is read-only for scholarship data at this stage. No example scholarships or sources are inserted automatically, so an empty database returns empty lists rather than fabricated opportunities. A record's `candidate` or `unverified` status must not be presented as verified.
