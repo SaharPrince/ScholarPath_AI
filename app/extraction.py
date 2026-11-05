@@ -363,18 +363,16 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                     ).fetchone()
                     if rejected_row:
                         scholarship_id = rejected_row["id"]
+                        # Retain previously captured facts and evidence for audit history.
+                        # The rejected trust status keeps this row out of the normal feed.
                         connection.execute(
                             """UPDATE scholarships SET status = 'rejected',
-                               provider_name = NULL, country = NULL, study_destination = NULL,
-                               funding_summary = NULL, application_url = NULL,
-                               deadline_text = NULL, deadline_date = NULL,
-                               application_status = 'unknown', applicant_category = 'unknown',
                                last_checked_at = CURRENT_TIMESTAMP,
                                updated_at = CURRENT_TIMESTAMP
                                WHERE id = ?""",
                             (scholarship_id,),
                         )
-                        connection.execute(
+                    connection.execute(
                             "DELETE FROM scholarship_evidence WHERE scholarship_id = ?",
                             (scholarship_id,),
                         )
