@@ -156,6 +156,8 @@ def _classify_application_status(body_text: str, deadline_date: str | None) -> s
         return "discontinued"
     if SHORTLISTED_PATTERN.search(body_text):
         return "shortlisted_only"
+    if ROLLING_PATTERN.search(body_text):
+        return "open"
     if deadline_date:
         try:
             if datetime.strptime(deadline_date, "%Y-%m-%d").date() < datetime.utcnow().date():
