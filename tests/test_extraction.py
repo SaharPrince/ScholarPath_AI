@@ -11,6 +11,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
           <meta property="og:site_name" content="Example Foundation">
         </head><body>
           <h1>Example Global Scholarship</h1>
+          <p>Scholarship provider: Example Foundation</p>
           <p>Application deadline: 30 September 2027</p>
           <p>Funding: Full tuition and monthly stipend</p>
           <p>Eligibility: Applicants must be citizens of Pakistan.</p>
