@@ -1,0 +1,1 @@
+"""ScholarPath AI application package."""
