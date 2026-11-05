@@ -16,7 +16,7 @@ from app.database import get_connection
 
 
 MAX_RESPONSE_BYTES = 2_000_000
-USER_AGENT = "ScholarPathAI/0.3 (+official scholarship detail extractor)"
+USER_AGENT = "ScholarPathAI/0.4 (+official scholarship detail extractor)"
 FIELD_LABELS = {
     "provider_name": ("scholarship provider", "offered by", "administered by", "sponsor"),
     "deadline_text": ("application deadline", "application closes", "deadline", "apply by", "closing date"),
@@ -177,7 +177,7 @@ def _classify_applicant_category(body_text: str) -> str:
         return "institution"
     if re.search(r"\b(faculty members?|professors?|academic staff)\b", text):
         return "faculty"
-    if re.search(r"\b(mid[- ]career professionals?|working professionals?|employed professionals?|professionals with)\b", text):
+    if re.search(r"\b(mid[- ]career professionals?|working professionals?|employed professionals?|professionals with|teachers?|administrators?|government officials?)\b", text):
         return "professional"
     if re.search(r"\b(recent graduates?|alumni|postgraduate applicants?)\b", text):
         return "graduate"
