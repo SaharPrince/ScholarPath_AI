@@ -108,3 +108,22 @@ Useful endpoints:
 Extraction is deliberately limited to candidate pages on their original HTTPS
 host. It does not follow redirects, fetch external application forms, infer
 missing facts, or treat an informational page as proof of an open scholarship.
+
+
+## Evidence-based opportunity classification (v0.4)
+
+Each extracted record now has two separate classifications:
+
+- `status` remains the trust/verification state (`unverified` is not a verified scholarship).
+- `application_status` describes the specific application cycle: `open`, `upcoming`, `closed`, `discontinued`, `shortlisted_only`, or `unknown`.
+- `applicant_category` identifies a clearly signalled audience: `student`, `graduate`, `professional`, `faculty`, `institution`, or `unknown`.
+
+A past explicit deadline marks that cycle `closed`; a future deadline alone does not prove that applications are open. Rolling applications or explicit open/upcoming/discontinued/shortlist wording can support the corresponding state. Pages that provide only a deadline and no meaningful programme facts are not promoted as scholarship records. Unknown is used whenever the page does not provide enough evidence.
+
+Existing SQLite databases are upgraded additively when the API or extraction command starts. Existing records receive `unknown` classifications until they are reprocessed. To refresh the stored classifications from official source pages:
+
+```powershell
+python -m app.run_extraction --reprocess
+```
+
+The new fields are returned by both scholarship list and detail endpoints. Reprocessing does not make records verified.
