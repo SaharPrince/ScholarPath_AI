@@ -71,6 +71,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
           <p>Eligibility</p>
           <p>University Partnerships</p>
           <p>Application deadline: 15 March 2027</p>
+          <p>Funding: Full tuition award.</p>
         </main></body></html>
         """
         page = parse_scholarship_page(html, "https://example.org/scholarship")
