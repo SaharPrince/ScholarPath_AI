@@ -29,6 +29,12 @@ class DatabaseSchemaTests(unittest.TestCase):
         actual = {row["name"] for row in rows}
         self.assertTrue(expected.issubset(actual))
 
+    def test_new_classification_columns_default_to_unknown(self) -> None:
+        with database.get_connection() as connection:
+            columns = {row["name"] for row in connection.execute("PRAGMA table_info(scholarships)")}
+        self.assertIn("application_status", columns)
+        self.assertIn("applicant_category", columns)
+
     def test_scholarship_requires_a_source(self) -> None:
         with self.assertRaises(Exception):
             with database.get_connection() as connection:
