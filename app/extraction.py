@@ -308,7 +308,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     application_status = _classify_application_status(body_text, deadline_date)
     # Use programme identity and extracted eligibility, not unrelated page-wide text.
     applicant_category = _classify_applicant_category(
-        " ".join((title, fields.get("eligibility", "")))
+        " ".join((title, page_title, fields.get("eligibility", "")))
     )
     return ExtractedPage(title[:300], description, provider, fields, criteria, evidence,
                          application_status, applicant_category)
