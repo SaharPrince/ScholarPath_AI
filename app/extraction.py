@@ -5,7 +5,7 @@ contains at least one scholarship-specific fact. Extracted records remain
 unverified. Every populated fact is accompanied by its source evidence.
 """
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 from urllib.parse import urlparse
 
@@ -22,6 +22,7 @@ FIELD_LABELS = {
     "deadline_text": ("application deadline", "application closes", "deadline", "apply by", "closing date"),
     "funding_summary": ("funding", "scholarship value", "financial support", "tuition fee", "stipend"),
     "eligibility": ("eligibility", "who can apply", "eligible applicants"),
+    "ineligibility": ("ineligibility", "who cannot apply", "who is not eligible", "not eligible"),
     "study_level": ("degree level", "study level", "level of study", "programme level", "program level"),
     "nationality": ("nationality", "citizenship", "eligible countries", "country of residence"),
     "academic_requirements": ("academic requirements", "minimum marks", "minimum gpa", "grade requirement"),
@@ -150,6 +151,40 @@ def _find_labeled_text(content_root: BeautifulSoup, labels: tuple[str, ...], fie
                 continue
             return value
     return None
+def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str, ...]) -> str | None:
+    """Collect visible paragraph/list content beneath a matching section heading."""
+    wanted = {name.casefold() for name in heading_names}
+    for heading in content_root.find_all(["h2", "h3", "h4", "h5"]):
+        heading_text = _clean(heading.get_text(" ", strip=True)).rstrip(":").casefold()
+        if heading_text not in wanted:
+            continue
+        chunks: list[str] = []
+        for node in heading.find_all_next(["h1", "h2", "h3", "h4", "h5", "p", "li"]):
+            if node.name in {"h1", "h2", "h3", "h4", "h5"}:
+                break
+            value = _clean(node.get_text(" ", strip=True))
+            if value and value not in chunks:
+                chunks.append(value)
+        if chunks:
+            return " ".join(chunks)[:4000]
+    return None
+
+
+def _find_funding_statement(content_root: BeautifulSoup) -> str | None:
+    """Capture explicit funding prose when the source has no labelled funding field."""
+    indicators = (
+        "scholarship funds", "funds graduate study", "grant funds",
+        "the grant funds", "the scholarship covers", "the grant covers",
+        "financial support includes", "provides a stipend",
+    )
+    for paragraph in content_root.find_all("p"):
+        value = _clean(paragraph.get_text(" ", strip=True))
+        lowered = value.lower()
+        if len(value) >= 45 and any(term in lowered for term in indicators):
+            return value[:1200]
+    return None
+
+
 def _classify_application_status(body_text: str, deadline_date: str | None) -> str:
     """Classify this application cycle only; never infer openness from a future date."""
     if DISCONTINUED_PATTERN.search(body_text):
@@ -160,7 +195,7 @@ def _classify_application_status(body_text: str, deadline_date: str | None) -> s
         return "open"
     if deadline_date:
         try:
-            if datetime.strptime(deadline_date, "%Y-%m-%d").date() < datetime.utcnow().date():
+            if datetime.strptime(deadline_date, "%Y-%m-%d").date() < datetime.now(timezone.utc).date():
                 return "closed"
         except ValueError:
             pass
@@ -177,12 +212,14 @@ def _classify_applicant_category(body_text: str) -> str:
         return "institution"
     if re.search(r"\b(faculty members?|professors?|academic staff)\b", text):
         return "faculty"
-    if re.search(r"\b(mid[- ]career professionals?|working professionals?|employed professionals?|professionals with|teachers?|administrators?|government officials?)\b", text):
-        return "professional"
+    # Degree-level eligibility is stronger evidence than incidental mentions
+    # of work experience or professional references elsewhere on the page.
+    if re.search(r"\b(undergraduate students?|graduate students?|currently enrolled students?|students currently enrolled|master'?s applicants?|phd applicants?|degree applicants?|graduate study)\b", text):
+        return "student"
     if re.search(r"\b(recent graduates?|alumni|postgraduate applicants?)\b", text):
         return "graduate"
-    if re.search(r"\b(undergraduate students?|graduate students?|currently enrolled students?|students currently enrolled)\b", text):
-        return "student"
+    if re.search(r"\b(mid[- ]career professionals?|working professionals?|employed professionals?|professionals with|teachers?|administrators?|government officials?)\b", text):
+        return "professional"
     return "unknown"
 
 
@@ -210,6 +247,26 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     if not _is_opportunity(candidate_title or title, page_title or title, page_url, body_text):
         return None
 
+    # Official programme pages often use section headings and bullet lists
+    # instead of inline "Eligibility: ..." labels.
+    section_specs = {
+        "eligibility": ("Eligibility Criteria", "Eligibility", "Who can apply", "Eligible applicants"),
+        "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
+    }
+    for field_name, headings in section_specs.items():
+        if field_name not in fields:
+            section = _find_heading_section(content_root, headings)
+            if section:
+                fields[field_name] = section
+                evidence.append((field_name, section))
+
+    # Funding is often described in a normal paragraph rather than a labelled row.
+    if "funding_summary" not in fields:
+        funding = _find_funding_statement(content_root)
+        if funding:
+            fields["funding_summary"] = funding
+            evidence.append(("funding_summary", funding))
+
     # Avoid site-wide meta descriptions and boilerplate organization copy.
     description = None
     for paragraph in content_root.find_all("p"):
@@ -234,7 +291,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     provider = fields.get("provider_name")
 
     criteria: list[tuple[str, str, str]] = []
-    for field_name in ("eligibility", "study_level", "nationality", "academic_requirements", "age_limit"):
+    for field_name in ("eligibility", "ineligibility", "study_level", "nationality", "academic_requirements", "age_limit"):
         if field_name in fields:
             criteria.append((field_name, field_name.replace("_", " ").title(), fields[field_name]))
 
@@ -242,7 +299,10 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         evidence.append(("description", description))
     deadline_date = _parse_deadline_date(fields.get("deadline_text"))
     application_status = _classify_application_status(body_text, deadline_date)
-    applicant_category = _classify_applicant_category(body_text)
+    # Use programme identity and extracted eligibility, not unrelated page-wide text.
+    applicant_category = _classify_applicant_category(
+        " ".join((title, fields.get("eligibility", "")))
+    )
     return ExtractedPage(title[:300], description, provider, fields, criteria, evidence,
                          application_status, applicant_category)
 
