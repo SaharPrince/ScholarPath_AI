@@ -173,7 +173,7 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
 def _find_provider_statement(content_root: BeautifulSoup) -> str | None:
     """Extract a provider only when the page explicitly names who operates the award."""
     pattern = re.compile(
-        r"\b(?:managed|administered|offered|provided)\\s+by\\s+(.+?)"
+        r"\b(?:managed|administered|offered|provided)\s+by\s+(.+?)"
         r"(?:\s+(?:under|in accordance with|according to)\b|[.;]|$)",
         re.I,
     )
