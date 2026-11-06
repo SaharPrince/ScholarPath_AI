@@ -102,6 +102,40 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertEqual(_classify_applicant_category("For currently enrolled undergraduate students"), "student")
         self.assertEqual(_classify_applicant_category("A programme for interested people"), "unknown")
 
+    def test_extracts_heading_based_eligibility_and_prose_funding(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Master's Scholarship</h1>
+          <h2>Eligibility Criteria</h2>
+          <ul>
+            <li>Applicants must be citizens of Pakistan.</li>
+            <li>Applicants must hold a bachelor's degree.</li>
+            <li>Applicants must apply for a master's programme.</li>
+          </ul>
+          <h2>Financial Support</h2>
+          <p>The scholarship covers tuition fees and provides a stipend for living costs.</p>
+          <p>Applications are now open.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/masters-scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("citizens of Pakistan", page.fields["eligibility"])
+        self.assertIn("bachelor's degree", page.fields["eligibility"])
+        self.assertIn("scholarship covers tuition fees", page.fields["funding_summary"])
+        self.assertTrue(any(name == "eligibility" for name, _ in page.evidence))
+        self.assertEqual(page.applicant_category, "student")
+
+    def test_applicant_category_ignores_unrelated_page_references(self) -> None:
+        self.assertEqual(
+            _classify_applicant_category("Example Degree Scholarship for master's applicants"),
+            "student",
+        )
+        self.assertEqual(
+            _classify_applicant_category("Example scholarship for master's applicants"),
+            "student",
+        )
+
     def test_deadline_only_page_is_not_promoted(self) -> None:
         html = """<html><body><main>
           <h1>Example Scholarship</h1>
