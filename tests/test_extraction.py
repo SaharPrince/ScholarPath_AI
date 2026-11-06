@@ -136,6 +136,23 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "student",
         )
 
+    def test_extracts_explicit_provider_and_study_destination(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Graduate Scholarship</h1>
+          <p>The scholarship is managed by Example Foundation under its international programme.</p>
+          <p>The scholarship funds graduate study at universities all over the United States for a Master's degree.</p>
+          <p>Eligibility: Pakistani citizens with a bachelor's degree may apply.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarships/example")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertEqual(page.provider_name, "Example Foundation")
+        self.assertEqual(page.fields["study_destination"], "United States")
+        self.assertIn(("provider_name", "Example Foundation"), page.evidence)
+        self.assertIn(("study_destination", "United States"), page.evidence)
+
     def test_deadline_only_page_is_not_promoted(self) -> None:
         html = """<html><body><main>
           <h1>Example Scholarship</h1>
