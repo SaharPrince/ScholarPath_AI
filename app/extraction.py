@@ -170,6 +170,48 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
     return None
 
 
+def _find_provider_statement(content_root: BeautifulSoup) -> str | None:
+    """Extract a provider only when the page explicitly names who operates the award."""
+    pattern = re.compile(
+        r"\\b(?:managed|administered|offered|provided)\\s+by\\s+(.+?)"
+        r"(?:\\s+(?:under|in accordance with|according to)\\b|[.;]|$)",
+        re.I,
+    )
+    for paragraph in content_root.find_all("p"):
+        value = _clean(paragraph.get_text(" ", strip=True))
+        match = pattern.search(value)
+        if match:
+            provider = _clean(match.group(1)).strip(" ,:;")
+            if 3 <= len(provider) <= 240:
+                return provider
+    return None
+
+
+def _find_study_destination(content_root: BeautifulSoup) -> str | None:
+    """Extract a destination only when a page explicitly ties study to a named country."""
+    countries = (
+        "United States", "United Kingdom", "United Arab Emirates", "South Korea",
+        "New Zealand", "Saudi Arabia", "South Africa", "United States of America",
+        "Germany", "France", "Canada", "Australia", "Japan", "China", "Türkiye",
+        "Turkey", "Sweden", "Norway", "Finland", "Netherlands", "Italy", "Spain",
+        "Switzerland", "Ireland", "Pakistan",
+    )
+    country_pattern = "|".join(re.escape(country) for country in sorted(countries, key=len, reverse=True))
+    pattern = re.compile(
+        rf"\\b(?:study|studying|graduate study|degree programme|degree program)"
+        rf"[^.?!]{{0,100}}?\\b(?:in|at universities all over)\\s+(?:the\\s+)?({country_pattern})\\b",
+        re.I,
+    )
+    for paragraph in content_root.find_all("p"):
+        value = _clean(paragraph.get_text(" ", strip=True))
+        match = pattern.search(value)
+        if match:
+            # Return canonical country spelling from the maintained allow-list.
+            matched = match.group(1).casefold()
+            return next(country for country in countries if country.casefold() == matched)
+    return None
+
+
 def _find_funding_statement(content_root: BeautifulSoup) -> str | None:
     """Capture explicit funding prose when the source has no labelled funding field."""
     indicators = (
@@ -266,6 +308,18 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             if section:
                 fields[field_name] = section
                 evidence.append((field_name, section))
+
+    # Provider and destination can be extracted from explicit programme prose.
+    if "provider_name" not in fields:
+        provider_statement = _find_provider_statement(content_root)
+        if provider_statement:
+            fields["provider_name"] = provider_statement
+            evidence.append(("provider_name", provider_statement))
+    if "study_destination" not in fields:
+        destination = _find_study_destination(content_root)
+        if destination:
+            fields["study_destination"] = destination
+            evidence.append(("study_destination", destination))
 
     # Funding is often described in a normal paragraph rather than a labelled row.
     if "funding_summary" not in fields:
@@ -378,14 +432,14 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                 if parsed:
                     cursor = connection.execute(
                         """INSERT INTO scholarships
-                           (source_id, title, provider_name, funding_summary, deadline_text, deadline_date,
+                           (source_id, title, provider_name, study_destination, funding_summary, deadline_text, deadline_date,
                             status, source_record_url, application_status, applicant_category)
-                           VALUES (?, ?, ?, ?, ?, ?, 'unverified', ?, ?, ?)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, 'unverified', ?, ?, ?)
                            ON CONFLICT(source_id, source_record_url) DO UPDATE SET
                                title = excluded.title,
                                provider_name = excluded.provider_name,
                                country = NULL,
-                               study_destination = NULL,
+                               study_destination = excluded.study_destination,
                                application_url = NULL,
                                funding_summary = excluded.funding_summary,
                                deadline_text = excluded.deadline_text,
@@ -397,7 +451,8 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                                updated_at = CURRENT_TIMESTAMP
                            RETURNING id""",
                         (candidate["source_id"], parsed.title, parsed.provider_name,
-                         parsed.fields.get("funding_summary"), parsed.fields.get("deadline_text"),
+                         parsed.fields.get("study_destination"), parsed.fields.get("funding_summary"),
+                         parsed.fields.get("deadline_text"),
                          _parse_deadline_date(parsed.fields.get("deadline_text")),
                          candidate["candidate_url"], parsed.application_status, parsed.applicant_category),
                     ).fetchone()
