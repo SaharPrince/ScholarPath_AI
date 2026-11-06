@@ -214,7 +214,13 @@ def _classify_applicant_category(body_text: str) -> str:
         return "faculty"
     # Degree-level eligibility is stronger evidence than incidental mentions
     # of work experience or professional references elsewhere on the page.
-    if re.search(r"\b(undergraduate students?|graduate students?|currently enrolled students?|students currently enrolled|master'?s applicants?|phd applicants?|degree applicants?|graduate study)\b", text):
+    if re.search(
+        r"\b(undergraduate students?|graduate students?|currently enrolled students?|students currently enrolled|"
+        r"master'?s applicants?|phd applicants?|degree applicants?|graduate study|"
+        r"master'?s (?:degree|programme|program)|phd (?:degree|programme|program)|"
+        r"apply(?:ing)? for (?:a )?(?:master'?s|phd)|seeking (?:a )?(?:master'?s|phd) degree)\b",
+        text,
+    ):
         return "student"
     if re.search(r"\b(recent graduates?|alumni|postgraduate applicants?)\b", text):
         return "graduate"
