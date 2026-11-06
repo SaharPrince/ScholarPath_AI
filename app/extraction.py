@@ -181,7 +181,7 @@ def _find_provider_statement(content_root: BeautifulSoup) -> str | None:
         value = _clean(paragraph.get_text(" ", strip=True))
         match = pattern.search(value)
         if match:
-            provider = re.sub(r"^the\\s+", "", _clean(match.group(1)), flags=re.I).strip(" ,:;")
+            provider = re.sub(r"^the\s+", "", _clean(match.group(1)), flags=re.I).strip(" ,:;")
             if 3 <= len(provider) <= 240:
                 return provider
     return None
