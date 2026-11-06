@@ -173,8 +173,8 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
 def _find_provider_statement(content_root: BeautifulSoup) -> str | None:
     """Extract a provider only when the page explicitly names who operates the award."""
     pattern = re.compile(
-        r"\\b(?:managed|administered|offered|provided)\\s+by\\s+(.+?)"
-        r"(?:\\s+(?:under|in accordance with|according to)\\b|[.;]|$)",
+        r"\b(?:managed|administered|offered|provided)\\s+by\\s+(.+?)"
+        r"(?:\s+(?:under|in accordance with|according to)\b|[.;]|$)",
         re.I,
     )
     for paragraph in content_root.find_all("p"):
@@ -198,8 +198,8 @@ def _find_study_destination(content_root: BeautifulSoup) -> str | None:
     )
     country_pattern = "|".join(re.escape(country) for country in sorted(countries, key=len, reverse=True))
     pattern = re.compile(
-        rf"\\b(?:study|studying|graduate study|degree programme|degree program)"
-        rf"[^.?!]{{0,100}}?\\b(?:in|at universities all over)\\s+(?:the\\s+)?({country_pattern})\\b",
+        rf"\b(?:study|studying|graduate study|degree programme|degree program)"
+        rf"[^.?!]{{0,100}}?\b(?:in|at universities all over)\s+(?:the\s+)?({country_pattern})\b",
         re.I,
     )
     for paragraph in content_root.find_all("p"):
