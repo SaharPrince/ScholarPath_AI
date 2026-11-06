@@ -217,6 +217,7 @@ def _classify_applicant_category(body_text: str) -> str:
     if re.search(
         r"\b(undergraduate students?|graduate students?|currently enrolled students?|students currently enrolled|"
         r"master'?s applicants?|phd applicants?|degree applicants?|graduate study|"
+        r"master'?s\b|phd\b|"
         r"master'?s (?:degree|programme|program)|phd (?:degree|programme|program)|"
         r"apply(?:ing)? for (?:a )?(?:master'?s|phd)|seeking (?:a )?(?:master'?s|phd) degree)\b",
         text,
