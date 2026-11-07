@@ -2,7 +2,7 @@ import unittest
 
 from app.extraction import (
     _classify_application_status, _classify_applicant_category,
-    _parse_deadline_date, parse_scholarship_page,
+    _parse_deadline_date, _find_application_url, parse_scholarship_page,
 )
 
 
@@ -152,6 +152,52 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertEqual(page.fields["study_destination"], "United States")
         self.assertIn(("provider_name", "Example Foundation"), page.evidence)
         self.assertIn(("study_destination", "United States"), page.evidence)
+
+    def test_extracts_explicit_application_link(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Scholarship</h1>
+          <p>Eligibility: Pakistani citizens with a bachelor's degree may apply.</p>
+          <h2>How to Apply</h2>
+          <p>Complete the online application.</p>
+          <a href="https://apply.example.edu/start">Apply Now</a>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertEqual(page.fields["application_url"], "https://apply.example.edu/start")
+        self.assertIn(("application_url", "https://apply.example.edu/start"), page.evidence)
+
+    def test_does_not_treat_source_page_or_document_as_application_url(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Scholarship</h1>
+          <p>Eligibility: Pakistani citizens with a bachelor's degree may apply.</p>
+          <h2>How to Apply</h2>
+          <a href="#instructions">Apply</a>
+          <a href="/scholarship">Apply Now</a>
+          <a href="/application-guide.pdf">Application Form</a>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertNotIn("application_url", page.fields)
+
+    def test_ambiguous_application_links_are_not_guessed(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Scholarship</h1>
+          <p>Eligibility: Pakistani citizens with a bachelor's degree may apply.</p>
+          <a href="https://apply-one.example.edu">Apply Now</a>
+          <a href="https://apply-two.example.edu">Apply Now</a>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertNotIn("application_url", page.fields)
 
     def test_deadline_only_page_is_not_promoted(self) -> None:
         html = """<html><body><main>
