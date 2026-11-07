@@ -7,7 +7,7 @@ unverified. Every populated fact is accompanied by its source evidence.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import re
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -212,6 +212,62 @@ def _find_study_destination(content_root: BeautifulSoup) -> str | None:
     return None
 
 
+def _find_application_url(content_root: BeautifulSoup, page_url: str) -> str | None:
+    """Find an application destination only when an official page links to it explicitly."""
+    strong_label = re.compile(
+        r"(?i)\\b(?:apply\\s+now|apply\\s+online|online\\s+application|"
+        r"application\\s+portal|start\\s+(?:a\\s+)?new\\s+application|"
+        r"submit\\s+(?:an?\\s+)?application|application\\s+form|application\\s+system)\\b"
+    )
+    contextual_action = re.compile(
+        r"(?i)\\b(?:apply\\s+online|submit\\s+(?:the\\s+)?application\\s+online|"
+        r"online\\s+application|application\\s+portal|start\\s+(?:a\\s+)?new\\s+application)\\b"
+    )
+    application_headings = {
+        "how to apply", "how do i apply", "application process",
+        "application submission", "apply online", "application portal",
+    }
+    generic_cta = {"here", "click here", "apply", "application"}
+    candidates: dict[str, int] = {}
+
+    for anchor in content_root.find_all("a", href=True):
+        label = _clean(anchor.get_text(" ", strip=True))
+        parent_text = _clean(anchor.parent.get_text(" ", strip=True)) if anchor.parent else label
+        previous_heading = anchor.find_previous(["h1", "h2", "h3", "h4", "h5"])
+        heading_text = (
+            _clean(previous_heading.get_text(" ", strip=True)).rstrip(":").casefold()
+            if previous_heading else ""
+        )
+        in_application_section = heading_text in application_headings
+
+        if strong_label.search(label):
+            score = 3
+        elif in_application_section and label.casefold() in generic_cta:
+            score = 2
+        elif contextual_action.search(parent_text) and label.casefold() in generic_cta:
+            score = 1
+        else:
+            continue
+
+        target = urljoin(page_url, str(anchor.get("href", "")).strip())
+        parsed = urlparse(target)
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.path.lower().endswith((".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"))
+        ):
+            continue
+        candidates[target] = max(score, candidates.get(target, 0))
+
+    if not candidates:
+        return None
+    highest_score = max(candidates.values())
+    best = [url for url, score in candidates.items() if score == highest_score]
+    return best[0] if len(best) == 1 else None
+
+
 def _find_funding_statement(content_root: BeautifulSoup) -> str | None:
     """Capture explicit funding prose when the source has no labelled funding field."""
     indicators = (
@@ -320,6 +376,12 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         if destination:
             fields["study_destination"] = destination
             evidence.append(("study_destination", destination))
+
+    # Application links must be explicit links on the official opportunity page.
+    application_url = _find_application_url(content_root, page_url)
+    if application_url:
+        fields["application_url"] = application_url
+        evidence.append(("application_url", application_url))
 
     # Funding is often described in a normal paragraph rather than a labelled row.
     if "funding_summary" not in fields:
@@ -432,15 +494,15 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                 if parsed:
                     cursor = connection.execute(
                         """INSERT INTO scholarships
-                           (source_id, title, provider_name, study_destination, funding_summary, deadline_text, deadline_date,
+                           (source_id, title, provider_name, study_destination, funding_summary, application_url, deadline_text, deadline_date,
                             status, source_record_url, application_status, applicant_category)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, 'unverified', ?, ?, ?)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'unverified', ?, ?, ?)
                            ON CONFLICT(source_id, source_record_url) DO UPDATE SET
                                title = excluded.title,
                                provider_name = excluded.provider_name,
                                country = NULL,
                                study_destination = excluded.study_destination,
-                               application_url = NULL,
+                               application_url = excluded.application_url,
                                funding_summary = excluded.funding_summary,
                                deadline_text = excluded.deadline_text,
                                deadline_date = excluded.deadline_date,
@@ -452,7 +514,7 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                            RETURNING id""",
                         (candidate["source_id"], parsed.title, parsed.provider_name,
                          parsed.fields.get("study_destination"), parsed.fields.get("funding_summary"),
-                         parsed.fields.get("deadline_text"),
+                         parsed.fields.get("application_url"), parsed.fields.get("deadline_text"),
                          _parse_deadline_date(parsed.fields.get("deadline_text")),
                          candidate["candidate_url"], parsed.application_status, parsed.applicant_category),
                     ).fetchone()
