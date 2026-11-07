@@ -213,21 +213,22 @@ def _find_study_destination(content_root: BeautifulSoup) -> str | None:
 
 
 def _find_application_url(content_root: BeautifulSoup, page_url: str) -> str | None:
-    """Find an application destination only when an official page links to it explicitly."""
+    """Find an application destination only when the official page links to it explicitly."""
     strong_label = re.compile(
-        r"(?i)\\b(?:apply\\s+now|apply\\s+online|online\\s+application|"
-        r"application\\s+portal|start\\s+(?:a\\s+)?new\\s+application|"
-        r"submit\\s+(?:an?\\s+)?application|application\\s+form|application\\s+system)\\b"
+        r"(?i)\b(?:apply\s+now|apply\s+online|online\s+application|"
+        r"application\s+portal|start\s+(?:a\s+)?new\s+application|"
+        r"submit\s+(?:an?\s+)?application|application\s+form|application\s+system)\b"
     )
     contextual_action = re.compile(
-        r"(?i)\\b(?:apply\\s+online|submit\\s+(?:the\\s+)?application\\s+online|"
-        r"online\\s+application|application\\s+portal|start\\s+(?:a\\s+)?new\\s+application)\\b"
+        r"(?i)\b(?:apply\s+online|submit\s+(?:the\s+)?application\s+online|"
+        r"online\s+application|application\s+portal|start\s+(?:a\s+)?new\s+application)\b"
     )
     application_headings = {
         "how to apply", "how do i apply", "application process",
         "application submission", "apply online", "application portal",
     }
     generic_cta = {"here", "click here", "apply", "application"}
+    source = urlparse(page_url)
     candidates: dict[str, int] = {}
 
     for anchor in content_root.find_all("a", href=True):
@@ -249,13 +250,18 @@ def _find_application_url(content_root: BeautifulSoup, page_url: str) -> str | N
         else:
             continue
 
-        target = urljoin(page_url, str(anchor.get("href", "")).strip())
+        href = str(anchor.get("href", "")).strip()
+        if not href or href.startswith("#"):
+            continue
+        target = urljoin(page_url, href)
         parsed = urlparse(target)
         if (
             parsed.scheme != "https"
             or not parsed.hostname
             or parsed.username
             or parsed.password
+            or (parsed.scheme, parsed.netloc, parsed.path, parsed.query)
+               == (source.scheme, source.netloc, source.path, source.query)
             or parsed.path.lower().endswith((".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"))
         ):
             continue
