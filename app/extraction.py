@@ -90,6 +90,9 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(may)(apply)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(permanent)(residency)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(State)(employees)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(a)(full-time)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(in)(the)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(Department)(of)\b", r"\1 \2", text)
     text = re.sub(r",(?=\S)", ", ", text)
     return text
 
