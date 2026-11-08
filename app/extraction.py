@@ -645,13 +645,27 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                     re.I,
                 ):
                     continue
-                criterion_type = field_name
-                if field_name == "eligibility" and re.search(
-                    r"(?i)\\b(?:except|excluding|with the exception of)\\b",
+                exception_match = re.search(
+                    r"(?i)\\b(?:with the exception of|except for|except|excluding)\\b\\s+(.+)$",
                     statement,
-                ):
-                    criterion_type = "ineligibility"
-                criteria.append((criterion_type, criterion_type.replace("_", " ").title(), statement))
+                ) if field_name == "eligibility" else None
+                if exception_match:
+                    eligible_part = statement[:exception_match.start()].rstrip(" ,;:")
+                    excluded_part = exception_match.group(1).strip(" )(.")
+                    if eligible_part:
+                        criteria.append(("eligibility", "Eligibility", eligible_part))
+                    if excluded_part:
+                        criteria.append((
+                            "ineligibility",
+                            "Ineligibility",
+                            f"{excluded_part} (excluded by the source's stated exception)",
+                        ))
+                else:
+                    criteria.append((
+                        field_name,
+                        field_name.replace("_", " ").title(),
+                        statement,
+                    ))
 
     if description:
         evidence.append(("description", description))
