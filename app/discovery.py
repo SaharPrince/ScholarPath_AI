@@ -68,6 +68,35 @@ def _candidate_links(html: str, page_url: str, allowed_host: str) -> list[tuple[
         host = _normalized_host(absolute_url)
         if host != allowed_host or parsed.fragment:
             continue
+        path_lower = parsed.path.lower()
+        title_lower = title.casefold()
+
+        # Ignore site navigation, authentication, archives, contact pages and
+        # downloadable reference documents. These are not individual opportunity
+        # pages and otherwise inflate the review queue.
+        excluded_path_markers = (
+            "/_layouts/15/authenticate.aspx",
+            "/contactus.aspx",
+            "/inactive-scholarships",
+            "/archive",
+            "/documents/",
+        )
+        excluded_extensions = (
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+        )
+        if any(marker in path_lower for marker in excluded_path_markers):
+            continue
+        if path_lower.endswith(excluded_extensions):
+            continue
+        if title_lower in {"sign in", "log in", "login", "contact us"}:
+            continue
+
+        # HEC's shared root index is linked from several category pages.
+        # Keep named programme subpages such as /IDPS/Pages/default.aspx,
+        # but do not rediscover the generic /scholarshipsgrants/Pages/default.aspx.
+        if path_lower.rstrip("/") == "/english/scholarshipsgrants/pages/default.aspx":
+            continue
+
         searchable = f"{title} {parsed.path}".lower()
         if not any(term in searchable for term in DISCOVERY_TERMS):
             continue
