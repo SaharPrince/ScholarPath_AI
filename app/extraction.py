@@ -97,6 +97,8 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(Department)(of)\b", r"\1 \2", text)
     text = re.sub(r"(?i)(i\.e\.)(?=\S)", r"\1 ", text)
     text = re.sub(r",(?=\S)", ", ", text)
+    # Preserve thousands separators in funding and other numeric values.
+    text = re.sub(r"(?<=\d),\s+(?=\d{3}\b)", ",", text)
     return text
 
 
