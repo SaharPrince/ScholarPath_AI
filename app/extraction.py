@@ -69,6 +69,10 @@ def _clean(value: str) -> str:
     # Strip invisible formatting characters copied from SharePoint pages.
     value = re.sub(r"[\u200b-\u200f\u202a-\u202e\u2060\ufeff]", "", value)
     text = " ".join(value.split()).strip()
+    # Repair common SharePoint joins such as AnnualStipend, FullyFunded,
+    # DairyScience, and 1000Ph.D. without splitting acronym endings like PhD.
+    text = re.sub(r"(?<=[a-z])(?=[A-Z][a-z])", " ", text)
+    text = re.sub(r"(?<=\d)(?=[A-Za-z])", " ", text)
     # Repair unambiguous joins observed in official CCAP source copy.
     text = re.sub(r"(?i)\b(years?)(of)(experience)\b", r"\1 \2 \3", text)
     text = re.sub(r"(?i)\b(years?)(of)\b", r"\1 \2", text)
@@ -978,6 +982,28 @@ def _hec_visible_items(root: BeautifulSoup) -> list[str]:
     return values
 
 
+def _hec_priority_subject_items(root: BeautifulSoup) -> list[str]:
+    """Prefer atomic official list items and remove repeated SharePoint text."""
+    list_items = [
+        _clean(node.get_text(" ", strip=True))
+        for node in root.find_all("li")
+        if not node.find_parent("li")
+    ]
+    # HEC's priority page repeats list entries in paragraph wrappers.
+    candidates = list_items if len(list_items) >= 5 else _hec_visible_items(root)
+    result: list[str] = []
+    seen: set[str] = set()
+    for item in candidates:
+        item = _clean(re.sub(r"^\s*\d+\s*[.)]\s*", "", item))
+        if not item or re.search(r"(?i)^following is the list of preferred subject", item):
+            continue
+        key = re.sub(r"[^a-z0-9]+", "", item.casefold())
+        if key and key not in seen:
+            seen.add(key)
+            result.append(item)
+    return result
+
+
 def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> ExtractedPage | None:
     """Aggregate the official HEC programme pages while retaining page-level provenance."""
     if "overview" not in pages or "eligibility" not in pages:
@@ -1037,6 +1063,18 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
          and re.search(r"(?i)(pakistani students|students from pakistan|study in the united states)", value)),
         None,
     )
+    if not description:
+        overview_text = " ".join(_hec_visible_items(overview_root))
+        if re.search(
+            r"(?i)award\s+1,?000\s+ph\.?d\.?\s+scholarships?.{0,100}"
+            r"pakistani students.{0,100}us universities",
+            overview_text,
+        ):
+            description = (
+                "PhD scholarships for outstanding Pakistani students to pursue "
+                "doctoral study at universities in the United States under the "
+                "US–Pakistan Knowledge Corridor."
+            )
     if description:
         description = description[:1200]
         add_evidence("description", description, "overview")
@@ -1044,11 +1082,20 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     # HEC's eligibility page uses ordinary paragraphs and list items rather
     # than semantic heading elements. Keep each source statement atomic.
     eligibility_items = _hec_visible_items(roots["eligibility"])
+    active_category: str | None = None
     for value in eligibility_items:
         low = value.casefold()
-        if (re.match(r"(?i)^\s*(?:be|must be|applicants? must be)\b", value)
+        if re.search(r"(?i)category\s*ii\b", value):
+            active_category = "Category II"
+        elif re.search(r"(?i)category\s*i\b", value):
+            active_category = "Category I"
+        # HEC's general eligibility list may render this direct requirement
+        # simply as "Pakistani/AJK nationals", without an applicant/must prefix.
+        if re.search(r"(?i)pakistani\s*/?\s*aj\s*&?\s*k\s+nationals?\b", low) or (
+            re.match(r"(?i)^\s*(?:be|must be|applicants? must be)\b", value)
             and re.search(r"(?i)pakistani\s*/?\s*aj\s*&?\s*k", low)
-            and re.search(r"(?i)national|permanent resident|dual national", low)):
+            and re.search(r"(?i)national|permanent resident|dual national", low)
+        ):
             add_criterion("nationality", "Nationality", value, "eligibility")
         elif re.search(r"(?i)(four[- ]year|16 years|sixteen years|b\.?s\.?|b\.?sc|b\.?e\.?)", value) and re.search(r"(?i)(bachelor|education|degree)", value):
             add_criterion("academic_requirements", "Minimum education", value, "eligibility")
@@ -1091,7 +1138,11 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 value, "eligibility",
             )
         elif re.search(r"(?i)(gre|hat).*(300|60\s*%)|(300|60\s*%).*(gre|hat)", value):
-            add_criterion("academic_requirements", "GRE or HAT score", value, "eligibility")
+            score_label = (
+                f"GRE or HAT score – {active_category}"
+                if active_category else "GRE or HAT score"
+            )
+            add_criterion("academic_requirements", score_label, value, "eligibility")
         elif len(value) > 35 and re.search(r"(?i)(eligible|applicant|admission|university|degree)", value):
             add_criterion("eligibility", "Eligibility", value, "eligibility")
 
@@ -1105,6 +1156,12 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 add_criterion("post_selection_requirement", "Visa requirement", value, "faq")
             elif re.search(r"(?i)(return to pakistan|serve.*years|bond|contract)", value):
                 add_criterion("post_selection_requirement", "Post-study obligation", value, "faq")
+            elif re.search(
+                r"(?i)(second\s*/?\s*third division|no second|no third).*(academic career|entire career|degree)|"
+                r"(academic career|entire career).*(second\s*/?\s*third division|no second|no third)",
+                value,
+            ):
+                add_criterion("academic_requirements", "Academic record – FAQ clarification", value, "faq")
             elif re.search(r"(?i)(confirmed admission|gre.*300|hat.*60|domicile|passport|attested academic)", value):
                 add_criterion("required_documents", "Application requirements", value, "faq")
 
@@ -1168,8 +1225,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             add_evidence("application_url", fields["application_url"], "how_to_apply")
 
     if "priority_subjects" in roots:
-        subjects = _hec_visible_items(roots["priority_subjects"])
-        relevant = [item for item in subjects if len(item) > 35]
+        relevant = _hec_priority_subject_items(roots["priority_subjects"])
         if relevant:
             value = "\n".join(relevant)[:4000]
             fields["priority_subject_areas"] = value
