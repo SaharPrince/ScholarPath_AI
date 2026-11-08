@@ -90,6 +90,31 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "Applicants must be Pakistani citizens with a completed bachelor's degree.",
         )
 
+    def test_nested_site_chrome_is_removed_without_mutating_during_traversal(self) -> None:
+        html = """
+        <html><body>
+          <div role="navigation">
+            <div id="nested-navigation" class="menu-item">
+              <a href="/scholarships">Scholarships</a>
+            </div>
+          </div>
+          <main>
+            <h1>Example Fellowship Programme</h1>
+            <p>Application deadline: 15 March 2027</p>
+            <p>Eligibility: Applicants must be Pakistani citizens with a completed bachelor's degree.</p>
+            <p>Funding: Full tuition and a monthly stipend.</p>
+          </main>
+        </body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/fellowship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertEqual(page.title, "Example Fellowship Programme")
+        self.assertEqual(
+            page.fields["eligibility"],
+            "Applicants must be Pakistani citizens with a completed bachelor's degree.",
+        )
+
     def test_rejects_title_like_eligibility_value(self) -> None:
         html = """
         <html><body><main>
