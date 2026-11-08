@@ -513,5 +513,29 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             )
         )
 
+
+    def test_splits_explicit_exceptions_into_ineligibility(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Fulbright Scholar Programme</h1>
+          <p>Scholars and professionals from all disciplines are welcome to apply,
+             with the exception of clinical medicine.</p>
+          <p>Applicants must hold a Ph.D. or terminal degree.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html, "https://example.org/scholarships/fulbright-scholar"
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertTrue(any(
+            kind == "eligibility" and "all disciplines" in text
+            for kind, _, text in page.criteria
+        ))
+        self.assertTrue(any(
+            kind == "ineligibility" and "clinical medicine" in text
+            for kind, _, text in page.criteria
+        ))
+
 if __name__ == "__main__":
     unittest.main()
