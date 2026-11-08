@@ -61,28 +61,31 @@ The API is read-only for scholarship data at this stage. No example scholarships
 
 ## Official-source discovery foundation
 
-The initial curated source catalog contains official indexes from:
+The curated source catalog contains official indexes from:
 
-- Higher Education Commission Pakistan
+- HEC International Scholarships
+- HEC National Scholarships
+- HEC Learning Opportunities Abroad
 - Ministry of Federal Education and Professional Training
 - United States Educational Foundation in Pakistan (USEFP)
 - DAAD Pakistan
 
 The catalog stores source homepages/indexes, not scholarship claims. These sources are based on the providers' own official scholarship/funding pages and Pakistan's federal education ministry scholarship directory. The catalog must be reviewed and maintained as providers change their websites.
 
-At application startup, the catalog is inserted without overwriting existing source records. To run a discovery pass locally:
+At application startup, the catalog is inserted without overwriting existing source records. The obsolete HEC `Site/Scholarship/default.aspx` entry is deactivated while its historical records are preserved. To run a discovery pass locally:
 
 ```bash
 python -m app.run_discovery
 ```
 
-The first discovery pass only looks for scholarship-related links on each configured source homepage. It saves same-host HTTPS links as review candidates. It does not yet extract full scholarship details, follow external application links, create scholarship records, or decide eligibility. Candidate links are not verified scholarships.
+Discovery looks for scholarship-related links on configured official listing pages. It saves same-host HTTPS links as review candidates, using visible text and accessible labels (including image alt text) for candidate titles. It does not yet extract full scholarship details, follow external application links, create scholarship records, or decide eligibility. Candidate links are not verified scholarships.
 
 New endpoint:
 
 - `GET /api/discovery/candidates` — list candidate links, with optional `status`, `limit`, and `offset`.
 
-Discovery requests have time and response-size limits, do not follow redirects, and only retain links on the configured source's host.
+Discovery requests have time and response-size limits, do not follow redirects, and only retain links on the configured source's host. Links to third-party providers are not followed merely because they appear in a directory; those providers must be independently added as trusted sources.
+
 
 ## Scholarship detail extraction (v0.2)
 
