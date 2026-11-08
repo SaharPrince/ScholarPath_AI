@@ -243,11 +243,26 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
                 break
             section_nodes.append(node)
 
-        # When a section contains a list, its list items are the atomic
-        # requirements. Do not absorb a following general paragraph (often
-        # funding or programme description) into the eligibility section.
+        # List items are the atomic requirements when present. However, some
+        # official pages (including USEFP CCAP) place an exclusion-introduction
+        # paragraph between two separate lists under the same heading. Preserve
+        # that marker in DOM order so the caller can split the second list into
+        # ineligibility criteria without absorbing unrelated prose.
         list_items = [node for node in section_nodes if node.name == "li"]
-        selected_nodes = list_items or [node for node in section_nodes if node.name == "p"]
+        if list_items:
+            selected_nodes = [
+                node for node in section_nodes
+                if node.name == "li"
+                or (
+                    node.name == "p"
+                    and re.search(
+                        r"(?i)individuals in the following circumstances are not eligible",
+                        _clean(node.get_text(" ", strip=True)),
+                    )
+                )
+            ]
+        else:
+            selected_nodes = [node for node in section_nodes if node.name == "p"]
         for node in selected_nodes:
             # Skip nested list items when their parent item already captures
             # the complete requirement.
