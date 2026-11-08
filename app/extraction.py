@@ -63,7 +63,14 @@ class ExtractedPage:
 
 
 def _clean(value: str) -> str:
-    return " ".join(value.split()).strip()
+    """Collapse whitespace and repair known missing-space joins in extracted page text."""
+    text = " ".join(value.split()).strip()
+    # Repair unambiguous joins observed in official CCAP source copy.
+    text = re.sub(r"(?i)\b(years?)(of)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(within)(technical|vocational)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(residents?)(of)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)(U\.S\.)(?=[A-Za-z])", r"\1 ", text)
+    return text
 
 
 
@@ -827,11 +834,43 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 if not (
                     item[0] == "ineligibility"
                     and re.search(
-                        r"(?i)^individuals who are married to a u\.s\. citizen\b",
+                        r"(?i)^individuals who are married to a u\\.s\\. citizen\\b",
                         _clean(item[2]),
                     )
                 )
             ]
+
+        # These are alternative qualification routes, not cumulative rules.
+        government_route = next((
+            item for item in criteria
+            if item[0] == "eligibility"
+            and "full-time government official" in item[2].casefold()
+            and "10 years" in item[2].casefold()
+        ), None)
+        administrator_route = next((
+            item for item in criteria
+            if item[0] == "eligibility"
+            and "full-time education administrator" in item[2].casefold()
+            and "5 years" in item[2].casefold()
+        ), None)
+        if government_route and administrator_route:
+            combined_route = (
+                "Applicants must qualify through either of these routes: "
+                "(1) be a full-time government official or educational association "
+                "professional with at least 10 years of experience overseeing technical "
+                "or vocational institutions of higher education in Pakistan; OR "
+                "(2) be a full-time education administrator with at least 5 years of "
+                "experience as an administrator within technical or vocational "
+                "institutions in Pakistan."
+            )
+            first_index = criteria.index(government_route)
+            criteria = [
+                item for item in criteria
+                if item is not government_route and item is not administrator_route
+            ]
+            criteria.insert(first_index, (
+                "eligibility", "Alternative professional eligibility routes", combined_route
+            ))
 
     deadline_date = _parse_deadline_date(fields.get("deadline_text"))
     application_status = _classify_application_status(
