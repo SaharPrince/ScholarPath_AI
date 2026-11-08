@@ -473,5 +473,45 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(_is_mandatory_criterion("eligibility", "Proficient in written and spoken English."))
         self.assertFalse(_is_mandatory_criterion("eligibility", "Prior teaching experience is preferred."))
 
+
+    def test_splits_embedded_ccap_exclusions_from_technical_eligibility(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Community College Administrator Program</h1>
+          <h2>Technical Eligibility Requirements</h2>
+          <ul>
+            <li>Applicants must be Pakistani citizens residing in Pakistan.</li>
+            <li>Applicants must have fluent English language ability.</li>
+            <li>Individuals in the following circumstances are not eligible to be nominated:</li>
+            <li>U.S. citizens and permanent residents of the United States;</li>
+            <li>Individuals who are married to a U.S. citizen;</li>
+            <li>Employees of the sponsoring organization are ineligible;</li>
+          </ul>
+          <h3>Financial Provisions of the Grant</h3>
+          <p>The programme provides funding for travel and living costs.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html, "https://example.org/scholarships/ccap"
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        eligibility = [x[2] for x in page.criteria if x[0] == "eligibility"]
+        exclusions = [x[2] for x in page.criteria if x[0] == "ineligibility"]
+        self.assertTrue(any("Pakistani citizens residing in Pakistan" in x for x in eligibility))
+        self.assertTrue(any("fluent English" in x for x in eligibility))
+        self.assertEqual(len(exclusions), 3)
+        self.assertTrue(any("U.S. citizens" in x for x in exclusions))
+        self.assertTrue(any("married to a U.S. citizen" in x for x in exclusions))
+        self.assertTrue(any("Employees of the sponsoring organization" in x for x in exclusions))
+
+    def test_age_range_worded_with_should_is_mandatory(self) -> None:
+        self.assertTrue(
+            _is_mandatory_criterion(
+                "eligibility",
+                "Applicants should be between 18-24 years old by the deadline",
+            )
+        )
+
 if __name__ == "__main__":
     unittest.main()
