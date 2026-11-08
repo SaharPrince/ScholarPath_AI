@@ -613,7 +613,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 if field_name == "ineligibility" and not re.search(
                     r"\b(ineligible|not eligible|not be accepted|will not be accepted|"
                     r"cannot apply|cannot be nominated|not eligible to|are excluded|"
-                    r"dual .{0,30}national|employees? of|contractors? of|"
+                    r"dual .{0,30}national(?:ity|s)?|employees? of|contractors? of|"
                     r"alumni of|already availed|already studying|applied for immigration|"
                     r"attended graduate school|long[- ]term .{0,20}experience)\b",
                     statement,
