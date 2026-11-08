@@ -1,8 +1,9 @@
+import sqlite3
 import unittest
 
 from app.extraction import (
     _classify_application_status, _classify_applicant_category,
-    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, parse_scholarship_page,
+    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, parse_scholarship_page, _save_evidence,
 )
 
 
@@ -353,6 +354,45 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertEqual(page.fields["deadline_text"], "April 1, 2099")
         self.assertEqual(page.application_status, "closed")
         self.assertIn(("application_status", "Closed"), page.evidence)
+
+
+    def test_evidence_is_append_only_and_exact_duplicates_are_skipped(self) -> None:
+        connection = sqlite3.connect(":memory:")
+        connection.execute("""
+            CREATE TABLE scholarship_evidence (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scholarship_id INTEGER NOT NULL,
+                field_name TEXT NOT NULL,
+                evidence_text TEXT NOT NULL,
+                evidence_url TEXT NOT NULL,
+                captured_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        _save_evidence(
+            connection, 1,
+            [("deadline_text", "April 1, 2026")],
+            "https://example.org/scholarship",
+        )
+        _save_evidence(
+            connection, 1,
+            [("deadline_text", "April 1, 2026")],
+            "https://example.org/scholarship",
+        )
+        _save_evidence(
+            connection, 1,
+            [("deadline_text", "April 1, 2027")],
+            "https://example.org/scholarship",
+        )
+
+        rows = connection.execute(
+            "SELECT field_name, evidence_text FROM scholarship_evidence ORDER BY id"
+        ).fetchall()
+        self.assertEqual(rows, [
+            ("deadline_text", "April 1, 2026"),
+            ("deadline_text", "April 1, 2027"),
+        ])
+        connection.close()
 
 
 if __name__ == "__main__":
