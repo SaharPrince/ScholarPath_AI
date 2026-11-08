@@ -320,5 +320,40 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertIsNone(parse_scholarship_page(html, "https://example.org/scholarship"))
 
 
+    def test_explicit_official_current_status_overrides_date_inference(self) -> None:
+        self.assertEqual(
+            _classify_application_status("Deadline: 1 January 2099", "2099-01-01", "Closed"),
+            "closed",
+        )
+        self.assertEqual(
+            _classify_application_status("Deadline: 1 January 2020", "2020-01-01", "Open"),
+            "open",
+        )
+        self.assertEqual(
+            _classify_application_status("Some programme information", None, "Upcoming"),
+            "upcoming",
+        )
+
+    def test_extracts_current_status_from_official_table(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Fellowship Programme</h1>
+          <table>
+            <tr><td>Current Status</td><td>Closed</td></tr>
+            <tr><td>Deadline</td><td>April 1, 2099</td></tr>
+          </table>
+          <p>Eligibility: Applicants must be citizens of Pakistan.</p>
+          <p>Funding: The programme provides a full tuition scholarship.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarships/fellowship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertEqual(page.fields["application_status"], "Closed")
+        self.assertEqual(page.fields["deadline_text"], "April 1, 2099")
+        self.assertEqual(page.application_status, "closed")
+        self.assertIn(("application_status", "Closed"), page.evidence)
+
+
 if __name__ == "__main__":
     unittest.main()
