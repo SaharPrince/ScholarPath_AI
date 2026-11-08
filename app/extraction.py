@@ -67,7 +67,7 @@ class ExtractedPage:
 def _clean(value: str) -> str:
     """Collapse whitespace and repair known missing-space joins in extracted page text."""
     # Strip invisible formatting characters copied from SharePoint pages.
-    value = re.sub(r"[\\u200b-\\u200f\\u202a-\\u202e\\u2060\\ufeff]", "", value)
+    value = re.sub(r"[\u200b-\u200f\u202a-\u202e\u2060\ufeff]", "", value)
     text = " ".join(value.split()).strip()
     # Repair unambiguous joins observed in official CCAP source copy.
     text = re.sub(r"(?i)\b(years?)(of)(experience)\b", r"\1 \2 \3", text)
@@ -1036,7 +1036,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     eligibility_items = _hec_visible_items(roots["eligibility"])
     for value in eligibility_items:
         low = value.casefold()
-        if re.search(r"(?i)\b(pakistani|ajk)\b", value) and re.search(r"(?i)\b(national|citizen)\b", value):
+        if re.search(r"(?i)\b(pakistani|ajk)\b", value) and re.search(r"(?i)\b(nationals?|citizens?|residents?)\b", value):
             add_criterion("nationality", "Nationality", value, "eligibility")
         elif re.search(r"(?i)(four[- ]year|16 years|sixteen years|b\.?s\.?|b\.?sc|b\.?e\.?)", value) and re.search(r"(?i)(bachelor|education|degree)", value):
             add_criterion("academic_requirements", "Minimum education", value, "eligibility")
@@ -1060,12 +1060,18 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             add_criterion("ineligibility", "Other scholarship", value, "eligibility")
         elif re.search(r"(?i)(ph\.?d holders?|already.*ph\.?d|doctoral degree holders?)", value):
             add_criterion("ineligibility", "Existing PhD holders", value, "eligibility")
-        elif re.search(r"(?i)(category\s*i\b|top\s*50|qs.*50)", value):
+        elif re.search(r"(?i)(category\s*i\b|top\s*50|qs.*50)", value) and (
+            re.search(r"(?i)(secured admission|admission in|must have|must secure)", value)
+            or not value.rstrip().endswith(":")
+        ):
             add_criterion(
                 "category_i_eligibility", "Category I – admission to a QS top-50 US university",
                 value, "eligibility",
             )
-        elif re.search(r"(?i)(category\s*ii\b|51\s*[-–]\s*100|qs.*100)", value):
+        elif re.search(r"(?i)(category\s*ii\b|51\s*[-–]\s*100|qs.*100)", value) and (
+            re.search(r"(?i)(secured admission|admission in|must have|must secure)", value)
+            or not value.rstrip().endswith(":")
+        ):
             # Eligibility page is authoritative for the 51–100 range. Do not
             # replace it with the malformed phrase in the FAQ page.
             add_criterion(
