@@ -801,6 +801,38 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 "CCIP eligibility overview and FAQ answers captured from the official programme page.",
             ))
 
+    if urlparse(page_url).path.casefold().endswith("/ccap.cfm"):
+        # The official CCAP page repeats the Pakistani citizenship condition
+        # in its dual-citizenship bullet. Keep the passport qualification and
+        # the dual-citizenship clarification, but avoid a duplicate citizen rule.
+        criteria = [
+            item for item in criteria
+            if not (
+                item[0] == "eligibility"
+                and _clean(item[2]).casefold() == "be a pakistani citizen"
+            )
+        ]
+        # The broad dual-citizenship exclusion already covers an applicant
+        # whose spouse is a U.S. citizen or permanent resident. Retain that
+        # broader source rule rather than storing the spouse-only duplicate.
+        has_broader_family_exclusion = any(
+            item[0] == "ineligibility"
+            and "dual u.s." in item[2].casefold()
+            and "spouse" in item[2].casefold()
+            for item in criteria
+        )
+        if has_broader_family_exclusion:
+            criteria = [
+                item for item in criteria
+                if not (
+                    item[0] == "ineligibility"
+                    and re.search(
+                        r"(?i)^individuals who are married to a u\.s\. citizen\.?$",
+                        _clean(item[2]),
+                    )
+                )
+            ]
+
     deadline_date = _parse_deadline_date(fields.get("deadline_text"))
     application_status = _classify_application_status(
         body_text, deadline_date, fields.get("application_status")
