@@ -20,6 +20,7 @@ USER_AGENT = "ScholarPathAI/0.4 (+official scholarship detail extractor)"
 FIELD_LABELS = {
     "provider_name": ("scholarship provider", "offered by", "administered by", "sponsor"),
     "deadline_text": ("application deadline", "application closes", "deadline", "apply by", "closing date"),
+    "application_status": ("current status",),
     "funding_summary": ("funding", "scholarship value", "financial support", "tuition fee", "stipend"),
     "eligibility": ("eligibility", "who can apply", "eligible applicants"),
     "ineligibility": ("ineligibility", "who cannot apply", "who is not eligible", "not eligible"),
@@ -341,8 +342,26 @@ def _extract_description_criteria(description: str) -> list[tuple[str, str, str]
     return extracted
 
 
-def _classify_application_status(body_text: str, deadline_date: str | None) -> str:
-    """Classify this application cycle only; never infer openness from a future date."""
+def _classify_application_status(
+    body_text: str,
+    deadline_date: str | None,
+    source_status: str | None = None,
+) -> str:
+    """Prefer an explicit programme-page status over inference from dates or prose."""
+    if source_status:
+        normalized = _clean(source_status).casefold().replace("-", " ").replace("_", " ")
+        explicit_statuses = {
+            "open": "open",
+            "currently open": "open",
+            "accepting applications": "open",
+            "closed": "closed",
+            "upcoming": "upcoming",
+            "not yet open": "upcoming",
+            "shortlisted only": "shortlisted_only",
+            "discontinued": "discontinued",
+        }
+        if normalized in explicit_statuses:
+            return explicit_statuses[normalized]
     if DISCONTINUED_PATTERN.search(body_text):
         return "discontinued"
     if SHORTLISTED_PATTERN.search(body_text):
@@ -521,7 +540,9 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         # language and a clearly identified applicant or host actor.
         criteria.extend(_extract_description_criteria(description))
     deadline_date = _parse_deadline_date(fields.get("deadline_text"))
-    application_status = _classify_application_status(body_text, deadline_date)
+    application_status = _classify_application_status(
+        body_text, deadline_date, fields.get("application_status")
+    )
     # Use programme identity and extracted eligibility, not unrelated page-wide text.
     applicant_category = _classify_applicant_category(
         " ".join((title, page_title, fields.get("eligibility", ""), description or ""))
