@@ -545,6 +545,31 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             fields[field_name] = merged[:4000]
             evidence.append((field_name, fields[field_name]))
 
+    # Some official pages place exclusion rules inside a broader technical
+    # eligibility section. Split at the explicit exclusion-introduction sentence.
+    embedded_ineligibility_context = False
+    eligibility_section = fields.get("eligibility")
+    if eligibility_section:
+        statements = _split_criteria_statements(eligibility_section)
+        marker_index = next(
+            (
+                index for index, statement in enumerate(statements)
+                if re.search(
+                    r"(?i)individuals in the following circumstances are not eligible",
+                    statement,
+                )
+            ),
+            None,
+        )
+        if marker_index is not None:
+            eligible_statements = statements[:marker_index]
+            excluded_statements = statements[marker_index + 1:]
+            fields["eligibility"] = "\n".join(eligible_statements)
+            if excluded_statements:
+                fields["ineligibility"] = "\n".join(excluded_statements)
+                evidence.append(("ineligibility", fields["ineligibility"]))
+                embedded_ineligibility_context = True
+
     # Provider and destination can be extracted from explicit programme prose.
     if "provider_name" not in fields:
         provider_statement = _find_provider_statement(content_root)
@@ -610,17 +635,23 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 # Ineligibility sections can include programme history or
                 # selection copy before the next heading. Keep only explicit
                 # disqualification statements.
-                if field_name == "ineligibility" and not re.search(
-                    r"\b(ineligible|not eligible|not be accepted|will not be accepted|"
+                if field_name == "ineligibility" and not embedded_ineligibility_context and not re.search(
+                    r"\\b(ineligible|not eligible|not be accepted|will not be accepted|"
                     r"cannot apply|cannot be nominated|not eligible to|are excluded|"
                     r"dual .{0,30}national(?:ity|s)?|employees? of|contractors? of|"
                     r"alumni of|already availed|already studying|applied for immigration|"
-                    r"attended graduate school|long[- ]term .{0,20}experience)\b",
+                    r"attended graduate school|long[- ]term .{0,20}experience)\\b",
                     statement,
                     re.I,
                 ):
                     continue
-                criteria.append((field_name, field_name.replace("_", " ").title(), statement))
+                criterion_type = field_name
+                if field_name == "eligibility" and re.search(
+                    r"(?i)\\b(?:except|excluding|with the exception of)\\b",
+                    statement,
+                ):
+                    criterion_type = "ineligibility"
+                criteria.append((criterion_type, criterion_type.replace("_", " ").title(), statement))
 
     if description:
         evidence.append(("description", description))
