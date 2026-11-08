@@ -154,6 +154,23 @@ async def _fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult
                 (source["id"], title[:300], url),
             )
         inserted = connection.total_changes - before
+
+        # Retire previously queued false positives without deleting their audit
+        # records. This also protects existing local databases on the next run.
+        connection.execute(
+            """UPDATE discovery_candidates
+               SET status = 'reviewed'
+               WHERE status = 'candidate'
+                 AND (
+                     lower(candidate_url) LIKE '%/_layouts/15/authenticate.aspx%'
+                     OR lower(candidate_url) LIKE '%/contactus.aspx%'
+                     OR lower(candidate_url) LIKE '%/inactive-scholarships%'
+                     OR lower(candidate_url) LIKE '%/archive%'
+                     OR lower(candidate_url) LIKE '%/documents/%'
+                     OR lower(candidate_url) =
+                        'https://www.hec.gov.pk/english/scholarshipsgrants/pages/default.aspx'
+                 )"""
+        )
     return SourceResult(source["id"], source["name"], "completed", candidates_found=inserted)
 
 
