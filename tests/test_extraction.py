@@ -3,7 +3,7 @@ import unittest
 
 from app.extraction import (
     _classify_application_status, _classify_applicant_category,
-    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, parse_scholarship_page, _save_evidence,
+    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, parse_scholarship_page, _save_evidence,
 )
 
 
@@ -305,6 +305,37 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             ),
             "shortlisted_only",
         )
+
+    def test_sentence_splitter_preserves_academic_abbreviations_and_initials(self) -> None:
+        statements = _split_criteria_statements(
+            "Employees of the Fulbright organization or the U.S. Department of State are ineligible. "
+            "The programme honours the memory of Hubert H. Humphrey. Applicants must hold a Ph.D."
+        )
+        self.assertEqual(len(statements), 3)
+        self.assertIn("U.S. Department of State", statements[0])
+        self.assertIn("Hubert H. Humphrey", statements[1])
+        self.assertIn("Ph.D.", statements[2])
+
+    def test_heading_eligibility_keeps_list_items_as_separate_criteria(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Scholarship</h1>
+          <h2>Eligibility Criteria</h2>
+          <ul>
+            <li>Applicants must be citizens of Pakistan.</li>
+            <li>Applicants must hold a bachelor's degree.</li>
+            <li>Applicants with science backgrounds are particularly encouraged.</li>
+          </ul>
+          <p>Funding: The scholarship provides tuition support and a stipend.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        eligibility = [item for item in page.criteria if item[0] == "eligibility"]
+        self.assertEqual(len(eligibility), 3)
+        self.assertTrue(_is_mandatory_criterion(eligibility[0][0], eligibility[0][2]))
+        self.assertFalse(_is_mandatory_criterion(eligibility[2][0], eligibility[2][2]))
 
     def test_mandatory_criteria_classification_is_conservative(self) -> None:
         self.assertTrue(_is_mandatory_criterion("eligibility", "Applicants must hold a bachelor's degree."))
