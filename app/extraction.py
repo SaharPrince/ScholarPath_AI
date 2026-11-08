@@ -46,7 +46,7 @@ ROLLING_PATTERN = re.compile(r"(?i)\b(rolling basis|no fixed deadline|applicatio
 OPEN_PATTERN = re.compile(r"(?i)\b(applications? (?:(?:are )?(?:now )?)open|now accepting applications|currently accepting applications|apply now)\b")
 UPCOMING_PATTERN = re.compile(r"(?i)\b(applications? (?:will|are expected to) open|opens? for applications)\b")
 DISCONTINUED_PATTERN = re.compile(r"(?i)\b(discontinued|programme has ended|program has ended|no longer offered)\b")
-SHORTLISTED_PATTERN = re.compile(r"(?i)\b(shortlisted candidates|shortlist announced|interview shortlist)\b")
+SHORTLISTED_PATTERN = re.compile(r"(?i)\b(shortlisted candidates|candidates? who (?:have been |were )?shortlisted|only for candidates? shortlisted|shortlist announced|interview shortlist)\b")
 
 
 @dataclass
@@ -305,6 +305,35 @@ def _find_funding_statement(content_root: BeautifulSoup) -> str | None:
     return None
 
 
+def _extract_description_criteria(description: str) -> list[tuple[str, str, str]]:
+    """Extract only explicit applicant or host-eligibility statements from programme prose."""
+    sentences = re.split(r"(?<=[.!?])\\s+(?=[A-Z“])", description)
+    extracted: list[tuple[str, str, str]] = []
+    applicant_actor = re.compile(
+        r"(?i)\\b(applicants?|candidates?|students?|participants?|scholars?|fellows?|"
+        r"professionals?|teachers?|officials?)\\b"
+    )
+    host_actor = re.compile(
+        r"(?i)\\b(non[- ]?U\\.?S\\.?|international|higher education|post[- ]?secondary|"
+        r"academic|educational)?\\s*(institutions?|universit(?:y|ies)|libraries|museums|hospitals|"
+        r"ministries)\\b"
+    )
+    explicit_requirement = re.compile(
+        r"(?i)\\b(must|must be|must have|required to|are required|is required|"
+        r"only candidates|eligible to|eligible applicants|eligible host)\\b"
+    )
+    for raw in sentences:
+        sentence = _clean(raw)
+        if not sentence or len(sentence) > 1000 or not explicit_requirement.search(sentence):
+            continue
+        lowered = sentence.casefold()
+        if host_actor.search(sentence) and re.search(r"(?i)\\b(eligible to host|may include|are eligible|eligible institutions)\\b", sentence):
+            extracted.append(("institution_eligibility", "Eligible host institutions", sentence))
+        elif applicant_actor.search(sentence) and re.search(r"(?i)\\b(applicants?|candidates?|students?|participants?|scholars?|fellows?|professionals?|teachers?|officials?)\\s+(?:must|required|are required|should)", sentence):
+            extracted.append(("eligibility", "Eligibility from programme description", sentence))
+    return extracted
+
+
 def _classify_application_status(body_text: str, deadline_date: str | None) -> str:
     """Classify this application cycle only; never infer openness from a future date."""
     if DISCONTINUED_PATTERN.search(body_text):
@@ -463,11 +492,14 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
 
     if description:
         evidence.append(("description", description))
+        # Descriptive copy is used only when it contains explicit eligibility
+        # language and a clearly identified applicant or host actor.
+        criteria.extend(_extract_description_criteria(description))
     deadline_date = _parse_deadline_date(fields.get("deadline_text"))
     application_status = _classify_application_status(body_text, deadline_date)
     # Use programme identity and extracted eligibility, not unrelated page-wide text.
     applicant_category = _classify_applicant_category(
-        " ".join((title, page_title, fields.get("eligibility", "")))
+        " ".join((title, page_title, fields.get("eligibility", ""), description or ""))
     )
     return ExtractedPage(title[:300], description, provider, fields, criteria, evidence,
                          application_status, applicant_category)
