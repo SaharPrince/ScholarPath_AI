@@ -22,6 +22,29 @@ class DiscoveryParsingTests(unittest.TestCase):
             [("https://portal.example/scholarships/merit", "Merit scholarship")],
         )
 
+    def test_image_alt_text_labels_image_only_scholarship_link(self) -> None:
+        html = """
+        <a href="/programmes/2027">
+            <img src="/banner.png" alt="Commonwealth Scholarship Programme 2027">
+        </a>
+        """
+        results = _candidate_links(html, "https://portal.example/", "portal.example")
+        self.assertEqual(
+            results,
+            [(
+                "https://portal.example/programmes/2027",
+                "Commonwealth Scholarship Programme 2027",
+            )],
+        )
+
+    def test_aria_label_is_used_when_link_has_no_visible_text(self) -> None:
+        html = '<a href="/funding/current" aria-label="Student funding opportunities"></a>'
+        results = _candidate_links(html, "https://portal.example/", "portal.example")
+        self.assertEqual(
+            results,
+            [("https://portal.example/funding/current", "Student funding opportunities")],
+        )
+
     def test_duplicate_candidate_urls_are_collapsed(self) -> None:
         html = """
         <a href="/funding">Funding</a>
