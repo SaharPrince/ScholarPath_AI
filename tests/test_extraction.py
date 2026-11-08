@@ -10,11 +10,15 @@ from app.extraction import (
 class ScholarshipPageExtractionTests(unittest.TestCase):
     def test_repairs_known_joined_words_from_official_source_copy(self) -> None:
         cleaned = _clean(
-            "permanentresident eligiblefields onbehalf of residents of Pakistan"
+            "permanentresident eligiblefields onbehalf of residents of Pakistan "
+            "14–15 years ofeducation four-yearbachelor Afterselection "
+            "InstitutionalTOEFL Applicantsmust apply"
         )
         self.assertEqual(
             cleaned,
-            "permanent resident eligible fields on behalf of residents of Pakistan",
+            "permanent resident eligible fields on behalf of residents of Pakistan "
+            "14–15 years of education four-year bachelor After selection "
+            "Institutional TOEFL Applicants must apply",
         )
 
     def test_extracts_visible_facts_and_keeps_evidence(self) -> None:
