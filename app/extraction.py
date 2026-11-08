@@ -1046,7 +1046,9 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     eligibility_items = _hec_visible_items(roots["eligibility"])
     for value in eligibility_items:
         low = value.casefold()
-        if re.search(r"(?i)\b(pakistani|ajk)\b", value) and re.search(r"(?i)\b(nationals?|citizens?|residents?)\b", value):
+        if (re.match(r"(?i)^\s*(?:be|must be|applicants? must be)\b", item)
+            and re.search(r"(?i)pakistani\s*/?\s*aj\s*&?\s*k", low)
+            and re.search(r"(?i)national|permanent resident|dual national", low)):
             add_criterion("nationality", "Nationality", value, "eligibility")
         elif re.search(r"(?i)(four[- ]year|16 years|sixteen years|b\.?s\.?|b\.?sc|b\.?e\.?)", value) and re.search(r"(?i)(bachelor|education|degree)", value):
             add_criterion("academic_requirements", "Minimum education", value, "eligibility")
