@@ -1035,7 +1035,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
         elif re.search(r"(?i)\b(age|years?|regular government|all other applicants)\b", value) and re.search(r"\b(40|35)\b", value):
             age_label = (
                 "Maximum age – specified public-sector applicants"
-                if re.search(r"(?i)\\b40\\b", value)
+                if re.search(r"(?i)\b40\b, value)
                 else "Maximum age – all other applicants"
             )
             add_criterion("age_limit", age_label, value, "eligibility")
@@ -1085,9 +1085,9 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 value,
             ):
                 continue
-            if re.search(r"(?i)category\\s*i\\b", value):
+            if re.search(r"(?i)category\s*i\b, value):
                 category_i_funding.append(value)
-            elif re.search(r"(?i)category\\s*ii\\b", value):
+            elif re.search(r"(?i)category\s*ii\b, value):
                 category_ii_funding.append(value)
             else:
                 shared_funding.append(value)
@@ -1095,19 +1095,19 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     funding_sections = []
     if category_i_funding:
         funding_sections.append(
-            "Category I (QS 1–50):\\n" + "\\n".join(dict.fromkeys(category_i_funding))
+            "Category I (QS 1–50):\\n" + "\n".join(dict.fromkeys(category_i_funding))
         )
     if category_ii_funding:
         funding_sections.append(
-            "Category II (QS 51–100):\\n" + "\\n".join(dict.fromkeys(category_ii_funding))
+            "Category II (QS 51–100):\\n" + "\n".join(dict.fromkeys(category_ii_funding))
         )
     if shared_funding:
         funding_sections.append(
-            "Benefits stated without a category restriction:\\n"
-            + "\\n".join(dict.fromkeys(shared_funding))
+            "Benefits stated without a category restriction:\n"
+            + "\n".join(dict.fromkeys(shared_funding))
         )
     if funding_sections:
-        fields["funding_summary"] = "\\n\\n".join(funding_sections)[:4000]
+        fields["funding_summary"] = "\n\n".join(funding_sections)[:4000]
         add_evidence("funding_summary", fields["funding_summary"], "faq")
 
     # Only accept the portal when the official how-to page links to it.
