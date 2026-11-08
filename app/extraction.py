@@ -1178,6 +1178,159 @@ async def _fetch_hec_knowledge_corridor(
     return _parse_hec_knowledge_corridor(pages)
 
 
+
+HEC_COMMONWEALTH_2027_URL = (
+    "https://www.hec.gov.pk/english/HECAnnouncements/Pages/CW-Scholarship.aspx"
+)
+
+
+def _parse_hec_commonwealth_announcement(
+    html: str, page_url: str = HEC_COMMONWEALTH_2027_URL
+) -> ExtractedPage | None:
+    """Extract the 2027–28 Commonwealth call from its official HEC announcement."""
+    root = _hec_content_root(html)
+    items = _hec_visible_items(root)
+    body_text = _clean(root.get_text(" ", strip=True))
+    if not items or not re.search(r"(?i)commonwealth.*2027\s*/?\s*28|2027\s*/?\s*28.*commonwealth", body_text):
+        return None
+
+    title = "Commonwealth Scholarship Programme (Master’s & PhD) for Academic Year 2027-28"
+    provider = "Commonwealth Scholarship Commission (CSC)"
+    fields: dict[str, str] = {
+        "study_destination": "United Kingdom",
+        "study_level": "Master's and PhD",
+    }
+    evidence: list[tuple[str, str]] = []
+    evidence_sources: dict[tuple[str, str], str] = {}
+    criteria: list[tuple[str, str, str]] = []
+    criteria_sources: dict[tuple[str, str, str], str] = {}
+
+    def add_evidence(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        item = (name, value)
+        if item not in evidence:
+            evidence.append(item)
+        evidence_sources[item] = page_url
+
+    def add_criterion(kind: str, label: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        item = (kind, label, value)
+        if item not in criteria:
+            criteria.append(item)
+        criteria_sources[item] = page_url
+
+    description = next(
+        (item for item in items if "national nominating agency" in item.casefold()
+         and "commonwealth scholarship commission" in item.casefold()),
+        None,
+    )
+    if description:
+        add_evidence("description", description[:1600])
+    add_evidence("provider_name", provider)
+    add_evidence("study_destination", "United Kingdom")
+    add_evidence("study_level", "Master's and PhD")
+
+    # Preserve each explicit HEC requirement as a separate criterion with the
+    # announcement URL as its provenance.
+    for item in items:
+        low = item.casefold()
+        if re.search(r"pakistani\s*/?\s*ajk|pakistani.*ajk", low) and re.search(r"national|permanent resident|dual national", low):
+            add_criterion("nationality", "Nationality and residency", item)
+        elif re.search(r"no upper age limit", low):
+            add_criterion("age_limit", "Age limit", item)
+        elif re.search(r"master", low) and re.search(r"16 years", low) and re.search(r"first division", low):
+            add_criterion("academic_requirements", "Master's degree requirement", item)
+        elif re.search(r"phd", low) and re.search(r"17\s*/?\s*18 years", low) and re.search(r"first division", low):
+            add_criterion("academic_requirements", "PhD degree requirement", item)
+        elif re.search(r"second\s*/\s*third division|second/third division", low) and re.search(r"terminal|latest|last degree", low):
+            add_criterion("academic_requirements", "Terminal-degree division requirement", item)
+        elif "result-awaiting" in low or ("result awaiting" in low):
+            add_criterion("academic_requirements", "Result-awaiting candidates", item)
+        elif re.search(r"\bhat\b", low) and re.search(r"60\s*(?:out of 100|/100)", low):
+            add_criterion("academic_requirements", "Minimum HAT score", item)
+        elif re.search(r"hat[- ]?(?:i|ii|iii|iv)\b", low) and re.search(r"only|acceptable|categories", low):
+            add_criterion("academic_requirements", "Accepted HAT categories", item)
+        elif re.search(r"hat", low) and re.search(r"october 25,? 2024|25 october 2024", low):
+            add_criterion("academic_requirements", "HAT score validity", item)
+        elif re.search(r"merit", low) and re.search(r"hat score", low):
+            add_criterion("selection_criteria", "Merit calculation", item)
+        elif re.search(r"same test score|tie", low) and re.search(r"percentage|last completed degree", low):
+            add_criterion("selection_criteria", "Tie-break rule", item)
+        elif re.search(r"female|45\s*%", low) and re.search(r"nomination", low):
+            add_criterion("selection_criteria", "Female nomination representation", item)
+        elif re.search(r"both.*(?:hec|commonwealth).*portal|both websites", low):
+            add_criterion("application_requirements", "Dual-portal application", item)
+        elif re.search(r"final selection", low) and re.search(r"commonwealth scholarship commission", low):
+            add_criterion("selection_process", "Final selection authority", item)
+        elif re.search(r"nomination process", low) and re.search(r"hec", low):
+            add_criterion("selection_process", "National nomination authority", item)
+        elif re.search(r"development themes", low):
+            add_criterion("study_objectives", "Development themes", item)
+
+    # Capture the exact closing-date statement. The date is explicit on this
+    # official page, so application status can be calculated from the date.
+    deadline_item = next(
+        (item for item in items if re.search(r"(?i)(closing date|application deadline|deadline)", item)
+         and DATE_PATTERN.search(item)),
+        None,
+    )
+    if deadline_item:
+        date_match = DATE_PATTERN.search(deadline_item)
+        fields["deadline_text"] = deadline_item[:500]
+        add_evidence("deadline_text", deadline_item)
+    else:
+        date_match = None
+
+    # Keep both CSC programme routes as evidence. The HEC portal is the
+    # single canonical application_url field; both submissions are required.
+    csc_urls: list[str] = []
+    hec_urls: list[str] = []
+    for anchor in root.find_all("a", href=True):
+        target = urljoin(page_url, str(anchor.get("href", "")).strip())
+        parsed = urlparse(target)
+        if parsed.scheme != "https":
+            continue
+        host = (parsed.hostname or "").casefold()
+        if host == "cscuk.fcdo.gov.uk" and "/scholarships/" in parsed.path:
+            if target not in csc_urls:
+                csc_urls.append(target)
+        elif host == "scholarship.hec.gov.pk":
+            if target not in hec_urls:
+                hec_urls.append(target)
+
+    if hec_urls:
+        fields["application_url"] = hec_urls[0]
+    for url in csc_urls:
+        add_evidence("application_portal", url)
+    for url in hec_urls:
+        add_evidence("application_portal", url)
+
+    # Record development themes as factual context, not as eligibility rules.
+    theme_items = [
+        item for item in items
+        if re.search(r"(?i)(science and technology for development|strengthening health systems|"
+                     r"innovation and entrepreneurship|global peace|resilience and response|"
+                     r"access, inclusion and opportunity)", item)
+    ]
+    if theme_items:
+        fields["development_themes"] = "\n".join(theme_items)[:2000]
+        add_evidence("development_themes", fields["development_themes"])
+
+    deadline_date = _parse_deadline_date(fields.get("deadline_text"))
+    application_status = _classify_application_status(body_text, deadline_date)
+    fields["application_status"] = application_status
+    add_evidence("application_status", application_status)
+
+    return ExtractedPage(
+        title, description, provider, fields, criteria, evidence,
+        application_status, "student", evidence_sources, criteria_sources,
+    )
+
+
 async def _fetch_page(client: httpx.AsyncClient, url: str) -> tuple[str | None, str | None]:
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
@@ -1255,9 +1408,18 @@ async def extract_candidate_details(
                 and "/us-pakcorridor/pages/" in candidate_path
                 and candidate_path.endswith("/default.aspx")
             )
+            is_hec_commonwealth_announcement = (
+                (urlparse(candidate["candidate_url"]).hostname or "").casefold() == "www.hec.gov.pk"
+                and candidate_path.endswith("/cw-scholarship.aspx")
+                and "/hecannouncements/pages/" in candidate_path
+            )
             if html and is_hec_corridor_overview:
                 parsed = await _fetch_hec_knowledge_corridor(
                     client, html, candidate["candidate_url"]
+                )
+            elif html and is_hec_commonwealth_announcement:
+                parsed = _parse_hec_commonwealth_announcement(
+                    html, candidate["candidate_url"]
                 )
             else:
                 parsed = parse_scholarship_page(html, candidate["candidate_url"], candidate["candidate_title"]) if html else None
