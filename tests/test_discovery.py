@@ -58,5 +58,30 @@ class DiscoveryParsingTests(unittest.TestCase):
         self.assertEqual(_normalized_host("https://portal.example/"), "portal.example")
 
 
+    def test_excludes_sign_in_contact_archive_and_download_links(self) -> None:
+        html = """
+        <a href="/english/scholarshipsgrants/_layouts/15/Authenticate.aspx">Sign In</a>
+        <a href="/english/scholarshipsgrants/HAG/Pages/ContactUs.aspx">ContactUs.aspx</a>
+        <a href="/english/scholarshipsgrants/lao/Pages/Inactive-Scholarships.aspx">Inactive/Archive Scholarships</a>
+        <a href="/english/scholarshipsgrants/lao/Documents/Test-Pattern-USAT-HAT.pdf">Scholarship test pattern</a>
+        """
+        results = _candidate_links(html, "https://portal.example/", "portal.example")
+        self.assertEqual(results, [])
+
+    def test_excludes_generic_scholarship_root_but_keeps_named_programme_page(self) -> None:
+        html = """
+        <a href="/english/scholarshipsgrants/Pages/default.aspx">Scholarships</a>
+        <a href="/english/scholarshipsgrants/IDPS/Pages/default.aspx">International Development Scholarship Programme</a>
+        """
+        results = _candidate_links(html, "https://portal.example/", "portal.example")
+        self.assertEqual(
+            results,
+            [(
+                "https://portal.example/english/scholarshipsgrants/IDPS/Pages/default.aspx",
+                "International Development Scholarship Programme",
+            )],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
