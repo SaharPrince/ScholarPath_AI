@@ -14,7 +14,9 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "14–15 years ofeducation four-yearbachelor Afterselection "
             "InstitutionalTOEFL Applicantsmust apply "
             "one of thelisted eligiblefields subject tothe rule "
-            "at least 5 yearsofexperience in the UnitedStates OR(2) route"
+            "at least 5 yearsofexperience in the UnitedStates OR(2) route "
+            "three-year degree holders mayapply; permanentresidency; Department of Stateemployees; "
+            "academic,training, or research programs"
         )
         self.assertEqual(
             cleaned,
@@ -22,7 +24,9 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "14–15 years of education four-year bachelor After selection "
             "Institutional TOEFL Applicants must apply "
             "one of the listed eligible fields subject to the rule "
-            "at least 5 years of experience in the United States OR (2) route",
+            "at least 5 years of experience in the United States OR (2) route "
+            "three-year degree holders may apply; permanent residency; Department of State employees; "
+            "academic, training, or research programs",
         )
 
     def test_extracts_visible_facts_and_keeps_evidence(self) -> None:
