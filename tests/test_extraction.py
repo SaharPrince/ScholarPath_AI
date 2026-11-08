@@ -16,7 +16,9 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "one of thelisted eligiblefields subject tothe rule "
             "at least 5 yearsofexperience in the UnitedStates OR(2) route "
             "three-year degree holders mayapply; permanentresidency; Department of Stateemployees; "
-            "academic,training, or research programs"
+            "academic,training, or research programs "
+            "be afull-time education administrator; permanent residency inthe past three years; "
+            "U.S. Departmentof State"
         )
         self.assertEqual(
             cleaned,
@@ -26,7 +28,9 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "one of the listed eligible fields subject to the rule "
             "at least 5 years of experience in the United States OR (2) route "
             "three-year degree holders may apply; permanent residency; Department of State employees; "
-            "academic, training, or research programs",
+            "academic, training, or research programs "
+            "be a full-time education administrator; permanent residency in the past three years; "
+            "U.S. Department of State",
         )
 
     def test_extracts_visible_facts_and_keeps_evidence(self) -> None:
