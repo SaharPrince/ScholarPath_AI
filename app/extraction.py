@@ -69,6 +69,9 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(years?)(of)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(within)(technical|vocational)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(residents?)(of)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(permanent)(resident(?:s)?)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(eligible)(fields?)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(on)(behalf)\b", r"\1 \2", text)
     text = re.sub(r"(?i)(U\.S\.)(?=[A-Za-z])", r"\1 ", text)
     return text
 
