@@ -1006,6 +1006,51 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             base + "FAQ.aspx",
         )
 
+    def test_corridor_summary_uses_source_evidence_and_faq_score_applies_to_all(self) -> None:
+        base = "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
+        overview_statement = (
+            "Phase – 1 envisions to award 1000 Ph.D. scholarships to outstanding "
+            "Pakistani students in US Universities under the project."
+        )
+        pages = {
+            "overview": (f"""
+                <div class="ms-rtestate-field">
+                  <h1>US-Pakistan Knowledge Corridor PhD Scholarship</h1>
+                  <p>{overview_statement}</p>
+                </div>
+            """, base + "default.aspx"),
+            "eligibility": ("""
+                <div class="ms-rtestate-field">
+                  <p>Pakistani/AJK nationals</p>
+                  <p>GRE General score of at least 300 OR HAT score of at least 60%.</p>
+                </div>
+            """, base + "Eligibility-Criteria.aspx"),
+            "faq": ("""
+                <div class="ms-rtestate-field">
+                  <p>GRE score 300 and above/HEC-HAT score 60% and above.
+                     All candidates are required to fulfill this scholarship eligibility criterion
+                     regardless of admission in a U.S. university.</p>
+                </div>
+            """, base + "FAQ.aspx"),
+        }
+        page = _parse_hec_knowledge_corridor(pages)
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("PhD scholarships for outstanding Pakistani students", page.description or "")
+        self.assertEqual(
+            page.evidence_sources[("description", overview_statement)],
+            base + "default.aspx",
+        )
+        self.assertTrue(any(
+            kind == "academic_requirements"
+            and label == "GRE or HAT score – all applicants"
+            for kind, label, _value in page.criteria
+        ))
+        self.assertFalse(any(
+            kind == "required_documents" and "GRE" in value
+            for kind, _label, value in page.criteria
+        ))
+
     def test_hec_aggregation_requires_overview_and_eligibility_pages(self) -> None:
         self.assertIsNone(_parse_hec_knowledge_corridor({
             "overview": ("<html><body><p>Programme</p></body></html>", "https://example.org/")
