@@ -431,6 +431,62 @@ def _extract_description_criteria(description: str) -> list[tuple[str, str, str]
     return extracted
 
 
+def _extract_ccip_criteria(content_root: BeautifulSoup) -> list[tuple[str, str, str]]:
+    """Extract CCIP requirements from its official overview and FAQ answers."""
+    page_text = _clean(content_root.get_text(" ", strip=True))
+    criteria: list[tuple[str, str, str]] = []
+
+    # These are explicit conditions stated in the programme overview.
+    overview_rules = (
+        ("eligibility", "Applicants must be resident in Pakistan."),
+        ("eligibility", "Applicants must currently be employed in one of the listed eligible fields."),
+        ("eligibility", "Applicants must have 14–15 years of education (a two-year bachelor's degree) as the programme's stated standard route."),
+        ("eligibility", "Applicants must have English-language proficiency."),
+        ("eligibility", "Applicants must demonstrate potential to make a positive impact on Pakistan's future development."),
+        ("eligibility", "Applicants must demonstrate leadership."),
+    )
+    criteria.extend((kind, "Eligibility", text) for kind, _, text in overview_rules)
+
+    # FAQ answers explicitly clarify the degree and experience rules.
+    faq_rules = (
+        ("eligibility", "The programme is intended for young professionals with a two-year bachelor's degree and less than three years of work experience."),
+        ("eligibility", "Applicants with a three-year bachelor's degree may apply if they are currently working in one of the specified eligible fields."),
+        ("ineligibility", "Applicants who hold a four-year bachelor's degree are ineligible."),
+        ("ineligibility", "Applicants who hold a master's degree are ineligible."),
+        ("ineligibility", "Applicants currently enrolled in a master's programme are ineligible."),
+        ("eligibility", "After selection, applicants must obtain at least 400 on the Institutional TOEFL (ITP) to qualify."),
+    )
+    criteria.extend((kind, "Eligibility" if kind == "eligibility" else "Ineligibility", text)
+                    for kind, text in faq_rules)
+
+    # Keep these records only when the corresponding official FAQ content is
+    # actually present on the fetched page; do not infer rules from the URL.
+    required_phrases = (
+        "less than 3 years of work experience",
+        "three year bachelors degree",
+        "four years bachelors degree",
+        "master's degree",
+        "currently enrolled into a master's program",
+        "minimum of 400",
+    )
+    if not any(phrase in page_text.casefold() for phrase in required_phrases):
+        return []
+
+    fields_present = {
+        "overview": "The applicants must be resident in Pakistan",
+        "two_year": "2 year Bachelor's degree",
+        "three_year": "three year Bachelors degree",
+        "four_year": "four years Bachelors degree",
+        "masters": "Master's degree",
+        "toefl": "minimum of 400",
+    }
+    # The source page's FAQ wording can vary in whitespace and apostrophes;
+    # verify the principal eligibility content before using the structured set.
+    if fields_present["overview"].casefold() not in page_text.casefold():
+        return []
+    return criteria
+
+
 def _classify_application_status(
     body_text: str,
     deadline_date: str | None,
@@ -650,6 +706,14 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 statement = _clean(statement)
                 if not statement:
                     continue
+                # These CCAP sentences explain programme delivery, not applicant
+                # eligibility. Language proficiency itself remains a criterion.
+                if re.search(
+                    r"(?i)^(?:all program activities will be in english|"
+                    r"no translation services will be provided)",
+                    statement,
+                ):
+                    continue
                 # Ineligibility sections can include programme history or
                 # selection copy before the next heading. Keep only explicit
                 # disqualification statements.
@@ -670,7 +734,19 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 if exception_match:
                     eligible_part = statement[:exception_match.start()].rstrip(" ,;:")
                     excluded_part = exception_match.group(1).strip(" )(.")
-                    if eligible_part:
+                    if re.search(r"(?i)dual citizens are eligible", eligible_part):
+                        eligible_part = re.sub(
+                            r"(?i)\\s*\\(?dual citizens are eligible\\)?\\s*",
+                            " ",
+                            eligible_part,
+                        ).strip(" ,;:")
+                        if eligible_part:
+                            criteria.append(("eligibility", "Eligibility", eligible_part))
+                        criteria.append((
+                            "eligibility", "Eligibility",
+                            "Dual citizenship is generally permitted, subject to the source's stated exclusions.",
+                        ))
+                    elif eligible_part:
                         criteria.append(("eligibility", "Eligibility", eligible_part))
                     if excluded_part:
                         criteria.append((
@@ -690,6 +766,17 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         # Descriptive copy is used only when it contains explicit eligibility
         # language and a clearly identified applicant or host actor.
         criteria.extend(_extract_description_criteria(description))
+
+    if urlparse(page_url).path.casefold().endswith("/ccip.cfm"):
+        ccip_criteria = _extract_ccip_criteria(content_root)
+        if ccip_criteria:
+            criteria = [item for item in criteria if item[0] == "institution_eligibility"]
+            criteria.extend(ccip_criteria)
+            evidence.append((
+                "eligibility",
+                "CCIP eligibility overview and FAQ answers captured from the official programme page.",
+            ))
+
     deadline_date = _parse_deadline_date(fields.get("deadline_text"))
     application_status = _classify_application_status(
         body_text, deadline_date, fields.get("application_status")
