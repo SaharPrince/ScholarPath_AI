@@ -1052,7 +1052,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     funding_lines = []
     if "faq" in roots:
         for value in _hec_visible_items(roots["faq"]):
-            if re.search(r"(?i)(USD|PKR|tuition|stipend|health insurance|airfare)", value) and re.search(r"(?i)(category|19,?200|12,?000|2,?000|250,?000)", value):
+            if re.search(r"(?i)(USD|PKR|tuition|stipend|health insurance|airfare|fully funded)", value):
                 if value not in funding_lines:
                     funding_lines.append(value)
     if funding_lines:
