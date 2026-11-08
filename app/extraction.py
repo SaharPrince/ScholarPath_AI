@@ -1096,7 +1096,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 category_i_funding.append(value)
             elif is_category_ii or (
                 is_tuition
-                and re.search(r"(?i)up to\\s+USD\\s*12,?000", value)
+                and re.search(r"(?i)up to\s+USD\s*12,?000", value)
             ):
                 category_ii_funding.append(value)
             else:
