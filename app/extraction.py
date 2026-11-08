@@ -717,8 +717,8 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                     statement,
                 ):
                     statement = (
-                        "Be a Pakistani citizen; dual citizens are eligible, "
-                        "subject to the source's stated exclusions."
+                        "Be a Pakistani citizen; dual citizenship is generally "
+                        "permitted, subject to the source's stated exclusions."
                     )
                 # These CCAP sentences explain programme delivery, not applicant
                 # eligibility. Language proficiency itself remains a criterion.
