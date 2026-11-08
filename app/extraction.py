@@ -1055,21 +1055,28 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     # Prefer a programme-purpose statement over historical background about
     # the bilateral initiative. If the page has no useful programme summary,
     # leave description empty rather than mislabel historical context.
+    overview_items = _hec_visible_items(overview_root)
     description = next(
-        (value for value in _hec_visible_items(overview_root)
+        (value for value in overview_items
          if len(value) >= 70
          and re.search(r"(?i)(ph\.?d|doctoral).{0,100}(scholarship|study)|"
                        r"(scholarship|study).{0,100}(ph\.?d|doctoral)", value)
          and re.search(r"(?i)(pakistani students|students from pakistan|study in the united states)", value)),
         None,
     )
+    description_evidence = description
     if not description:
-        overview_text = " ".join(_hec_visible_items(overview_root))
-        if re.search(
-            r"(?i)award\s+1,?000\s+ph\.?d\.?\s+scholarships?.{0,100}"
-            r"pakistani students.{0,100}us universities",
-            overview_text,
-        ):
+        overview_text = " ".join(overview_items)
+        description_evidence = next(
+            (value for value in overview_items
+             if re.search(
+                 r"(?i)award\s+1,?000\s+ph\.?d\.?\s+scholarships?.{0,100}"
+                 r"pakistani students.{0,100}us universities",
+                 value,
+             )),
+            None,
+        )
+        if description_evidence:
             description = (
                 "PhD scholarships for outstanding Pakistani students to pursue "
                 "doctoral study at universities in the United States under the "
@@ -1077,7 +1084,9 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             )
     if description:
         description = description[:1200]
-        add_evidence("description", description, "overview")
+        # Evidence retains the exact official source wording; the displayed
+        # summary may be a concise paraphrase grounded in that wording.
+        add_evidence("description", description_evidence or description, "overview")
 
     # HEC's eligibility page uses ordinary paragraphs and list items rather
     # than semantic heading elements. Keep each source statement atomic.
@@ -1157,12 +1166,16 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             elif re.search(r"(?i)(return to pakistan|serve.*years|bond|contract)", value):
                 add_criterion("post_selection_requirement", "Post-study obligation", value, "faq")
             elif re.search(
-                r"(?i)(second\s*/?\s*third division|no second|no third).*(academic career|entire career|degree)|"
-                r"(academic career|entire career).*(second\s*/?\s*third division|no second|no third)",
+                r"(?i)((?:2nd|second)\s*(?:/|or)\s*(?:3rd|third)\s*division|no\s+(?:2nd|second)|no\s+(?:3rd|third)).*(academic career|entire career|degree)|"
+                r"(academic career|entire career).*((?:2nd|second)\s*(?:/|or)\s*(?:3rd|third)\s*division|no\s+(?:2nd|second)|no\s+(?:3rd|third))",
                 value,
             ):
                 add_criterion("academic_requirements", "Academic record – FAQ clarification", value, "faq")
-            elif re.search(r"(?i)(confirmed admission|gre.*300|hat.*60|domicile|passport|attested academic)", value):
+            elif re.search(r"(?i)(gre|hat).*(300|60\s*%)|(300|60\s*%).*(gre|hat)", value) and re.search(
+                r"(?i)all candidates|all applicants|every candidate|every applicant", value
+            ):
+                add_criterion("academic_requirements", "GRE or HAT score – all applicants", value, "faq")
+            elif re.search(r"(?i)(confirmed admission|domicile|passport|attested academic)", value):
                 add_criterion("required_documents", "Application requirements", value, "faq")
 
     # Keep category-specific tuition separate from benefits shared by both categories.
