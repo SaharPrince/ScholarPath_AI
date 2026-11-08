@@ -1032,10 +1032,10 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             add_criterion("academic_requirements", "Minimum education", value, "eligibility")
         elif re.search(r"(?i)(second division|second division|division)", value):
             add_criterion("academic_requirements", "Academic record", value, "eligibility")
-        elif re.search(r"(?i)\b(age|years?|regular government|all other applicants)\b", value) and re.search(r"\b(40|35)\b", value):
+                if re.search(r"(?i)\b40\b", value)
             age_label = (
                 "Maximum age – specified public-sector applicants"
-                if re.search(r"(?i)\b40\b, value)
+                if re.search(r"(?i)\b40\b", value)
                 else "Maximum age – all other applicants"
             )
             add_criterion("age_limit", age_label, value, "eligibility")
@@ -1085,9 +1085,9 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 value,
             ):
                 continue
-            if re.search(r"(?i)category\s*i\b, value):
+            if re.search(r"(?i)category\s*i\b", value):
                 category_i_funding.append(value)
-            elif re.search(r"(?i)category\s*ii\b, value):
+            if re.search(r"(?i)category\s*i\b", value):
                 category_ii_funding.append(value)
             else:
                 shared_funding.append(value)
