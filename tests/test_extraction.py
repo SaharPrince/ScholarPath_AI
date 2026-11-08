@@ -102,6 +102,31 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertEqual(_classify_applicant_category("For currently enrolled undergraduate students"), "student")
         self.assertEqual(_classify_applicant_category("A programme for interested people"), "unknown")
 
+    def test_classifies_senior_us_scholars_and_professionals(self) -> None:
+        self.assertEqual(
+            _classify_applicant_category(
+                "The program allows senior U.S. scholars and professionals."
+            ),
+            "professional",
+        )
+
+    def test_classifies_officials_and_administrators_as_professionals(self) -> None:
+        self.assertEqual(
+            _classify_applicant_category(
+                "For Pakistani officials with higher education planning responsibilities "
+                "and administrators from post-secondary institutions."
+            ),
+            "professional",
+        )
+
+    def test_faculty_training_precedes_degree_title_classification(self) -> None:
+        self.assertEqual(
+            _classify_applicant_category(
+                "HEC UESTP Faculty Training Programme - Master Leading to PhD"
+            ),
+            "faculty",
+        )
+
     def test_extracts_heading_based_eligibility_and_prose_funding(self) -> None:
         html = """
         <html><body><main>
