@@ -18,7 +18,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "three-year degree holders mayapply; permanentresidency; Department of Stateemployees; "
             "academic,training, or research programs "
             "be afull-time education administrator; permanent residency inthe past three years; "
-            "U.S. Departmentof State"
+            "U.S. Departmentof State; i.e.spouses"
         )
         self.assertEqual(
             cleaned,
@@ -30,7 +30,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "three-year degree holders may apply; permanent residency; Department of State employees; "
             "academic, training, or research programs "
             "be a full-time education administrator; permanent residency in the past three years; "
-            "U.S. Department of State",
+            "U.S. Department of State; i.e. spouses",
         )
 
     def test_extracts_visible_facts_and_keeps_evidence(self) -> None:
