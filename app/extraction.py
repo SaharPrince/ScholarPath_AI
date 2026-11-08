@@ -65,6 +65,20 @@ def _clean(value: str) -> str:
     return " ".join(value.split()).strip()
 
 
+def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
+    """Mark mandatory only when the source wording or section label makes it explicit."""
+    if criterion_type in {"ineligibility", "required_documents"}:
+        return True
+    text = requirement_text.casefold()
+    if re.search(r"\\b(preferred|preferable|encouraged|recommended|desirable|an advantage|priority will be given)\\b", text):
+        return False
+    return bool(re.search(
+        r"\\b(must|required|mandatory|minimum|at least|no more than|maximum|"
+        r"only|cannot|not eligible|ineligible|shall|must not)\\b",
+        text,
+    ))
+
+
 def _parse_deadline_date(value: str | None) -> str | None:
     """Normalize an explicitly extracted English deadline date to ISO format."""
     if not value:
@@ -563,8 +577,10 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                             """INSERT INTO eligibility_criteria
                                (scholarship_id, criterion_type, criterion_label,
                                 requirement_text, is_mandatory, evidence_url)
-                               VALUES (?, ?, ?, ?, 1, ?)""",
-                            (scholarship_id, criterion_type, label, requirement, candidate["candidate_url"]),
+                               VALUES (?, ?, ?, ?, ?, ?)""",
+                            (scholarship_id, criterion_type, label, requirement,
+                             int(_is_mandatory_criterion(criterion_type, requirement)),
+                             candidate["candidate_url"]),
                         )
                     connection.execute("UPDATE discovery_candidates SET status = 'promoted' WHERE id = ?", (candidate["id"],))
                 elif not error:
