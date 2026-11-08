@@ -374,7 +374,7 @@ def _classify_applicant_category(body_text: str) -> str:
         return "student"
     if re.search(r"\b(recent graduates?|alumni|postgraduate applicants?)\b", text):
         return "graduate"
-    if re.search(r"\b(mid[- ]career professionals?|working professionals?|employed professionals?|professionals with|teachers?|administrators?|government officials?)\b", text):
+    if re.search(r"\b(mid[- ]career professionals?|young professionals?|senior professionals?|senior scholars?|working professionals?|employed professionals?|professionals with|teachers?|administrators?|government officials?)\b", text):
         return "professional"
     return "unknown"
 
@@ -488,7 +488,13 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         "language_requirements", "work_experience",
     ):
         if field_name in fields:
-            criteria.append((field_name, field_name.replace("_", " ").title(), fields[field_name]))
+            # Keep distinct statements separate so one optional sentence cannot
+            # downgrade a mandatory requirement elsewhere in the same section.
+            statements = re.split(r"(?<=[.!?])\\s+(?=[A-Z“])", fields[field_name])
+            for statement in statements:
+                statement = _clean(statement)
+                if statement:
+                    criteria.append((field_name, field_name.replace("_", " ").title(), statement))
 
     if description:
         evidence.append(("description", description))
