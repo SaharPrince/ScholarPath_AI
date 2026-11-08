@@ -66,6 +66,7 @@ def _clean(value: str) -> str:
     """Collapse whitespace and repair known missing-space joins in extracted page text."""
     text = " ".join(value.split()).strip()
     # Repair unambiguous joins observed in official CCAP source copy.
+    text = re.sub(r"(?i)\b(years?)(of)(experience)\b", r"\1 \2 \3", text)
     text = re.sub(r"(?i)\b(years?)(of)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(within)(technical|vocational)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(residents?)(of)\b", r"\1 \2", text)
