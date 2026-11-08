@@ -60,6 +60,8 @@ class ExtractedPage:
     evidence: list[tuple[str, str]] = field(default_factory=list)
     application_status: str = "unknown"
     applicant_category: str = "unknown"
+    evidence_sources: dict[tuple[str, str], str] = field(default_factory=dict)
+    criteria_sources: dict[tuple[str, str, str], str] = field(default_factory=dict)
 
 
 def _clean(value: str) -> str:
@@ -242,6 +244,9 @@ def _remove_site_chrome(soup: BeautifulSoup) -> BeautifulSoup:
         if node.parent is not None:
             node.decompose()
 
+    rich_content = soup.select_one(".ms-rtestate-field")
+    if rich_content is not None:
+        return rich_content
     return soup.find("main") or soup.find("article") or soup.body or soup
 
 
@@ -927,6 +932,184 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                          application_status, applicant_category)
 
 
+
+HEC_KNOWLEDGE_CORRIDOR_BASE = (
+    "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
+)
+HEC_KNOWLEDGE_CORRIDOR_PAGES = {
+    "overview": "default.aspx",
+    "eligibility": "Eligibility-Criteria.aspx",
+    "how_to_apply": "How-to-Apply.aspx",
+    "hat": "HAT.aspx",
+    "priority_subjects": "Priority-Subject-Areas.aspx",
+    "faq": "FAQ.aspx",
+}
+
+
+def _hec_content_root(html: str) -> BeautifulSoup:
+    soup = BeautifulSoup(html, "html.parser")
+    return _remove_site_chrome(soup)
+
+
+def _hec_visible_items(root: BeautifulSoup) -> list[str]:
+    values = []
+    for node in root.find_all(["p", "li"]):
+        if node.name == "li" and node.find_parent("li"):
+            continue
+        value = _clean(node.get_text(" ", strip=True))
+        if value and value not in values:
+            values.append(value)
+    return values
+
+
+def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> ExtractedPage | None:
+    """Aggregate the official HEC programme pages while retaining page-level provenance."""
+    if "overview" not in pages or "eligibility" not in pages:
+        return None
+
+    roots = {name: _hec_content_root(html) for name, (html, _) in pages.items()}
+    urls = {name: url for name, (_, url) in pages.items()}
+    title = "US-Pakistan Knowledge Corridor PhD Scholarship"
+    fields: dict[str, str] = {
+        "study_level": "PhD",
+        "study_destination": "United States",
+    }
+    evidence: list[tuple[str, str]] = []
+    evidence_sources: dict[tuple[str, str], str] = {}
+    criteria: list[tuple[str, str, str]] = []
+    criteria_sources: dict[tuple[str, str, str], str] = {}
+
+    def add_evidence(field_name: str, value: str, page_name: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        item = (field_name, value)
+        if item not in evidence:
+            evidence.append(item)
+        evidence_sources[item] = urls[page_name]
+
+    def add_criterion(kind: str, label: str, value: str, page_name: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        item = (kind, label, value)
+        if item not in criteria:
+            criteria.append(item)
+        criteria_sources[item] = urls[page_name]
+
+    overview_root = roots["overview"]
+    description = next(
+        (value for value in _hec_visible_items(overview_root)
+         if len(value) >= 70 and re.search(r"(?i)(knowledge corridor|ph\.?d|doctoral|scholarship)", value)),
+        None,
+    )
+    if description:
+        description = description[:1200]
+        add_evidence("description", description, "overview")
+
+    # HEC's eligibility page uses ordinary paragraphs and list items rather
+    # than semantic heading elements. Keep each source statement atomic.
+    eligibility_items = _hec_visible_items(roots["eligibility"])
+    for value in eligibility_items:
+        low = value.casefold()
+        if re.search(r"(?i)\b(pakistani|ajk)\b", value) and re.search(r"(?i)\b(national|citizen)\b", value):
+            add_criterion("nationality", "Nationality", value, "eligibility")
+        elif re.search(r"(?i)(four[- ]year|16 years|sixteen years|b\.?s\.?|b\.?sc|b\.?e\.?)", value) and re.search(r"(?i)(bachelor|education|degree)", value):
+            add_criterion("academic_requirements", "Minimum education", value, "eligibility")
+        elif re.search(r"(?i)(second division|second division|division)", value):
+            add_criterion("academic_requirements", "Academic record", value, "eligibility")
+        elif re.search(r"(?i)\b(age|years old)\b", value) and re.search(r"\b(40|35)\b", value):
+            add_criterion("age_limit", "Maximum age", value, "eligibility")
+        elif re.search(r"(?i)(another scholarship|any other scholarship|availing.*scholarship)", value):
+            add_criterion("ineligibility", "Other scholarship", value, "eligibility")
+        elif re.search(r"(?i)(ph\.?d holders?|already.*ph\.?d|doctoral degree holders?)", value):
+            add_criterion("ineligibility", "Existing PhD holders", value, "eligibility")
+        elif re.search(r"(?i)(category\s*i\b|top\s*50|qs.*50)", value):
+            add_criterion("eligibility", "Category I – university ranking", value, "eligibility")
+        elif re.search(r"(?i)(category\s*ii\b|51\s*[-–]\s*100|qs.*100)", value):
+            # Eligibility page is authoritative for the 51–100 range. Do not
+            # replace it with the malformed phrase in the FAQ page.
+            add_criterion("eligibility", "Category II – university ranking", value, "eligibility")
+        elif re.search(r"(?i)(gre|hat).*(300|60\s*%)|(300|60\s*%).*(gre|hat)", value):
+            add_criterion("academic_requirements", "GRE or HAT score", value, "eligibility")
+        elif len(value) > 35 and re.search(r"(?i)(eligible|applicant|admission|university|degree)", value):
+            add_criterion("eligibility", "Eligibility", value, "eligibility")
+
+    # FAQ provides additional requirements and clarifications, but only capture
+    # explicit rules; questions and unrelated process commentary are not criteria.
+    if "faq" in roots:
+        for value in _hec_visible_items(roots["faq"]):
+            if re.search(r"(?i)(toefl|ielts).*(not required)|(not required).*(toefl|ielts)", value):
+                add_criterion("language_requirements", "English-language tests", value, "faq")
+            elif re.search(r"(?i)\bJ[- ]?1\b", value) and re.search(r"(?i)(visa|only)", value):
+                add_criterion("post_selection_requirement", "Visa requirement", value, "faq")
+            elif re.search(r"(?i)(return to pakistan|serve.*years|bond|contract)", value):
+                add_criterion("post_selection_requirement", "Post-study obligation", value, "faq")
+            elif re.search(r"(?i)(confirmed admission|gre.*300|hat.*60|domicile|passport|attested academic)", value):
+                add_criterion("required_documents", "Application requirements", value, "faq")
+
+    # Funding is stored as a source-quoted breakdown, not a calculated total.
+    funding_lines = []
+    if "faq" in roots:
+        for value in _hec_visible_items(roots["faq"]):
+            if re.search(r"(?i)(USD|PKR|tuition|stipend|health insurance|airfare)", value) and re.search(r"(?i)(category|19,?200|12,?000|2,?000|250,?000)", value):
+                if value not in funding_lines:
+                    funding_lines.append(value)
+    if funding_lines:
+        fields["funding_summary"] = "\n".join(funding_lines)[:4000]
+        add_evidence("funding_summary", fields["funding_summary"], "faq")
+
+    # Only accept the portal when the official how-to page links to it.
+    if "how_to_apply" in roots:
+        portal_links = []
+        for anchor in roots["how_to_apply"].find_all("a", href=True):
+            target = urljoin(urls["how_to_apply"], str(anchor.get("href", "")).strip())
+            parsed = urlparse(target)
+            if parsed.scheme == "https" and parsed.hostname == "scholarship.hec.gov.pk":
+                portal_links.append(target)
+        if portal_links:
+            fields["application_url"] = sorted(set(portal_links))[0]
+            add_evidence("application_url", fields["application_url"], "how_to_apply")
+
+    if "priority_subjects" in roots:
+        subjects = _hec_visible_items(roots["priority_subjects"])
+        relevant = [item for item in subjects if len(item) > 35]
+        if relevant:
+            value = "\n".join(relevant)[:4000]
+            fields["priority_subject_areas"] = value
+            add_evidence("priority_subject_areas", value, "priority_subjects")
+
+    # The landing page's generic "open" wording is not a dated intake notice.
+    # Without a verified current advertisement, status remains unknown.
+    fields["application_status"] = "unknown"
+    add_evidence("study_level", "PhD", "overview")
+    add_evidence("study_destination", "United States", "overview")
+    add_evidence("application_status", "No current intake advertisement was established by the programme pages inspected.", "overview")
+
+    provider = "Higher Education Commission (HEC)"
+    add_evidence("provider_name", provider, "overview")
+    return ExtractedPage(
+        title, description, provider, fields, criteria, evidence,
+        "unknown", "student", evidence_sources, criteria_sources,
+    )
+
+
+async def _fetch_hec_knowledge_corridor(
+    client: httpx.AsyncClient, overview_html: str, overview_url: str
+) -> ExtractedPage | None:
+    pages: dict[str, tuple[str, str]] = {
+        "overview": (overview_html, overview_url)
+    }
+    for name, filename in HEC_KNOWLEDGE_CORRIDOR_PAGES.items():
+        if name == "overview":
+            continue
+        url = urljoin(HEC_KNOWLEDGE_CORRIDOR_BASE, filename)
+        html, error = await _fetch_page(client, url)
+        if html:
+            pages[name] = (html, url)
+    return _parse_hec_knowledge_corridor(pages)
+
+
 async def _fetch_page(client: httpx.AsyncClient, url: str) -> tuple[str | None, str | None]:
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
@@ -983,7 +1166,18 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                                  follow_redirects=False) as client:
         for candidate in candidates:
             html, error = await _fetch_page(client, candidate["candidate_url"])
-            parsed = parse_scholarship_page(html, candidate["candidate_url"], candidate["candidate_title"]) if html else None
+            candidate_path = urlparse(candidate["candidate_url"]).path.casefold()
+            is_hec_corridor_overview = (
+                "hec.gov.pk" in (urlparse(candidate["candidate_url"]).hostname or "").casefold()
+                and "/us-pakcorridor/pages/" in candidate_path
+                and candidate_path.endswith("/default.aspx")
+            )
+            if html and is_hec_corridor_overview:
+                parsed = await _fetch_hec_knowledge_corridor(
+                    client, html, candidate["candidate_url"]
+                )
+            else:
+                parsed = parse_scholarship_page(html, candidate["candidate_url"], candidate["candidate_title"]) if html else None
             status = "failed" if error else ("insufficient_evidence" if parsed is None else "extracted")
             message = error or (None if parsed else "Page was not classified as a specific opportunity or lacked explicit scholarship facts.")
 
@@ -1018,10 +1212,13 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                     scholarship_id = cursor["id"]
                     # Evidence is append-only: preserve earlier source snapshots.
                     # Exact repeats are skipped by _save_evidence.
-                    _save_evidence(
-                        connection, scholarship_id, parsed.evidence,
-                        candidate["candidate_url"],
-                    )
+                    for evidence_item in parsed.evidence:
+                        evidence_url = parsed.evidence_sources.get(
+                            evidence_item, candidate["candidate_url"]
+                        )
+                        _save_evidence(
+                            connection, scholarship_id, [evidence_item], evidence_url
+                        )
                     connection.execute("DELETE FROM eligibility_criteria WHERE scholarship_id = ?", (scholarship_id,))
                     for criterion_type, label, requirement in parsed.criteria:
                         connection.execute(
@@ -1031,7 +1228,9 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                                VALUES (?, ?, ?, ?, ?, ?)""",
                             (scholarship_id, criterion_type, label, requirement,
                              int(_is_mandatory_criterion(criterion_type, requirement)),
-                             candidate["candidate_url"]),
+                             parsed.criteria_sources.get(
+                                 (criterion_type, label, requirement), candidate["candidate_url"]
+                             )),
                         )
                     connection.execute("UPDATE discovery_candidates SET status = 'promoted' WHERE id = ?", (candidate["id"],))
                 elif not error:
