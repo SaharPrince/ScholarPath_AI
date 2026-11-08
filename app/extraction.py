@@ -326,6 +326,13 @@ def _extract_description_criteria(description: str) -> list[tuple[str, str, str]
         sentence = _clean(raw)
         if not sentence or len(sentence) > 1000 or not explicit_requirement.search(sentence):
             continue
+        # The USEFP Specialist page contains a malformed source sentence:
+        # "... eligible to host a U.S. scholar or profession although the
+        # Fulbright Specialists Program." Do not turn that corrupted wording
+        # into a formal host-institution eligibility criterion. Keep the raw
+        # paragraph in description evidence for human review.
+        if re.search(r"\\bprofession(?:al)?\\s+although\\s+the\\b", sentence, re.I):
+            continue
         lowered = sentence.casefold()
         if host_actor.search(sentence) and re.search(r"(?i)\b(eligible to host|may include|are eligible|eligible institutions)\b", sentence):
             extracted.append(("institution_eligibility", "Eligible host institutions", sentence))
