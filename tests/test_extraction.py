@@ -474,6 +474,49 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertFalse(_is_mandatory_criterion("eligibility", "Prior teaching experience is preferred."))
 
 
+    def test_splits_ccap_exclusions_introduced_between_separate_lists(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Community College Administrator Program</h1>
+          <h3>Technical Eligibility Requirements</h3>
+          <p>Nominees must meet the following criteria:</p>
+          <ul>
+            <li>Has fluent or professional-level English language ability.</li>
+            <li>Is a citizen, national, or permanent resident qualified to hold a valid Pakistan passport.</li>
+            <li>Is currently residing in Pakistan.</li>
+            <li>Is a full-time education administrator with at least five years of relevant experience.</li>
+            <li>Be a Pakistani citizen (dual citizens are eligible EXCEPT for dual U.S.-Pakistan citizens).</li>
+          </ul>
+          <p>Individuals in the following circumstances are not eligible to be nominated:</p>
+          <ul>
+            <li>U.S. citizens and permanent residents of the United States;</li>
+            <li>Individuals currently participating in academic, training, or research programs in the United States;</li>
+            <li>Individuals who are married to a U.S. citizen;</li>
+            <li>Individuals currently residing or working outside Pakistan;</li>
+            <li>Employees of the Fulbright organization are ineligible;</li>
+          </ul>
+          <p>The Department reserves the right to verify application information.</p>
+          <h3>Financial Provisions of the Grant</h3>
+          <p>The programme provides funding for travel and living costs.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html, "https://example.org/scholarships/ccap"
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        eligibility = [x[2] for x in page.criteria if x[0] == "eligibility"]
+        exclusions = [x[2] for x in page.criteria if x[0] == "ineligibility"]
+        self.assertTrue(any("fluent or professional-level English" in x for x in eligibility))
+        self.assertTrue(any("currently residing in Pakistan" in x for x in eligibility))
+        self.assertTrue(any("dual U.S.-Pakistan citizens" in x for x in exclusions))
+        self.assertTrue(any("U.S. citizens and permanent residents" in x for x in exclusions))
+        self.assertTrue(any("married to a U.S. citizen" in x for x in exclusions))
+        self.assertTrue(any("residing or working outside Pakistan" in x for x in exclusions))
+        self.assertTrue(any("Employees of the Fulbright organization" in x for x in exclusions))
+        self.assertFalse(any("currently participating in academic" in x for x in eligibility))
+        self.assertFalse(any("right to verify" in x for x in eligibility + exclusions))
+
     def test_splits_embedded_ccap_exclusions_from_technical_eligibility(self) -> None:
         html = """
         <html><body><main>
