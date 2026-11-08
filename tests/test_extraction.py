@@ -2,12 +2,21 @@ import sqlite3
 import unittest
 
 from app.extraction import (
-    _classify_application_status, _classify_applicant_category,
+    _clean, _classify_application_status, _classify_applicant_category,
     _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, parse_scholarship_page, _save_evidence,
 )
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
+    def test_repairs_known_joined_words_from_official_source_copy(self) -> None:
+        cleaned = _clean(
+            "permanentresident eligiblefields onbehalf of residents of Pakistan"
+        )
+        self.assertEqual(
+            cleaned,
+            "permanent resident eligible fields on behalf of residents of Pakistan",
+        )
+
     def test_extracts_visible_facts_and_keeps_evidence(self) -> None:
         html = """
         <html><head>
