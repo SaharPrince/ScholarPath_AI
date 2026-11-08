@@ -359,7 +359,13 @@ def _classify_applicant_category(body_text: str) -> str:
     text = body_text.lower()
     if re.search(r"\b(universit(?:y|ies)|institutions?|organisations?|organizations?) (?:may|can) apply\b", text):
         return "institution"
-    if re.search(r"\b(faculty members?|professors?|academic staff)\b", text):
+    # Explicit faculty-training identity takes precedence over degree words in
+    # a programme title (for example, a faculty programme leading to a PhD).
+    if re.search(
+        r"\b(faculty members?|professors?|academic staff|faculty training|"
+        r"faculty development|university faculty)\b",
+        text,
+    ):
         return "faculty"
     # Degree-level eligibility is stronger evidence than incidental mentions
     # of work experience or professional references elsewhere on the page.
@@ -374,7 +380,13 @@ def _classify_applicant_category(body_text: str) -> str:
         return "student"
     if re.search(r"\b(recent graduates?|alumni|postgraduate applicants?)\b", text):
         return "graduate"
-    if re.search(r"\b(mid[- ]career professionals?|young professionals?|senior professionals?|senior scholars?|working professionals?|employed professionals?|professionals with|teachers?|administrators?|government officials?)\b", text):
+    if re.search(
+        r"\b(mid[- ]career professionals?|young professionals?|senior professionals?|"
+        r"senior (?:U\.S\. )?scholars?|scholars? and professionals?|"
+        r"working professionals?|employed professionals?|professionals with|"
+        r"teachers?|administrators?|government officials?|Pakistani officials?)\b",
+        text,
+    ):
         return "professional"
     return "unknown"
 
