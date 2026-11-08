@@ -220,6 +220,10 @@ def _remove_site_chrome(soup: BeautifulSoup) -> BeautifulSoup:
     for node in soup(["script", "style", "noscript", "svg", "nav", "footer", "aside"]):
         node.decompose()
 
+    # Inspect the complete tree before decomposing anything. Removing a parent
+    # Tag clears the attributes of its descendants in BeautifulSoup; mutating
+    # during find_all iteration can therefore leave later nodes with attrs=None.
+    nodes_to_remove = []
     for node in soup.find_all(True):
         role = str(node.get("role", "")).lower()
         aria_label = str(node.get("aria-label", "")).lower()
@@ -230,6 +234,12 @@ def _remove_site_chrome(soup: BeautifulSoup) -> BeautifulSoup:
         if role in {"navigation", "contentinfo"} or any(
             term in marker for term in ("breadcrumb", "sidebar", "site-nav", "navbar", "main-menu", "footer-menu")
         ):
+            nodes_to_remove.append(node)
+
+    # find_all() returns a snapshot, so defer mutation until inspection is done.
+    # A parent may already have removed a nested candidate; skip detached nodes.
+    for node in nodes_to_remove:
+        if node.parent is not None:
             node.decompose()
 
     return soup.find("main") or soup.find("article") or soup.body or soup
