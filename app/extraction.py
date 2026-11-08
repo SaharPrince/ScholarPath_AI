@@ -227,9 +227,23 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
         if heading_text not in wanted:
             continue
         chunks: list[str] = []
-        for node in heading.find_all_next(["h1", "h2", "h3", "h4", "h5", "p", "li"]):
+        nodes = heading.find_all_next(["h1", "h2", "h3", "h4", "h5", "p", "li"])
+        section_nodes = []
+        for node in nodes:
             if node.name in {"h1", "h2", "h3", "h4", "h5"}:
                 break
+            section_nodes.append(node)
+
+        # When a section contains a list, its list items are the atomic
+        # requirements. Do not absorb a following general paragraph (often
+        # funding or programme description) into the eligibility section.
+        list_items = [node for node in section_nodes if node.name == "li"]
+        selected_nodes = list_items or [node for node in section_nodes if node.name == "p"]
+        for node in selected_nodes:
+            # Skip nested list items when their parent item already captures
+            # the complete requirement.
+            if node.name == "li" and node.find_parent("li"):
+                continue
             value = _clean(node.get_text(" ", strip=True))
             if value and value not in chunks:
                 chunks.append(value)
@@ -359,7 +373,7 @@ def _find_funding_statement(content_root: BeautifulSoup) -> str | None:
 
 def _extract_description_criteria(description: str) -> list[tuple[str, str, str]]:
     """Extract only explicit applicant or host-eligibility statements from programme prose."""
-    sentences = re.split(r"(?<=[.!?])\s+(?=[A-Z“])", description)
+    sentences = _split_criteria_statements(description)
     extracted: list[tuple[str, str, str]] = []
     applicant_actor = re.compile(
         r"(?i)\b(applicants?|candidates?|students?|participants?|scholars?|fellows?|"
@@ -579,7 +593,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         if field_name in fields:
             # Keep distinct statements separate so one optional sentence cannot
             # downgrade a mandatory requirement elsewhere in the same section.
-            statements = re.split(r"(?<=[.!?])\s+(?=[A-Z“])", fields[field_name])
+            statements = _split_criteria_statements(fields[field_name])
             for statement in statements:
                 statement = _clean(statement)
                 if statement:
