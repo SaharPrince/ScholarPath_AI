@@ -307,29 +307,29 @@ def _find_funding_statement(content_root: BeautifulSoup) -> str | None:
 
 def _extract_description_criteria(description: str) -> list[tuple[str, str, str]]:
     """Extract only explicit applicant or host-eligibility statements from programme prose."""
-    sentences = re.split(r"(?<=[.!?])\\s+(?=[A-Z“])", description)
+    sentences = re.split(r"(?<=[.!?])\s+(?=[A-Z“])", description)
     extracted: list[tuple[str, str, str]] = []
     applicant_actor = re.compile(
-        r"(?i)\\b(applicants?|candidates?|students?|participants?|scholars?|fellows?|"
-        r"professionals?|teachers?|officials?)\\b"
+        r"(?i)\b(applicants?|candidates?|students?|participants?|scholars?|fellows?|"
+        r"professionals?|teachers?|officials?)\b"
     )
     host_actor = re.compile(
-        r"(?i)\\b(non[- ]?U\\.?S\\.?|international|higher education|post[- ]?secondary|"
-        r"academic|educational)?\\s*(institutions?|universit(?:y|ies)|libraries|museums|hospitals|"
-        r"ministries)\\b"
+        r"(?i)\b(non[- ]?U\.?S\.?|international|higher education|post[- ]?secondary|"
+        r"academic|educational)?\s*(institutions?|universit(?:y|ies)|libraries|museums|hospitals|"
+        r"ministries)\b"
     )
     explicit_requirement = re.compile(
-        r"(?i)\\b(must|must be|must have|required to|are required|is required|"
-        r"only candidates|eligible to|eligible applicants|eligible host)\\b"
+        r"(?i)\b(must|must be|must have|required to|are required|is required|"
+        r"only candidates|eligible to|eligible applicants|eligible host)\b"
     )
     for raw in sentences:
         sentence = _clean(raw)
         if not sentence or len(sentence) > 1000 or not explicit_requirement.search(sentence):
             continue
         lowered = sentence.casefold()
-        if host_actor.search(sentence) and re.search(r"(?i)\\b(eligible to host|may include|are eligible|eligible institutions)\\b", sentence):
+        if host_actor.search(sentence) and re.search(r"(?i)\b(eligible to host|may include|are eligible|eligible institutions)\b", sentence):
             extracted.append(("institution_eligibility", "Eligible host institutions", sentence))
-        elif applicant_actor.search(sentence) and re.search(r"(?i)\\b(applicants?|candidates?|students?|participants?|scholars?|fellows?|professionals?|teachers?|officials?)\\s+(?:must|required|are required|should)", sentence):
+        elif applicant_actor.search(sentence) and re.search(r"(?i)\b(applicants?|candidates?|students?|participants?|scholars?|fellows?|professionals?|teachers?|officials?)\s+(?:must|required|are required|should)", sentence):
             extracted.append(("eligibility", "Eligibility from programme description", sentence))
     return extracted
 
