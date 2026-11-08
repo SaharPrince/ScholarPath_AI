@@ -614,9 +614,16 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         assert page is not None
         eligibility = [x[2].casefold() for x in page.criteria if x[0] == "eligibility"]
         exclusions = [x[2].casefold() for x in page.criteria if x[0] == "ineligibility"]
+        audience = [x for x in page.criteria if x[0] == "target_audience"]
+        post_selection = [x for x in page.criteria if x[0] == "post_selection_requirement"]
         self.assertTrue(any("resident in pakistan" in x for x in eligibility))
-        self.assertTrue(any("three-year bachelor's degree" in x or "three-year bachelor's degree" in x for x in eligibility))
-        self.assertTrue(any("after selection" in x and "400" in x for x in eligibility))
+        self.assertTrue(any("three-year bachelor's degree" in x for x in eligibility))
+        self.assertEqual(len(audience), 1)
+        self.assertIn("less than three years", audience[0][2].casefold())
+        self.assertFalse(_is_mandatory_criterion(audience[0][0], audience[0][2]))
+        self.assertEqual(len(post_selection), 1)
+        self.assertIn("after selection", post_selection[0][2].casefold())
+        self.assertTrue(_is_mandatory_criterion(post_selection[0][0], post_selection[0][2]))
         self.assertTrue(any("four-year bachelor's degree" in x for x in exclusions))
         self.assertTrue(any("master's degree" in x for x in exclusions))
         self.assertTrue(any("currently enrolled" in x for x in exclusions))
@@ -645,6 +652,11 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         criteria = [x[2].casefold() for x in page.criteria]
         self.assertTrue(any("dual citizenship is generally permitted" in x for x in criteria))
         self.assertTrue(any("dual u.s.-pakistan citizens" in x for x in criteria))
+        self.assertEqual(
+            sum("be a pakistani citizen" in x for x in criteria),
+            0,
+            "The standalone citizenship duplicate should not be created from the truncated dual-citizenship sentence.",
+        )
         self.assertFalse(any("all program activities" in x for x in criteria))
         self.assertFalse(any("no translation services" in x for x in criteria))
 
