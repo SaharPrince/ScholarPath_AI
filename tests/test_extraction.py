@@ -851,11 +851,22 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         self.assertEqual(page.title, "US-Pakistan Knowledge Corridor PhD Scholarship")
         self.assertEqual(page.application_status, "unknown")
         self.assertEqual(page.fields["application_url"], "https://scholarship.hec.gov.pk/")
-        self.assertIn("Category I (QS 1–50)", page.fields["funding_summary"])
-        self.assertIn("Category II (QS 51–100)", page.fields["funding_summary"])
-        self.assertIn("fully funded", page.fields["funding_summary"])
-        self.assertIn("up to USD 12,000", page.fields["funding_summary"])
-        self.assertIn("Benefits stated without a category restriction", page.fields["funding_summary"])
+        funding = page.fields["funding_summary"]
+        self.assertIn("Category I (QS 1–50)", funding)
+        self.assertIn("Category II (QS 51–100)", funding)
+        self.assertIn("fully funded", funding)
+        self.assertIn("up to USD 12,000", funding)
+        self.assertIn("Benefits stated without a category restriction", funding)
+        category_i_section = funding.split("Category I (QS 1–50):", 1)[1].split(
+            "Category II (QS 51–100):", 1
+        )[0]
+        category_ii_section = funding.split("Category II (QS 51–100):", 1)[1].split(
+            "Benefits stated without a category restriction:", 1
+        )[0]
+        self.assertIn("fully funded", category_i_section)
+        self.assertNotIn("up to USD 12,000", category_i_section)
+        self.assertIn("up to USD 12,000", category_ii_section)
+        self.assertNotIn("fully funded", category_ii_section)
         self.assertIn("USD 19,200", page.fields["funding_summary"])
         self.assertIn("PKR 250,000", page.fields["funding_summary"])
 
