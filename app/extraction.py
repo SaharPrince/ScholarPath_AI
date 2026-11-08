@@ -706,6 +706,20 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 statement = _clean(statement)
                 if not statement:
                     continue
+                if re.search(
+                    r"(?i)^(?:all program activities will be in english|"
+                    r"no translation services will be provided)",
+                    statement,
+                ):
+                    continue
+                if re.search(
+                    r"(?i)^be a pakistani citizen \\(dual citizens are eligible$",
+                    statement,
+                ):
+                    statement = (
+                        "Be a Pakistani citizen; dual citizens are eligible, "
+                        "subject to the source's stated exclusions."
+                    )
                 # These CCAP sentences explain programme delivery, not applicant
                 # eligibility. Language proficiency itself remains a criterion.
                 if re.search(
@@ -736,7 +750,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                     excluded_part = exception_match.group(1).strip(" )(.")
                     if re.search(r"(?i)dual citizens are eligible", eligible_part):
                         eligible_part = re.sub(
-                            r"(?i)\\s*\\(?dual citizens are eligible\\)?\\s*",
+                            r"(?i)\s*\(?dual citizens are eligible\)?\s*",
                             " ",
                             eligible_part,
                         ).strip(" ,;:")
