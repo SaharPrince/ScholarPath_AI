@@ -26,7 +26,10 @@ FIELD_LABELS = {
     "study_level": ("degree level", "study level", "level of study", "programme level", "program level"),
     "nationality": ("nationality", "citizenship", "eligible countries", "country of residence"),
     "academic_requirements": ("academic requirements", "minimum marks", "minimum gpa", "grade requirement"),
-    "age_limit": ("age limit", "age requirement"),
+    "age_limit": ("age limit", "age requirement", "maximum age"),
+    "required_documents": ("required documents", "documents required", "supporting documents"),
+    "language_requirements": ("language requirements", "language proficiency", "english language requirement"),
+    "work_experience": ("work experience", "professional experience", "years of experience"),
 }
 GENERIC_PAGE_TERMS = (
     "scholarship database", "funding partners", "application guide",
@@ -363,13 +366,30 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     section_specs = {
         "eligibility": ("Eligibility Criteria", "Eligibility", "Who can apply", "Eligible applicants"),
         "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
+        "study_level": ("Degree Level", "Study Level", "Level of Study", "Eligible Degree Levels"),
+        "nationality": ("Nationality Requirements", "Citizenship Requirements", "Eligible Nationalities", "Eligible Countries"),
+        "academic_requirements": ("Academic Requirements", "Academic Eligibility", "Minimum Academic Requirements", "Minimum Grades", "Minimum GPA"),
+        "age_limit": ("Age Limit", "Age Requirements", "Age Eligibility"),
+        "required_documents": ("Required Documents", "Documents Required", "Supporting Documents"),
+        "language_requirements": ("Language Requirements", "Language Proficiency", "English Language Requirements"),
+        "work_experience": ("Work Experience", "Professional Experience", "Relevant Experience"),
     }
     for field_name, headings in section_specs.items():
-        if field_name not in fields:
-            section = _find_heading_section(content_root, headings)
-            if section:
-                fields[field_name] = section
-                evidence.append((field_name, section))
+        section = _find_heading_section(content_root, headings)
+        if not section:
+            continue
+        existing = fields.get(field_name)
+        if existing and existing in section:
+            merged = section
+        elif existing and section in existing:
+            merged = existing
+        elif existing:
+            merged = f"{existing} {section}"
+        else:
+            merged = section
+        if merged != existing:
+            fields[field_name] = merged[:4000]
+            evidence.append((field_name, fields[field_name]))
 
     # Provider and destination can be extracted from explicit programme prose.
     if "provider_name" not in fields:
@@ -420,7 +440,11 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     provider = fields.get("provider_name")
 
     criteria: list[tuple[str, str, str]] = []
-    for field_name in ("eligibility", "ineligibility", "study_level", "nationality", "academic_requirements", "age_limit"):
+    for field_name in (
+        "eligibility", "ineligibility", "study_level", "nationality",
+        "academic_requirements", "age_limit", "required_documents",
+        "language_requirements", "work_experience",
+    ):
         if field_name in fields:
             criteria.append((field_name, field_name.replace("_", " ").title(), fields[field_name]))
 
@@ -539,7 +563,7 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                             """INSERT INTO eligibility_criteria
                                (scholarship_id, criterion_type, criterion_label,
                                 requirement_text, is_mandatory, evidence_url)
-                               VALUES (?, ?, ?, ?, 0, ?)""",
+                               VALUES (?, ?, ?, ?, 1, ?)""",
                             (scholarship_id, criterion_type, label, requirement, candidate["candidate_url"]),
                         )
                     connection.execute("UPDATE discovery_candidates SET status = 'promoted' WHERE id = ?", (candidate["id"],))
