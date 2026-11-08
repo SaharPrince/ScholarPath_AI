@@ -3,7 +3,7 @@ import unittest
 
 from app.extraction import (
     _clean, _classify_application_status, _classify_applicant_category,
-    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, parse_scholarship_page, _save_evidence,
+    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, parse_scholarship_page, _save_evidence, _parse_hec_knowledge_corridor, _remove_site_chrome,
 )
 
 
@@ -745,6 +745,118 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertFalse(any("10 yearsof" in x for x in eligibility))
         self.assertFalse(any("withintechnical" in x for x in eligibility))
         self.assertTrue(any("permanent residents of Pakistan" in x for x in eligibility))
+
+
+class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
+    def test_sharepoint_rich_content_is_selected_over_site_chrome(self) -> None:
+        html = """
+        <html><body>
+          <div class="page-body">
+            <nav>Scholarships navigation must not be extracted</nav>
+            <div class="ms-rtestate-field">
+              <p>Official programme eligibility content</p>
+            </div>
+          </div>
+        </body></html>
+        """
+        root = _remove_site_chrome(__import__("bs4").BeautifulSoup(html, "html.parser"))
+        self.assertEqual(root.get_text(" ", strip=True), "Official programme eligibility content")
+
+    def test_aggregates_hec_pages_with_exact_source_provenance(self) -> None:
+        base = "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
+        pages = {
+            "overview": ("""
+                <html><body><div class="ms-rtestate-field">
+                  <h1>US-Pakistan Knowledge Corridor PhD Scholarship</h1>
+                  <p>The US-Pakistan Knowledge Corridor provides PhD scholarships
+                     for Pakistani students to study in the United States.</p>
+                </div></body></html>
+            """, base + "default.aspx"),
+            "eligibility": ("""
+                <html><body><div class="ms-rtestate-field">
+                  <p>Applicants must be Pakistani/AJK nationals.</p>
+                  <p>Minimum four-year bachelor's degree or 16 years of formal education.</p>
+                  <p>Maximum one second division throughout academic career.</p>
+                  <p>Maximum age is 40 years for regular government employees and
+                     eligible public-sector faculty/researchers.</p>
+                  <p>Maximum age is 35 years for all other applicants.</p>
+                  <p>Applicants must not be availing another scholarship.</p>
+                  <p>Existing PhD degree holders are not eligible.</p>
+                  <p>Category I: admission to a top 50 QS-ranked US university.</p>
+                  <p>GRE General score of at least 300 OR HAT score of at least 60%.</p>
+                  <p>Category II: admission to a QS-ranked US university ranked 51-100.</p>
+                </div></body></html>
+            """, base + "Eligibility-Criteria.aspx"),
+            "how_to_apply": ("""
+                <html><body><div class="ms-rtestate-field">
+                  <p>Apply through the official online application portal.</p>
+                  <a href="https://scholarship.hec.gov.pk/">Scholarship portal</a>
+                </div></body></html>
+            """, base + "How-to-Apply.aspx"),
+            "faq": ("""
+                <html><body><div class="ms-rtestate-field">
+                  <p>IELTS and TOEFL are not required by this project.</p>
+                  <p>Only a J-1 visa is acceptable.</p>
+                  <p>Category I tuition is fully funded.</p>
+                  <p>Annual stipend: USD 19,200.</p>
+                  <p>Annual health insurance: USD 2,000 or actual, whichever is lower.</p>
+                  <p>Return airfare: PKR 250,000.</p>
+                </div></body></html>
+            """, base + "FAQ.aspx"),
+            "priority_subjects": ("""
+                <html><body><div class="ms-rtestate-field">
+                  <p>Priority subject areas include life sciences, natural sciences,
+                     engineering and technology, social sciences and management,
+                     and creative art and design.</p>
+                </div></body></html>
+            """, base + "Priority-Subject-Areas.aspx"),
+        }
+
+        page = _parse_hec_knowledge_corridor(pages)
+        self.assertIsNotNone(page)
+        assert page is not None
+
+        self.assertEqual(page.title, "US-Pakistan Knowledge Corridor PhD Scholarship")
+        self.assertEqual(page.application_status, "unknown")
+        self.assertEqual(page.fields["application_url"], "https://scholarship.hec.gov.pk/")
+        self.assertIn("USD 19,200", page.fields["funding_summary"])
+        self.assertIn("PKR 250,000", page.fields["funding_summary"])
+
+        criteria = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("pakistani/ajk nationals" in item for item in criteria))
+        self.assertTrue(any("four-year bachelor's" in item for item in criteria))
+        self.assertTrue(any("one second division" in item for item in criteria))
+        self.assertTrue(any("40 years" in item for item in criteria))
+        self.assertTrue(any("35 years" in item for item in criteria))
+        self.assertTrue(any("top 50" in item for item in criteria))
+        self.assertTrue(any("51-100" in item for item in criteria))
+        self.assertTrue(any("not be availing another scholarship" in item for item in criteria))
+        self.assertTrue(any("phd degree holders" in item for item in criteria))
+        self.assertTrue(any("not required" in item and "ielts" in item for item in criteria))
+        self.assertTrue(any("j-1" in item for item in criteria))
+
+        eligibility_url = base + "Eligibility-Criteria.aspx"
+        faq_url = base + "FAQ.aspx"
+        how_to_url = base + "How-to-Apply.aspx"
+        self.assertEqual(
+            page.criteria_sources[("age_limit", "Maximum age",
+                next(item[2] for item in page.criteria if item[0] == "age_limit" and "40 years" in item[2]))],
+            eligibility_url,
+        )
+        self.assertEqual(
+            page.evidence_sources[("funding_summary", page.fields["funding_summary"])],
+            faq_url,
+        )
+        self.assertEqual(
+            page.evidence_sources[("application_url", "https://scholarship.hec.gov.pk/")],
+            how_to_url,
+        )
+
+    def test_hec_aggregation_requires_overview_and_eligibility_pages(self) -> None:
+        self.assertIsNone(_parse_hec_knowledge_corridor({
+            "overview": ("<html><body><p>Programme</p></body></html>", "https://example.org/")
+        }))
+
 
 if __name__ == "__main__":
     unittest.main()
