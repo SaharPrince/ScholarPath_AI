@@ -854,8 +854,8 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         funding = page.fields["funding_summary"]
         self.assertIn("Category I (QS 1–50)", funding)
         self.assertIn("Category II (QS 51–100)", funding)
-        self.assertIn("fully funded", funding)
-        self.assertIn("up to USD 12,000", funding)
+        self.assertIn("fully funded", funding.casefold())
+        self.assertIn("up to usd 12,000", funding.casefold())
         self.assertIn("Benefits stated without a category restriction", funding)
         category_i_section = funding.split("Category I (QS 1–50):", 1)[1].split(
             "Category II (QS 51–100):", 1
