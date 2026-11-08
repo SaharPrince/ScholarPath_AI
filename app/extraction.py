@@ -76,6 +76,7 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(four-year)(bachelor)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(after)(selection)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(Institutional)(TOEFL)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(applicants?)(must)\b", r"\1 \2", text)
     text = re.sub(r"(?i)(U\.S\.)(?=[A-Za-z])", r"\1 ", text)
     return text
 
