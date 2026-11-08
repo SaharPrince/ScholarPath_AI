@@ -129,7 +129,7 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         r"only|cannot|not eligible|ineligible|shall|must not|eligible|"
         r"citizens?|nationals?|residing|resident|currently enrolled|"
         r"hold|possess|completed|degree|years of education|years of experience|"
-        r"between\s+\d|currently working|active experience|proficient|"
+        r"between\s+\d|should be between\s+\d|currently working|active experience|proficient|"
         r"government school teachers?|early career|fluency|fluent)\b",
         text,
     ):
