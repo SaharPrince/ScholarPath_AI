@@ -635,28 +635,35 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
           <h1>Community College Administrator Program</h1>
           <h2>Technical Eligibility Requirements</h2>
           <ul>
-            <li>Be a Pakistani citizen (dual citizens are eligible</li>
+            <li>Is a citizen, national, or permanent resident qualified to hold a valid passport issued by the government of Pakistan;</li>
+            <li>Be a Pakistani citizen (dual citizens are eligible EXCEPT for dual U.S. - Pakistan citizens or those having a spouse, parent, fiance or child over 18 years of age who is a U.S. citizen or permanent resident)</li>
             <li>All program activities will be in English.</li>
             <li>No translation services will be provided on the program.</li>
           </ul>
           <p>Individuals in the following circumstances are not eligible:</p>
-          <ul><li>Dual U.S.-Pakistan citizens.</li></ul>
+          <ul>
+            <li>U.S. citizens and permanent residents of the United States;</li>
+            <li>Individuals who are married to a U.S. citizen;</li>
+          </ul>
           <p>The programme provides funding for travel and living costs.</p>
         </main></body></html>
         """
         page = parse_scholarship_page(
-            html, "https://example.org/scholarships/ccap"
+            html, "https://usefp.org/scholarships/ccap.cfm"
         )
         self.assertIsNotNone(page)
         assert page is not None
         criteria = [x[2].casefold() for x in page.criteria]
         self.assertTrue(any("dual citizenship is generally permitted" in x for x in criteria))
-        self.assertTrue(any("dual u.s.-pakistan citizens" in x for x in criteria))
+        self.assertTrue(any("dual u.s." in x and "spouse" in x for x in criteria))
+        self.assertTrue(any("citizen, national, or permanent resident" in x for x in criteria))
         self.assertEqual(
             sum("be a pakistani citizen" in x for x in criteria),
             0,
-            "The standalone citizenship duplicate should not be created from the truncated dual-citizenship sentence.",
+            "The duplicate Pakistani-citizenship sentence should be consolidated.",
         )
+        self.assertFalse(any("married to a u.s. citizen" in x for x in criteria))
+        self.assertTrue(any("u.s. citizens and permanent residents" in x for x in criteria))
         self.assertFalse(any("all program activities" in x for x in criteria))
         self.assertFalse(any("no translation services" in x for x in criteria))
 
