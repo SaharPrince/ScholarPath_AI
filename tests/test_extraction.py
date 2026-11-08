@@ -518,6 +518,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         html = """
         <html><body><main>
           <h1>Example Fulbright Scholar Programme</h1>
+          <h2>Eligibility</h2>
           <p>Scholars and professionals from all disciplines are welcome to apply,
              with the exception of clinical medicine.</p>
           <p>Applicants must hold a Ph.D. or terminal degree.</p>
