@@ -828,8 +828,8 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
                 <html><body><div class="ms-rtestate-field">
                   <p>IELTS and TOEFL are not required by this project.</p>
                   <p>Only a J-1 visa is acceptable.</p>
-                  <p>Category I tuition is fully funded.</p>
-                  <p>Category II annual tuition is up to USD 12,000.</p>
+                  <p>Tuition Cost Fully Funded</p>
+                  <p>Annual Tuition Cost Up to USD 12,000/-</p>
                   <p>Annual stipend: USD 19,200.</p>
                   <p>Annual health insurance: USD 2,000 or actual, whichever is lower.</p>
                   <p>Return airfare: PKR 250,000.</p>
