@@ -12,13 +12,17 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         cleaned = _clean(
             "permanentresident eligiblefields onbehalf of residents of Pakistan "
             "14–15 years ofeducation four-yearbachelor Afterselection "
-            "InstitutionalTOEFL Applicantsmust apply"
+            "InstitutionalTOEFL Applicantsmust apply "
+            "one of thelisted eligiblefields subject tothe rule "
+            "at least 5 yearsofexperience in the UnitedStates OR(2) route"
         )
         self.assertEqual(
             cleaned,
             "permanent resident eligible fields on behalf of residents of Pakistan "
             "14–15 years of education four-year bachelor After selection "
-            "Institutional TOEFL Applicants must apply",
+            "Institutional TOEFL Applicants must apply "
+            "one of the listed eligible fields subject to the rule "
+            "at least 5 years of experience in the United States OR (2) route",
         )
 
     def test_extracts_visible_facts_and_keeps_evidence(self) -> None:
