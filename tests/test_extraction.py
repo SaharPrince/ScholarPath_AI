@@ -917,6 +917,36 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             how_to_url,
         )
 
+    def test_nationality_plural_and_duplicate_criteria_are_normalized(self) -> None:
+        base = "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
+        pages = {
+            "overview": ("""
+                <html><body><div class="ms-rtestate-field">
+                  <h1>US-Pakistan Knowledge Corridor PhD Scholarship</h1>
+                  <p>The US-Pakistan Knowledge Corridor provides PhD scholarships.</p>
+                </div></body></html>
+            """, base + "default.aspx"),
+            "eligibility": ("""
+                <html><body><div class="ms-rtestate-field">
+                  <p>Applicants must be Pakistani/AJK nationals.</p>
+                  <p>Valid GRE – General Score (Minimum 300 in total) OR HAT Score (Minimum 60% Score)</p>
+                  <p>b. Valid GRE – General Score (Minimum 300 in total) OR HAT Score (Minimum 60% Score). ​</p>
+                  <p>Category I – Scholarship (Top 50 QS World Ranked US Universities):</p>
+                  <p>Secured admission in top 50 QS World Ranked US University.</p>
+                </div></body></html>
+            """, base + "Eligibility-Criteria.aspx"),
+        }
+        page = _parse_hec_knowledge_corridor(pages)
+        self.assertIsNotNone(page)
+        assert page is not None
+        nationality = [item for item in page.criteria if item[0] == "nationality"]
+        gre_hat = [item for item in page.criteria if item[1] == "GRE or HAT score"]
+        category_i = [item for item in page.criteria if item[0] == "category_i_eligibility"]
+        self.assertEqual(len(nationality), 1)
+        self.assertEqual(len(gre_hat), 1)
+        self.assertEqual(len(category_i), 1)
+        self.assertIn("Secured admission", category_i[0][2])
+
     def test_hec_aggregation_requires_overview_and_eligibility_pages(self) -> None:
         self.assertIsNone(_parse_hec_knowledge_corridor({
             "overview": ("<html><body><p>Programme</p></body></html>", "https://example.org/")
