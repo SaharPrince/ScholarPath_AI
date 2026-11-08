@@ -282,6 +282,20 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertEqual(len(criteria), 1)
         self.assertEqual(criteria[0][0], "institution_eligibility")
 
+    def test_rejects_malformed_host_eligibility_sentence_but_keeps_clean_host_rule(self) -> None:
+        description = (
+            "Non-U.S. post-secondary academic institutions are eligible to host a U.S. "
+            "scholar or profession although the Fulbright Specialists Program."
+        )
+        self.assertEqual(_extract_description_criteria(description), [])
+
+        clean_description = (
+            "Non-U.S. post-secondary academic institutions are eligible to host a U.S. scholar."
+        )
+        criteria = _extract_description_criteria(clean_description)
+        self.assertEqual(len(criteria), 1)
+        self.assertEqual(criteria[0][0], "institution_eligibility")
+
     def test_recognizes_shortlisted_only_restriction(self) -> None:
         self.assertEqual(
             _classify_application_status(
