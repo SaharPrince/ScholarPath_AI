@@ -38,12 +38,29 @@ def _normalized_host(url: str) -> str | None:
     return parsed.hostname.lower().rstrip(".")
 
 
+def _link_label(anchor) -> str:
+    """Read visible and accessible labels, including image-only links."""
+    labels = [
+        anchor.get_text(" ", strip=True),
+        anchor.get("aria-label", ""),
+        anchor.get("title", ""),
+    ]
+    for image in anchor.find_all("img"):
+        labels.extend((image.get("alt", ""), image.get("title", "")))
+
+    for label in labels:
+        cleaned = " ".join(str(label).split())
+        if cleaned:
+            return cleaned
+    return ""
+
+
 def _candidate_links(html: str, page_url: str, allowed_host: str) -> list[tuple[str, str]]:
     soup = BeautifulSoup(html, "html.parser")
     found: dict[str, str] = {}
     for anchor in soup.find_all("a", href=True, limit=MAX_LINKS_PER_SOURCE):
         href = str(anchor.get("href", "")).strip()
-        title = " ".join(anchor.get_text(" ", strip=True).split())
+        title = _link_label(anchor)
         if not href or href.startswith(("#", "mailto:", "tel:", "javascript:")):
             continue
         absolute_url = urljoin(page_url, href)
@@ -57,7 +74,8 @@ def _candidate_links(html: str, page_url: str, allowed_host: str) -> list[tuple[
         clean_url = parsed._replace(query="", fragment="").geturl()
         if clean_url == page_url:
             continue
-        found.setdefault(clean_url, title or parsed.path.rsplit("/", 1)[-1] or "Scholarship information")
+        fallback = parsed.path.rsplit("/", 1)[-1] or "Scholarship information"
+        found.setdefault(clean_url, title or fallback)
     return list(found.items())
 
 
@@ -111,7 +129,7 @@ async def _fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult
 
 
 async def discover_from_active_sources() -> list[SourceResult]:
-    """Index scholarship-related links on configured official source homepages.
+    """Index scholarship-related links on configured official source pages.
 
     This produces review candidates only. It does not create scholarship records
     or verify authenticity, eligibility, deadlines, or whether applications are open.
