@@ -923,5 +923,79 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         }))
 
 
+
+class HecCommonwealthAnnouncementTests(unittest.TestCase):
+    def test_extracts_commonwealth_2027_28_requirements_deadline_and_both_portals(self) -> None:
+        from app.extraction import _parse_hec_commonwealth_announcement
+
+        url = "https://www.hec.gov.pk/english/HECAnnouncements/Pages/CW-Scholarship.aspx"
+        html = """
+        <html><body><div class="ms-rtestate-field">
+          <h1>Commonwealth Scholarship Programme (Master's &amp; PhD) for Academic Year 2027-28</h1>
+          <p>The Higher Education Commission (HEC) Pakistan, as the national nominating agency
+          for Pakistan, invites applications from eligible Pakistani/AJ&amp;K nationals.
+          The scholarships are offered by the Commonwealth Scholarship Commission (CSC).</p>
+          <p>The scholarships are for full-time taught Master's and PhD study at a UK university.</p>
+          <h2>Key Dates</h2>
+          <ul>
+            <li>Closing date for CSC applications: Tuesday, 20 October 2026 at 16:00 BST</li>
+            <li>HEC application deadline: 20 October 2026 at 4:00 PM (PST)</li>
+          </ul>
+          <h2>HEC Eligibility Criteria</h2>
+          <ul>
+            <li>Be a Pakistani/AJ&amp;K national and permanent resident of Pakistan/AJ&amp;K. Dual nationals are not eligible.</li>
+            <li>There is no upper age limit for this scholarship.</li>
+            <li>For Master scholarship, an applicant must hold a first division in 16 years Bachelors degree in the relevant field of study.</li>
+            <li>For PhD scholarship, an applicant must hold a first division in 17/18 years Masters/MS/MPhil degree in the relevant field of study.</li>
+            <li>Not have a Second/Third Division in the terminal (latest) degree.</li>
+            <li>Result-awaiting candidates may apply, provided they obtain and submit their final degree and transcript before commencement.</li>
+            <li>All applicants are required to provide HAT test score. Applicant must have obtained a minimum score of 60 out of 100 in HAT test.</li>
+            <li>Only HAT categories (HAT-I, II, III and IV) are acceptable for the scholarship nomination.</li>
+            <li>Merit shall be determined strictly on the basis of HAT score.</li>
+            <li>In case two or more applicants have the same test score, merit will be determined based on the percentage obtained in the applicant's last completed degree program.</li>
+          </ul>
+          <p>HEC will undertake the nomination process in Pakistan, while the final selection will be made by the Commonwealth Scholarship Commission.</p>
+          <p>Applicants are required to submit online applications at the Commonwealth and HEC portals.</p>
+          <a href="https://cscuk.fcdo.gov.uk/scholarships/commonwealth-masters-scholarships/">Master's application</a>
+          <a href="https://cscuk.fcdo.gov.uk/scholarships/commonwealth-phd-scholarships-for-least-developed-countries-and-vulnerable-states/">PhD application</a>
+          <a href="https://scholarship.hec.gov.pk/">HEC application portal</a>
+        </div></body></html>
+        """
+        page = _parse_hec_commonwealth_announcement(html, url)
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertEqual(page.provider_name, "Commonwealth Scholarship Commission (CSC)")
+        self.assertEqual(page.fields["study_destination"], "United Kingdom")
+        self.assertEqual(page.fields["study_level"], "Master's and PhD")
+        self.assertEqual(page.fields["deadline_text"], "Closing date for CSC applications: Tuesday, 20 October 2026 at 16:00 BST")
+        self.assertEqual(page.fields["application_status"], "closed")
+        self.assertEqual(page.application_status, "closed")
+        self.assertEqual(page.fields["application_url"], "https://scholarship.hec.gov.pk/")
+        criteria = [text.casefold() for _kind, _label, text in page.criteria]
+        self.assertTrue(any("pakistani/aj&k" in text and "dual nationals" in text for text in criteria))
+        self.assertTrue(any("no upper age limit" in text for text in criteria))
+        self.assertTrue(any("16 years" in text and "first division" in text for text in criteria))
+        self.assertTrue(any("17/18 years" in text and "first division" in text for text in criteria))
+        self.assertTrue(any("second/third division" in text for text in criteria))
+        self.assertTrue(any("result-awaiting" in text for text in criteria))
+        self.assertTrue(any("60 out of 100" in text for text in criteria))
+        self.assertTrue(any("hat-i" in text for text in criteria))
+        self.assertTrue(any("nomination process" in text for text in criteria))
+        portal_evidence = [value for name, value in page.evidence if name == "application_portal"]
+        self.assertEqual(len(portal_evidence), 3)
+        self.assertTrue(any("commonwealth-masters-scholarships" in value for value in portal_evidence))
+        self.assertTrue(any("commonwealth-phd-scholarships" in value for value in portal_evidence))
+        self.assertTrue(any("scholarship.hec.gov.pk" in value for value in portal_evidence))
+        self.assertTrue(all(source == url for source in page.evidence_sources.values()))
+        self.assertTrue(all(source == url for source in page.criteria_sources.values()))
+
+    def test_rejects_unrelated_or_wrong_cycle_hec_page(self) -> None:
+        from app.extraction import _parse_hec_commonwealth_announcement
+
+        self.assertIsNone(_parse_hec_commonwealth_announcement(
+            "<html><body><p>General HEC scholarship information.</p></body></html>"
+        ))
+
+
 if __name__ == "__main__":
     unittest.main()
