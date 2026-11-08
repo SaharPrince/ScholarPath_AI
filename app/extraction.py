@@ -1010,10 +1010,14 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             return
         # Collapse source-copy duplicates that differ only in punctuation,
         # spacing, or invisible formatting characters.
-        normalized = re.sub(r"[^a-z0-9]+", "", value.casefold())
+        def normalize_criterion(text: str) -> str:
+            text = re.sub(r"(?i)^\s*(?:[a-z]\s*[\.\)]\s*|[\u2022•\-–]\s*)", "", text)
+            return re.sub(r"[^a-z0-9]+", "", text.casefold())
+
+        normalized = normalize_criterion(value)
         if any(
             old_kind == kind and old_label == label
-            and re.sub(r"[^a-z0-9]+", "", old_value.casefold()) == normalized
+            and normalize_criterion(old_value) == normalized
             for old_kind, old_label, old_value in criteria
         ):
             return
@@ -1207,7 +1211,7 @@ def _parse_hec_commonwealth_announcement(
     root = _hec_content_root(html)
     items = _hec_visible_items(root)
     body_text = _clean(root.get_text(" ", strip=True))
-    if not items or not re.search(r"(?i)commonwealth.*2027\s*/?\s*28|2027\s*/?\s*28.*commonwealth", body_text):
+    if not items or not re.search(r"(?i)commonwealth.*2027\s*[-/]\s*28|2027\s*[-/]\s*28.*commonwealth", body_text):
         return None
 
     title = "Commonwealth Scholarship Programme (Master’s & PhD) for Academic Year 2027-28"
