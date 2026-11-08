@@ -827,7 +827,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 if not (
                     item[0] == "ineligibility"
                     and re.search(
-                        r"(?i)^individuals who are married to a u\.s\. citizen\.?$",
+                        r"(?i)^individuals who are married to a u\.s\. citizen\b",
                         _clean(item[2]),
                     )
                 )
