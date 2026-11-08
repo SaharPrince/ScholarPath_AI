@@ -155,7 +155,7 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         return False
     if criterion_type in {
         "ineligibility", "required_documents", "post_selection_requirement",
-        "age_limit",
+        "age_limit", "category_i_eligibility", "category_ii_eligibility",
     }:
         # An extracted age-limit criterion is an explicit eligibility boundary,
         # even when the source phrases it as "40 years in case of..." rather
@@ -1033,26 +1033,33 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
         elif re.search(r"(?i)(second division|second division|division)", value):
             add_criterion("academic_requirements", "Academic record", value, "eligibility")
         elif re.search(r"(?i)\b(age|years?|regular government|all other applicants)\b", value) and re.search(r"\b(40|35)\b", value):
-            age_label = (
-                "Maximum age – specified public-sector applicants"
-                if re.search(r"(?i)\b40\b", value)
-                else "Maximum age – all other applicants"
-            )
-            add_criterion("age_limit", age_label, value, "eligibility")
+            # Some HEC page layouts put both age bands in one paragraph.
+            # Emit one clearly labelled criterion per threshold so neither
+            # applicant group disappears during extraction.
+            age_bands = set(re.findall(r"\b(40|35)\s*(?:years?|yrs?)\b", value, re.I))
+            if not age_bands:
+                age_bands = set(re.findall(r"\b(40|35)\b", value))
+            for age in sorted(age_bands, key=int, reverse=True):
+                age_label = (
+                    "Maximum age – specified public-sector applicants"
+                    if age == "40"
+                    else "Maximum age – all other applicants"
+                )
+                add_criterion("age_limit", age_label, value, "eligibility")
         elif re.search(r"(?i)(another scholarship|any other scholarship|availing.*scholarship)", value):
             add_criterion("ineligibility", "Other scholarship", value, "eligibility")
         elif re.search(r"(?i)(ph\.?d holders?|already.*ph\.?d|doctoral degree holders?)", value):
             add_criterion("ineligibility", "Existing PhD holders", value, "eligibility")
         elif re.search(r"(?i)(category\s*i\b|top\s*50|qs.*50)", value):
             add_criterion(
-                "eligibility", "Category I – admission to a QS top-50 US university",
+                "category_i_eligibility", "Category I – admission to a QS top-50 US university",
                 value, "eligibility",
             )
         elif re.search(r"(?i)(category\s*ii\b|51\s*[-–]\s*100|qs.*100)", value):
             # Eligibility page is authoritative for the 51–100 range. Do not
             # replace it with the malformed phrase in the FAQ page.
             add_criterion(
-                "eligibility", "Category II – admission to a QS 51–100 US university",
+                "category_ii_eligibility", "Category II – admission to a QS 51–100 US university",
                 value, "eligibility",
             )
         elif re.search(r"(?i)(gre|hat).*(300|60\s*%)|(300|60\s*%).*(gre|hat)", value):
