@@ -2,7 +2,7 @@ import unittest
 
 from app.extraction import (
     _classify_application_status, _classify_applicant_category,
-    _parse_deadline_date, _find_application_url, parse_scholarship_page,
+    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, parse_scholarship_page,
 )
 
 
@@ -235,6 +235,13 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "eligibility", "academic_requirements", "age_limit",
             "required_documents", "language_requirements", "study_level",
         }.issubset(criterion_types))
+
+    def test_mandatory_criteria_classification_is_conservative(self) -> None:
+        self.assertTrue(_is_mandatory_criterion("eligibility", "Applicants must hold a bachelor's degree."))
+        self.assertTrue(_is_mandatory_criterion("ineligibility", "Applicants with dual nationality are not eligible."))
+        self.assertTrue(_is_mandatory_criterion("required_documents", "Academic transcripts and reference letters."))
+        self.assertFalse(_is_mandatory_criterion("eligibility", "Applicants with science backgrounds are particularly encouraged."))
+        self.assertFalse(_is_mandatory_criterion("eligibility", "Relevant experience is preferred."))
 
     def test_deadline_only_page_is_not_promoted(self) -> None:
         html = """<html><body><main>
