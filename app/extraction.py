@@ -1087,7 +1087,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 continue
             if re.search(r"(?i)category\s*i\b", value):
                 category_i_funding.append(value)
-            if re.search(r"(?i)category\s*i\b", value):
+            elif re.search(r"(?i)category\s*ii\b", value):
                 category_ii_funding.append(value)
             else:
                 shared_funding.append(value)
@@ -1095,11 +1095,11 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     funding_sections = []
     if category_i_funding:
         funding_sections.append(
-            "Category I (QS 1–50):\\n" + "\n".join(dict.fromkeys(category_i_funding))
+            "Category I (QS 1–50):\n" + "\n".join(dict.fromkeys(category_i_funding))
         )
     if category_ii_funding:
         funding_sections.append(
-            "Category II (QS 51–100):\\n" + "\n".join(dict.fromkeys(category_ii_funding))
+            "Category II (QS 51–100):\n" + "\n".join(dict.fromkeys(category_ii_funding))
         )
     if shared_funding:
         funding_sections.append(
