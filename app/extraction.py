@@ -331,7 +331,7 @@ def _extract_description_criteria(description: str) -> list[tuple[str, str, str]
         # Fulbright Specialists Program." Do not turn that corrupted wording
         # into a formal host-institution eligibility criterion. Keep the raw
         # paragraph in description evidence for human review.
-        if re.search(r"\\bprofession(?:al)?\\s+although\\s+the\\b", sentence, re.I):
+        if re.search(r"\bprofession(?:al)?\s+although\s+the\b", sentence, re.I):
             continue
         lowered = sentence.casefold()
         if host_actor.search(sentence) and re.search(r"(?i)\b(eligible to host|may include|are eligible|eligible institutions)\b", sentence):
