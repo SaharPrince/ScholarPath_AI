@@ -72,6 +72,10 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(permanent)(resident(?:s)?)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(eligible)(fields?)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(on)(behalf)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(of)(education)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(four-year)(bachelor)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(after)(selection)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(Institutional)(TOEFL)\b", r"\1 \2", text)
     text = re.sub(r"(?i)(U\.S\.)(?=[A-Za-z])", r"\1 ", text)
     return text
 
@@ -874,6 +878,14 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             criteria.insert(first_index, (
                 "eligibility", "Alternative professional eligibility routes", combined_route
             ))
+
+    # Normalize every final criterion after all special-case assembly so custom
+    # CCAP/CCIP rules receive the same evidence-backed spacing repairs.
+    criteria = [
+        (kind, label, _clean(requirement))
+        for kind, label, requirement in criteria
+        if _clean(requirement)
+    ]
 
     deadline_date = _parse_deadline_date(fields.get("deadline_text"))
     application_status = _classify_application_status(
