@@ -1258,7 +1258,7 @@ def _parse_hec_commonwealth_announcement(
     # announcement URL as its provenance.
     for item in items:
         low = item.casefold()
-        if re.search(r"pakistani\s*/?\s*ajk|pakistani.*ajk", low) and re.search(r"national|permanent resident|dual national", low):
+        if re.search(r"pakistani\s*/?\s*aj\s*&?\s*k|pakistani.*aj\s*&?\s*k", low) and re.search(r"national|permanent resident|dual national", low):
             add_criterion("nationality", "Nationality and residency", item)
         elif re.search(r"no upper age limit", low):
             add_criterion("age_limit", "Age limit", item)
