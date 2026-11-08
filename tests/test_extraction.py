@@ -863,10 +863,10 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         category_ii_section = funding.split("Category II (QS 51–100):", 1)[1].split(
             "Benefits stated without a category restriction:", 1
         )[0]
-        self.assertIn("fully funded", category_i_section)
-        self.assertNotIn("up to USD 12,000", category_i_section)
-        self.assertIn("up to USD 12,000", category_ii_section)
-        self.assertNotIn("fully funded", category_ii_section)
+        self.assertIn("fully funded", category_i_section.casefold())
+        self.assertNotIn("up to usd 12,000", category_i_section.casefold())
+        self.assertIn("up to usd 12,000", category_ii_section.casefold())
+        self.assertNotIn("fully funded", category_ii_section.casefold())
         self.assertIn("USD 19,200", page.fields["funding_summary"])
         self.assertIn("PKR 250,000", page.fields["funding_summary"])
 
