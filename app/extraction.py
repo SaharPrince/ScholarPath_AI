@@ -66,6 +66,25 @@ def _clean(value: str) -> str:
     return " ".join(value.split()).strip()
 
 
+
+def _save_evidence(connection, scholarship_id: int, evidence: list[tuple[str, str]], evidence_url: str) -> None:
+    """Append source evidence without deleting history or duplicating identical facts."""
+    for field_name, evidence_text in evidence:
+        connection.execute(
+            """INSERT INTO scholarship_evidence
+               (scholarship_id, field_name, evidence_text, evidence_url)
+               SELECT ?, ?, ?, ?
+               WHERE NOT EXISTS (
+                   SELECT 1 FROM scholarship_evidence
+                   WHERE scholarship_id = ?
+                     AND field_name = ?
+                     AND evidence_text = ?
+                     AND evidence_url = ?
+               )""",
+            (scholarship_id, field_name, evidence_text, evidence_url,
+             scholarship_id, field_name, evidence_text, evidence_url),
+        )
+
 def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Mark mandatory only when the source wording or section label makes it explicit."""
     if criterion_type in {"ineligibility", "required_documents"}:
@@ -640,15 +659,13 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                          candidate["candidate_url"], parsed.application_status, parsed.applicant_category),
                     ).fetchone()
                     scholarship_id = cursor["id"]
-                    connection.execute("DELETE FROM scholarship_evidence WHERE scholarship_id = ?", (scholarship_id,))
+                    # Evidence is append-only: preserve earlier source snapshots.
+                    # Exact repeats are skipped by _save_evidence.
+                    _save_evidence(
+                        connection, scholarship_id, parsed.evidence,
+                        candidate["candidate_url"],
+                    )
                     connection.execute("DELETE FROM eligibility_criteria WHERE scholarship_id = ?", (scholarship_id,))
-                    for field_name, snippet in parsed.evidence:
-                        connection.execute(
-                            """INSERT INTO scholarship_evidence
-                               (scholarship_id, field_name, evidence_text, evidence_url)
-                               VALUES (?, ?, ?, ?)""",
-                            (scholarship_id, field_name, snippet, candidate["candidate_url"]),
-                        )
                     for criterion_type, label, requirement in parsed.criteria:
                         connection.execute(
                             """INSERT INTO eligibility_criteria
