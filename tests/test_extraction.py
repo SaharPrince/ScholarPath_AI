@@ -843,10 +843,12 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
                 next(item[2] for item in page.criteria if item[0] == "age_limit" and "40 years" in item[2]))],
             eligibility_url,
         )
-        self.assertEqual(
-            page.evidence_sources[("funding_summary", page.fields["funding_summary"])],
-            faq_url,
-        )
+        funding_evidence_urls = {
+            source_url
+            for (field_name, _evidence_text), source_url in page.evidence_sources.items()
+            if field_name == "funding_summary"
+        }
+        self.assertEqual(funding_evidence_urls, {faq_url})
         self.assertEqual(
             page.evidence_sources[("application_url", "https://scholarship.hec.gov.pk/")],
             how_to_url,
