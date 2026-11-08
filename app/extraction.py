@@ -115,7 +115,9 @@ def _split_criteria_statements(value: str) -> list[str]:
 
 def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Infer mandatory status conservatively, preserving explicit preferences."""
-    if criterion_type in {"ineligibility", "required_documents"}:
+    if criterion_type == "target_audience":
+        return False
+    if criterion_type in {"ineligibility", "required_documents", "post_selection_requirement"}:
         return True
     text = requirement_text.casefold()
     # In this source context, "should be between X and Y" states an age limit.
@@ -449,15 +451,20 @@ def _extract_ccip_criteria(content_root: BeautifulSoup) -> list[tuple[str, str, 
 
     # FAQ answers explicitly clarify the degree and experience rules.
     faq_rules = (
-        ("eligibility", "The programme is intended for young professionals with a two-year bachelor's degree and less than three years of work experience."),
+        ("target_audience", "The programme is intended for young professionals with a two-year bachelor's degree and less than three years of work experience."),
         ("eligibility", "Applicants with a three-year bachelor's degree may apply if they are currently working in one of the specified eligible fields."),
         ("ineligibility", "Applicants who hold a four-year bachelor's degree are ineligible."),
         ("ineligibility", "Applicants who hold a master's degree are ineligible."),
         ("ineligibility", "Applicants currently enrolled in a master's programme are ineligible."),
-        ("eligibility", "After selection, applicants must obtain at least 400 on the Institutional TOEFL (ITP) to qualify."),
+        ("post_selection_requirement", "After selection, applicants must obtain at least 400 on the Institutional TOEFL (ITP) to qualify."),
     )
-    criteria.extend((kind, "Eligibility" if kind == "eligibility" else "Ineligibility", text)
-                    for kind, text in faq_rules)
+    labels = {
+        "eligibility": "Eligibility",
+        "ineligibility": "Ineligibility",
+        "target_audience": "Target audience",
+        "post_selection_requirement": "Post-selection requirement",
+    }
+    criteria.extend((kind, labels[kind], text) for kind, text in faq_rules)
 
     # Keep these records only when the corresponding official FAQ content is
     # actually present on the fetched page; do not infer rules from the URL.
@@ -716,9 +723,12 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                     r"(?i)^be a pakistani citizen \(dual citizens are eligible$",
                     statement,
                 ):
+                    # The page already states the Pakistani passport/citizenship
+                    # qualification separately. Preserve only the additional
+                    # dual-citizenship clarification to avoid a duplicate rule.
                     statement = (
-                        "Be a Pakistani citizen; dual citizenship is generally "
-                        "permitted, subject to the source's stated exclusions."
+                        "Dual citizenship is generally permitted, subject to "
+                        "the source's stated exclusions."
                     )
                 # These CCAP sentences explain programme delivery, not applicant
                 # eligibility. Language proficiency itself remains a criterion.
