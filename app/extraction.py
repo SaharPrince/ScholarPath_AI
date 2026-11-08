@@ -78,6 +78,13 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(Institutional)(TOEFL)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(applicants?)(must)\b", r"\1 \2", text)
     text = re.sub(r"(?i)(U\.S\.)(?=[A-Za-z])", r"\1 ", text)
+    # Additional joins observed in official USEFP CCIP/CCAP page copy.
+    text = re.sub(r"(?i)\b(the)(listed)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(to)(the)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(of)(experience)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(United)(States)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(OR)(?=\(\d+\))", r"\1 ", text)
+
     return text
 
 
