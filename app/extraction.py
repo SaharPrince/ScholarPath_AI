@@ -1032,7 +1032,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             add_criterion("academic_requirements", "Minimum education", value, "eligibility")
         elif re.search(r"(?i)(second division|second division|division)", value):
             add_criterion("academic_requirements", "Academic record", value, "eligibility")
-                if re.search(r"(?i)\b40\b", value)
+        elif re.search(r"(?i)\b(age|years?|regular government|all other applicants)\b", value) and re.search(r"\b(40|35)\b", value):
             age_label = (
                 "Maximum age – specified public-sector applicants"
                 if re.search(r"(?i)\b40\b", value)
