@@ -426,5 +426,52 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         connection.close()
 
 
+    def test_technical_eligibility_requirements_heading_is_extracted(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Community College Initiative Program</h1>
+          <h2>Technical Eligibility Requirements</h2>
+          <ul>
+            <li>Applicants must be Pakistani citizens residing in Pakistan.</li>
+            <li>Applicants must have English language proficiency.</li>
+          </ul>
+          <p>The programme was created to promote mutual understanding.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarships/ccip")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("Pakistani citizens", page.fields["eligibility"])
+        self.assertEqual(len([x for x in page.criteria if x[0] == "eligibility"]), 2)
+
+    def test_ineligibility_section_excludes_programme_history_and_selection_copy(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Fellowship Programme</h1>
+          <h2>Ineligibility</h2>
+          <ul>
+            <li>Persons with dual U.S./Pakistan nationality.</li>
+            <li>Employees of the sponsoring organization are also ineligible.</li>
+            <li>The programme honours the memory of its founder.</li>
+            <li>Fellows are selected through a competitive process.</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarships/fellowship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        exclusions = [x[2] for x in page.criteria if x[0] == "ineligibility"]
+        self.assertEqual(len(exclusions), 2)
+        self.assertTrue(any("dual U.S./Pakistan nationality" in x for x in exclusions))
+        self.assertTrue(any("Employees of the sponsoring organization" in x for x in exclusions))
+        self.assertFalse(any("honours the memory" in x for x in exclusions))
+        self.assertFalse(any("selected through a competitive process" in x for x in exclusions))
+
+    def test_mandatory_classifier_recognizes_plain_eligibility_requirements(self) -> None:
+        self.assertTrue(_is_mandatory_criterion("eligibility", "Currently working as a journalist."))
+        self.assertTrue(_is_mandatory_criterion("eligibility", "Three to ten years of active experience in journalism."))
+        self.assertTrue(_is_mandatory_criterion("eligibility", "Proficient in written and spoken English."))
+        self.assertFalse(_is_mandatory_criterion("eligibility", "Prior teaching experience is preferred."))
+
 if __name__ == "__main__":
     unittest.main()
