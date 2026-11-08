@@ -85,18 +85,50 @@ def _save_evidence(connection, scholarship_id: int, evidence: list[tuple[str, st
              scholarship_id, field_name, evidence_text, evidence_url),
         )
 
+def _split_criteria_statements(value: str) -> list[str]:
+    """Split list items and sentences without breaking common academic abbreviations."""
+    protected = value
+    abbreviations = {
+        "U.S.": "US_ABBREVIATION",
+        "Ph.D.": "PHD_ABBREVIATION",
+        "M.Phil.": "MPHIL_ABBREVIATION",
+        "B.A.": "BA_ABBREVIATION",
+        "M.A.": "MA_ABBREVIATION",
+        "e.g.": "EG_ABBREVIATION",
+        "i.e.": "IE_ABBREVIATION",
+    }
+    for original, token in abbreviations.items():
+        protected = re.sub(re.escape(original), token, protected, flags=re.I)
+    # Protect single-letter initials in names, e.g. "Hubert H. Humphrey".
+    protected = re.sub(r"\b([A-Z])\.(?=\s+[A-Z])", r"\1INITIAL", protected)
+    parts = re.split(r"\s*(?:\n+|(?<=[.!?])\s+(?=[A-Z“]))\s*", protected)
+    restored = []
+    for part in parts:
+        for original, token in abbreviations.items():
+            part = re.sub(token, original, part, flags=re.I)
+        part = re.sub(r"\b([A-Z])INITIAL", r"\1.", part)
+        cleaned = _clean(part)
+        if cleaned and cleaned not in restored:
+            restored.append(cleaned)
+    return restored
+
+
 def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
-    """Mark mandatory only when the source wording or section label makes it explicit."""
+    """Infer mandatory status conservatively, preserving explicit preferences."""
     if criterion_type in {"ineligibility", "required_documents"}:
         return True
     text = requirement_text.casefold()
-    if re.search(r"\b(preferred|preferable|encouraged|recommended|desirable|an advantage|priority will be given)\b", text):
+    if re.search(r"\b(preferred|preferable|encouraged|recommended|desirable|an advantage|priority will be given|particularly welcome)\b", text):
         return False
-    return bool(re.search(
+    if re.search(
         r"\b(must|required|mandatory|minimum|at least|no more than|maximum|"
-        r"only|cannot|not eligible|ineligible|shall|must not)\b",
+        r"only|cannot|not eligible|ineligible|shall|must not|eligible|"
+        r"citizens?|nationals?|residing|resident|currently enrolled|"
+        r"hold|possess|completed|degree|years of education|years of experience)\b",
         text,
-    ))
+    ):
+        return True
+    return False
 
 def _parse_deadline_date(value: str | None) -> str | None:
     """Normalize an explicitly extracted English deadline date to ISO format."""
@@ -202,7 +234,7 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
             if value and value not in chunks:
                 chunks.append(value)
         if chunks:
-            return " ".join(chunks)[:4000]
+            return "\n".join(chunks)[:4000]
     return None
 
 
