@@ -829,6 +829,7 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
                   <p>IELTS and TOEFL are not required by this project.</p>
                   <p>Only a J-1 visa is acceptable.</p>
                   <p>Category I tuition is fully funded.</p>
+                  <p>Category II annual tuition is up to USD 12,000.</p>
                   <p>Annual stipend: USD 19,200.</p>
                   <p>Annual health insurance: USD 2,000 or actual, whichever is lower.</p>
                   <p>Return airfare: PKR 250,000.</p>
@@ -850,6 +851,11 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         self.assertEqual(page.title, "US-Pakistan Knowledge Corridor PhD Scholarship")
         self.assertEqual(page.application_status, "unknown")
         self.assertEqual(page.fields["application_url"], "https://scholarship.hec.gov.pk/")
+        self.assertIn("Category I (QS 1–50)", page.fields["funding_summary"])
+        self.assertIn("Category II (QS 51–100)", page.fields["funding_summary"])
+        self.assertIn("fully funded", page.fields["funding_summary"])
+        self.assertIn("up to USD 12,000", page.fields["funding_summary"])
+        self.assertIn("Benefits stated without a category restriction", page.fields["funding_summary"])
         self.assertIn("USD 19,200", page.fields["funding_summary"])
         self.assertIn("PKR 250,000", page.fields["funding_summary"])
 
@@ -870,8 +876,10 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         faq_url = base + "FAQ.aspx"
         how_to_url = base + "How-to-Apply.aspx"
         self.assertEqual(
-            page.criteria_sources[("age_limit", "Maximum age",
-                next(item[2] for item in page.criteria if item[0] == "age_limit" and "40 years" in item[2]))],
+            page.criteria_sources[(
+                "age_limit", "Maximum age – specified public-sector applicants",
+                next(item[2] for item in page.criteria if item[0] == "age_limit" and "40 years" in item[2])
+            )],
             eligibility_url,
         )
         funding_evidence_urls = {
