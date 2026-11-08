@@ -1207,14 +1207,27 @@ async def _fetch_page(client: httpx.AsyncClient, url: str) -> tuple[str | None, 
         return None, f"HTTP request failed: {type(exc).__name__}"
 
 
-async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
-    """Visit candidates; optionally reprocess old attempts and replace prior extracted rows."""
+async def extract_candidate_details(
+    reprocess: bool = False,
+    candidate_ids: list[int] | None = None,
+) -> list[dict]:
+    """Visit candidates, optionally restricting work to an explicit ID allow-list."""
+    if candidate_ids is not None:
+        candidate_ids = sorted({int(value) for value in candidate_ids})
+        if not candidate_ids:
+            return []
     with get_connection() as connection:
         if reprocess:
             # Preserve historical rows and evidence. Re-run candidates and update
             # matching records in place; rejected pages remain auditable.
             connection.execute("DELETE FROM extraction_attempts")
             connection.execute("UPDATE discovery_candidates SET status = 'candidate'")
+        candidate_filter = ""
+        candidate_params: tuple = ()
+        if candidate_ids is not None:
+            placeholders = ",".join("?" for _ in candidate_ids)
+            candidate_filter = f" AND c.id IN ({placeholders})"
+            candidate_params = tuple(candidate_ids)
         candidates = [dict(row) for row in connection.execute(
             """SELECT c.id, c.source_id, c.title AS candidate_title, c.candidate_url
                FROM discovery_candidates c
@@ -1222,8 +1235,8 @@ async def extract_candidate_details(reprocess: bool = False) -> list[dict]:
                  AND NOT EXISTS (
                      SELECT 1 FROM extraction_attempts a
                      WHERE a.candidate_id = c.id
-                 )
-               ORDER BY c.id"""
+                 )""" + candidate_filter + " ORDER BY c.id",
+            candidate_params,
         ).fetchall()]
 
     timeout = httpx.Timeout(15.0, connect=6.0)
