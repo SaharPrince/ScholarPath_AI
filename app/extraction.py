@@ -86,6 +86,11 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(United)(States)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(OR)(?=\(\d+\))", r"\1 ", text)
 
+    # Repair additional missing spaces and punctuation spacing found in CCIP/CCAP copy.
+    text = re.sub(r"(?i)\b(may)(apply)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(permanent)(residency)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(State)(employees)\b", r"\1 \2", text)
+    text = re.sub(r",(?=\S)", ", ", text)
     return text
 
 
