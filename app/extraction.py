@@ -1085,9 +1085,19 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 value,
             ):
                 continue
-            if re.search(r"(?i)category\s*i\b", value):
+            is_tuition = bool(re.search(r"(?i)tuition", value))
+            is_category_i = bool(re.search(r"(?i)category\s*i\b", value))
+            is_category_ii = bool(re.search(r"(?i)category\s*ii\b", value))
+            # The official FAQ may state the tuition amounts without repeating
+            # the category name in the same paragraph. Preserve its explicit
+            # distinction: fully funded tuition is Category I; tuition capped
+            # at USD 12,000 is Category II.
+            if is_category_i or (is_tuition and re.search(r"(?i)fully funded", value)):
                 category_i_funding.append(value)
-            elif re.search(r"(?i)category\s*ii\b", value):
+            elif is_category_ii or (
+                is_tuition
+                and re.search(r"(?i)up to\\s+USD\\s*12,?000", value)
+            ):
                 category_ii_funding.append(value)
             else:
                 shared_funding.append(value)
