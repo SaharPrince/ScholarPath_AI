@@ -153,7 +153,13 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Infer mandatory status conservatively, preserving explicit preferences."""
     if criterion_type == "target_audience":
         return False
-    if criterion_type in {"ineligibility", "required_documents", "post_selection_requirement"}:
+    if criterion_type in {
+        "ineligibility", "required_documents", "post_selection_requirement",
+        "age_limit",
+    }:
+        # An extracted age-limit criterion is an explicit eligibility boundary,
+        # even when the source phrases it as "40 years in case of..." rather
+        # than using words such as "maximum" or "must".
         return True
     text = requirement_text.casefold()
     # In this source context, "should be between X and Y" states an age limit.
@@ -331,7 +337,8 @@ def _find_provider_statement(content_root: BeautifulSoup) -> str | None:
     """Extract a provider only when the page explicitly names who operates the award."""
     pattern = re.compile(
         r"\b(?:managed|administered|offered|provided)\s+by\s+(.+?)"
-        r"(?:\s+(?:under|in accordance with|according to)\b|[.;]|$)",
+        r"(?:\s+(?:under|in accordance with|according to|"
+        r"in the UK|in the United Kingdom|and are intended|to support)\b|[.;]|$)",
         re.I,
     )
     for paragraph in content_root.find_all("p"):
@@ -1020,7 +1027,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             add_criterion("academic_requirements", "Minimum education", value, "eligibility")
         elif re.search(r"(?i)(second division|second division|division)", value):
             add_criterion("academic_requirements", "Academic record", value, "eligibility")
-        elif re.search(r"(?i)\b(age|years old|regular government|all other applicants)\b", value) and re.search(r"\b(40|35)\b", value):
+        elif re.search(r"(?i)\b(age|years?|regular government|all other applicants)\b", value) and re.search(r"\b(40|35)\b", value):
             add_criterion("age_limit", "Maximum age", value, "eligibility")
         elif re.search(r"(?i)(another scholarship|any other scholarship|availing.*scholarship)", value):
             add_criterion("ineligibility", "Other scholarship", value, "eligibility")
