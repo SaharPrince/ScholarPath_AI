@@ -983,19 +983,41 @@ def _hec_visible_items(root: BeautifulSoup) -> list[str]:
 
 
 def _hec_priority_subject_items(root: BeautifulSoup) -> list[str]:
-    """Prefer atomic official list items and remove repeated SharePoint text."""
+    """Prefer atomic official list items and preserve explicit HTML line breaks."""
     list_items = [
         _clean(node.get_text(" ", strip=True))
         for node in root.find_all("li")
         if not node.find_parent("li")
     ]
-    # HEC's priority page repeats list entries in paragraph wrappers.
-    candidates = list_items if len(list_items) >= 5 else _hec_visible_items(root)
+    if len(list_items) >= 2:
+        candidates = list_items
+    else:
+        candidates = []
+        for node in root.find_all(["p", "td", "th"]):
+            if node.find_parent(["li", "td", "th"]):
+                continue
+            # SharePoint frequently uses <br> as the separator between
+            # subject areas inside a single paragraph. Preserve those breaks.
+            candidates.extend(
+                _clean(line)
+                for line in node.get_text("\n", strip=True).splitlines()
+                if _clean(line)
+            )
+        if not candidates:
+            candidates = _hec_visible_items(root)
+
     result: list[str] = []
     seen: set[str] = set()
     for item in candidates:
         item = _clean(re.sub(r"^\s*\d+\s*[.)]\s*", "", item))
-        if not item or re.search(r"(?i)^following is the list of preferred subject", item):
+        item = re.sub(
+            r"(?i)^following is the list of preferred subject areas?/subjects "
+            r"in which scholarship under the .*? is offered effective "
+            r"(?:fall|spring|summer).{0,80}?\s+",
+            "",
+            item,
+        ).strip()
+        if not item:
             continue
         key = re.sub(r"[^a-z0-9]+", "", item.casefold())
         if key and key not in seen:
