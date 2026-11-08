@@ -961,9 +961,14 @@ def _hec_content_root(html: str) -> BeautifulSoup:
 
 
 def _hec_visible_items(root: BeautifulSoup) -> list[str]:
+    """Read atomic visible HEC content from paragraphs, lists, and table cells."""
     values = []
-    for node in root.find_all(["p", "li"]):
+    for node in root.find_all(["p", "li", "td", "th"]):
         if node.name == "li" and node.find_parent("li"):
+            continue
+        if node.name == "p" and node.find_parent(["li", "td", "th"]):
+            continue
+        if node.name in {"td", "th"} and node.find_parent(["td", "th"]):
             continue
         value = _clean(node.get_text(" ", strip=True))
         if value and value not in values:
@@ -1028,17 +1033,28 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
         elif re.search(r"(?i)(second division|second division|division)", value):
             add_criterion("academic_requirements", "Academic record", value, "eligibility")
         elif re.search(r"(?i)\b(age|years?|regular government|all other applicants)\b", value) and re.search(r"\b(40|35)\b", value):
-            add_criterion("age_limit", "Maximum age", value, "eligibility")
+            age_label = (
+                "Maximum age – specified public-sector applicants"
+                if re.search(r"(?i)\\b40\\b", value)
+                else "Maximum age – all other applicants"
+            )
+            add_criterion("age_limit", age_label, value, "eligibility")
         elif re.search(r"(?i)(another scholarship|any other scholarship|availing.*scholarship)", value):
             add_criterion("ineligibility", "Other scholarship", value, "eligibility")
         elif re.search(r"(?i)(ph\.?d holders?|already.*ph\.?d|doctoral degree holders?)", value):
             add_criterion("ineligibility", "Existing PhD holders", value, "eligibility")
         elif re.search(r"(?i)(category\s*i\b|top\s*50|qs.*50)", value):
-            add_criterion("eligibility", "Category I – university ranking", value, "eligibility")
+            add_criterion(
+                "eligibility", "Category I – admission to a QS top-50 US university",
+                value, "eligibility",
+            )
         elif re.search(r"(?i)(category\s*ii\b|51\s*[-–]\s*100|qs.*100)", value):
             # Eligibility page is authoritative for the 51–100 range. Do not
             # replace it with the malformed phrase in the FAQ page.
-            add_criterion("eligibility", "Category II – university ranking", value, "eligibility")
+            add_criterion(
+                "eligibility", "Category II – admission to a QS 51–100 US university",
+                value, "eligibility",
+            )
         elif re.search(r"(?i)(gre|hat).*(300|60\s*%)|(300|60\s*%).*(gre|hat)", value):
             add_criterion("academic_requirements", "GRE or HAT score", value, "eligibility")
         elif len(value) > 35 and re.search(r"(?i)(eligible|applicant|admission|university|degree)", value):
@@ -1057,15 +1073,41 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             elif re.search(r"(?i)(confirmed admission|gre.*300|hat.*60|domicile|passport|attested academic)", value):
                 add_criterion("required_documents", "Application requirements", value, "faq")
 
-    # Funding is stored as a source-quoted breakdown, not a calculated total.
-    funding_lines = []
+    # Keep category-specific tuition separate from benefits shared by both categories.
+    # Preserve the official wording; never calculate a combined funding total.
+    category_i_funding: list[str] = []
+    category_ii_funding: list[str] = []
+    shared_funding: list[str] = []
     if "faq" in roots:
         for value in _hec_visible_items(roots["faq"]):
-            if re.search(r"(?i)(USD|PKR|tuition|stipend|health insurance|airfare|fully funded)", value):
-                if value not in funding_lines:
-                    funding_lines.append(value)
-    if funding_lines:
-        fields["funding_summary"] = "\n".join(funding_lines)[:4000]
+            if not re.search(
+                r"(?i)(USD|PKR|tuition|stipend|health insurance|airfare|fully funded)",
+                value,
+            ):
+                continue
+            if re.search(r"(?i)category\\s*i\\b", value):
+                category_i_funding.append(value)
+            elif re.search(r"(?i)category\\s*ii\\b", value):
+                category_ii_funding.append(value)
+            else:
+                shared_funding.append(value)
+
+    funding_sections = []
+    if category_i_funding:
+        funding_sections.append(
+            "Category I (QS 1–50):\\n" + "\\n".join(dict.fromkeys(category_i_funding))
+        )
+    if category_ii_funding:
+        funding_sections.append(
+            "Category II (QS 51–100):\\n" + "\\n".join(dict.fromkeys(category_ii_funding))
+        )
+    if shared_funding:
+        funding_sections.append(
+            "Benefits stated without a category restriction:\\n"
+            + "\\n".join(dict.fromkeys(shared_funding))
+        )
+    if funding_sections:
+        fields["funding_summary"] = "\\n\\n".join(funding_sections)[:4000]
         add_evidence("funding_summary", fields["funding_summary"], "faq")
 
     # Only accept the portal when the official how-to page links to it.
