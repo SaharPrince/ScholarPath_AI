@@ -1081,6 +1081,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     description = next(
         (value for value in overview_items
          if len(value) >= 70
+         and not re.search(r"(?i)\b(phase\s*[-–]?\s*\d|ECNEC|revised later|approved by ECNEC)\b", value)
          and re.search(r"(?i)(ph\.?d|doctoral).{0,100}(scholarship|study)|"
                        r"(scholarship|study).{0,100}(ph\.?d|doctoral)", value)
          and re.search(r"(?i)(pakistani students|students from pakistan|study in the united states)", value)),
@@ -1188,10 +1189,9 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             elif re.search(r"(?i)(return to pakistan|serve.*years|bond|contract)", value):
                 add_criterion("post_selection_requirement", "Post-study obligation", value, "faq")
             elif re.search(
-                r"(?i)((?:2nd|second)\s*(?:/|or)\s*(?:3rd|third)\s*division|no\s+(?:2nd|second)|no\s+(?:3rd|third)).*(academic career|entire career|degree)|"
-                r"(academic career|entire career).*((?:2nd|second)\s*(?:/|or)\s*(?:3rd|third)\s*division|no\s+(?:2nd|second)|no\s+(?:3rd|third))",
+                r"(?i)(?:no\s+)?(?:2nd|second)\s*(?:/|or)\s*(?:3rd|third)\s*division",
                 value,
-            ):
+            ) and re.search(r"(?i)(academic career|entire career|degree)", value):
                 add_criterion("academic_requirements", "Academic record – FAQ clarification", value, "faq")
             elif re.search(r"(?i)(gre|hat).*(300|60\s*%)|(300|60\s*%).*(gre|hat)", value) and re.search(
                 r"(?i)all candidates|all applicants|every candidate|every applicant", value
