@@ -119,7 +119,7 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         return True
     text = requirement_text.casefold()
     # In this source context, "should be between X and Y" states an age limit.
-    if re.search(r"\\bshould\\s+be\\s+between\\s+\\d", text):
+    if re.search(r"\bshould\s+be\s+between\s+\d", text):
         return True
     if re.search(
         r"\b(preferred|preferable|encouraged|recommended|desirable|an advantage|"
@@ -643,7 +643,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                     r"cannot apply|cannot be nominated|not eligible to|are excluded|"
                     r"dual .{0,30}national(?:ity|s)?|employees? of|contractors? of|"
                     r"alumni of|already availed|already studying|applied for immigration|"
-                    r"attended graduate school|long[- ]term .{0,20}experience)\\b",
+                    r"attended graduate school|long[- ]term .{0,20}experience)\b",
                     statement,
                     re.I,
                 ):
