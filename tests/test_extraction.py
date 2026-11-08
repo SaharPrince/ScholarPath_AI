@@ -199,6 +199,43 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         assert page is not None
         self.assertNotIn("application_url", page.fields)
 
+    def test_extracts_additional_heading_based_eligibility_categories(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Master's Scholarship</h1>
+          <h2>Eligibility</h2>
+          <p>Eligibility: Applicants must be enrolled in a recognized university.</p>
+          <ul><li>Applicants must be Pakistani citizens.</li></ul>
+          <h2>Academic Requirements</h2>
+          <ul><li>Applicants must have a minimum GPA of 3.0.</li></ul>
+          <h2>Age Limit</h2>
+          <p>Applicants must be under 35 years old.</p>
+          <h2>Required Documents</h2>
+          <ul><li>Applicants must submit academic transcripts.</li></ul>
+          <h2>Language Requirements</h2>
+          <p>Applicants must provide proof of English proficiency.</p>
+          <h2>Degree Level</h2>
+          <p>Applicants must apply for a master's degree.</p>
+          <p>The scholarship provides financial support for postgraduate study.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/masters-scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        for field in (
+            "eligibility", "academic_requirements", "age_limit",
+            "required_documents", "language_requirements", "study_level",
+        ):
+            self.assertIn(field, page.fields)
+            self.assertTrue(page.fields[field])
+        self.assertIn("recognized university", page.fields["eligibility"])
+        self.assertIn("Pakistani citizens", page.fields["eligibility"])
+        criterion_types = {criterion[0] for criterion in page.criteria}
+        self.assertTrue({
+            "eligibility", "academic_requirements", "age_limit",
+            "required_documents", "language_requirements", "study_level",
+        }.issubset(criterion_types))
+
     def test_deadline_only_page_is_not_promoted(self) -> None:
         html = """<html><body><main>
           <h1>Example Scholarship</h1>
