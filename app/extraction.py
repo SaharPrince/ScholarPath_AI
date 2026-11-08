@@ -1026,9 +1026,15 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
         criteria_sources[item] = urls[page_name]
 
     overview_root = roots["overview"]
+    # Prefer a programme-purpose statement over historical background about
+    # the bilateral initiative. If the page has no useful programme summary,
+    # leave description empty rather than mislabel historical context.
     description = next(
         (value for value in _hec_visible_items(overview_root)
-         if len(value) >= 70 and re.search(r"(?i)(knowledge corridor|ph\.?d|doctoral|scholarship)", value)),
+         if len(value) >= 70
+         and re.search(r"(?i)(ph\.?d|doctoral).{0,100}(scholarship|study)|"
+                       r"(scholarship|study).{0,100}(ph\.?d|doctoral)", value)
+         and re.search(r"(?i)(pakistani students|students from pakistan|study in the united states)", value)),
         None,
     )
     if description:
@@ -1243,9 +1249,13 @@ def _parse_hec_commonwealth_announcement(
             criteria.append(item)
         criteria_sources[item] = page_url
 
+    # Use the actual course-of-study description, not the introductory
+    # nominating-agency paragraph, as the scholarship description.
     description = next(
-        (item for item in items if "national nominating agency" in item.casefold()
-         and "commonwealth scholarship commission" in item.casefold()),
+        (item for item in items
+         if re.search(r"(?i)full[- ]time taught master", item)
+         and re.search(r"(?i)phd", item)
+         and re.search(r"(?i)university|study", item)),
         None,
     )
     if description:
@@ -1258,7 +1268,9 @@ def _parse_hec_commonwealth_announcement(
     # announcement URL as its provenance.
     for item in items:
         low = item.casefold()
-        if re.search(r"pakistani\s*/?\s*aj\s*&?\s*k|pakistani.*aj\s*&?\s*k", low) and re.search(r"national|permanent resident|dual national", low):
+        if (re.match(r"(?i)^\s*(?:be|must be|applicants? must be)\b", value)
+            and re.search(r"(?i)pakistani\s*/?\s*aj\s*&?\s*k", low)
+            and re.search(r"(?i)national|permanent resident|dual national", low)):
             add_criterion("nationality", "Nationality and residency", item)
         elif re.search(r"no upper age limit", low):
             add_criterion("age_limit", "Age limit", item)
@@ -1288,8 +1300,8 @@ def _parse_hec_commonwealth_announcement(
             add_criterion("selection_process", "Final selection authority", item)
         elif re.search(r"nomination process", low) and re.search(r"hec", low):
             add_criterion("selection_process", "National nomination authority", item)
-        elif re.search(r"development themes", low):
-            add_criterion("study_objectives", "Development themes", item)
+        # Development themes are programme context, not individual eligibility
+        # conditions. They are stored separately below, never as criteria.
 
     # Capture the exact closing-date statement. The date is explicit on this
     # official page, so application status can be calculated from the date.
@@ -1341,6 +1353,9 @@ def _parse_hec_commonwealth_announcement(
         add_evidence("development_themes", fields["development_themes"])
 
     deadline_date = _parse_deadline_date(fields.get("deadline_text"))
+    if deadline_date:
+        fields["deadline_date"] = deadline_date
+        add_evidence("deadline_date", deadline_date)
     application_status = _classify_application_status(body_text, deadline_date)
     fields["application_status"] = application_status
     add_evidence("application_status", application_status)
