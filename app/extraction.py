@@ -118,6 +118,9 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     if criterion_type in {"ineligibility", "required_documents"}:
         return True
     text = requirement_text.casefold()
+    # In this source context, "should be between X and Y" states an age limit.
+    if re.search(r"\\bshould\\s+be\\s+between\\s+\\d", text):
+        return True
     if re.search(
         r"\b(preferred|preferable|encouraged|recommended|desirable|an advantage|"
         r"priority will be given|particularly welcome|should be poised|poised to assume)\b",
@@ -636,7 +639,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 # selection copy before the next heading. Keep only explicit
                 # disqualification statements.
                 if field_name == "ineligibility" and not embedded_ineligibility_context and not re.search(
-                    r"\\b(ineligible|not eligible|not be accepted|will not be accepted|"
+                    r"\b(ineligible|not eligible|not be accepted|will not be accepted|"
                     r"cannot apply|cannot be nominated|not eligible to|are excluded|"
                     r"dual .{0,30}national(?:ity|s)?|employees? of|contractors? of|"
                     r"alumni of|already availed|already studying|applied for immigration|"
@@ -646,7 +649,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 ):
                     continue
                 exception_match = re.search(
-                    r"(?i)\\b(?:with the exception of|except for|except|excluding)\\b\\s+(.+)$",
+                    r"(?i)\b(?:with the exception of|except for|except|excluding)\b\s+(.+)$",
                     statement,
                 ) if field_name == "eligibility" else None
                 if exception_match:
