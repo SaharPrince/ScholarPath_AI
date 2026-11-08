@@ -490,7 +490,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         if field_name in fields:
             # Keep distinct statements separate so one optional sentence cannot
             # downgrade a mandatory requirement elsewhere in the same section.
-            statements = re.split(r"(?<=[.!?])\\s+(?=[A-Z“])", fields[field_name])
+            statements = re.split(r"(?<=[.!?])\s+(?=[A-Z“])", fields[field_name])
             for statement in statements:
                 statement = _clean(statement)
                 if statement:
