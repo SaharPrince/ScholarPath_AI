@@ -70,14 +70,13 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     if criterion_type in {"ineligibility", "required_documents"}:
         return True
     text = requirement_text.casefold()
-    if re.search(r"\\b(preferred|preferable|encouraged|recommended|desirable|an advantage|priority will be given)\\b", text):
+    if re.search(r"\b(preferred|preferable|encouraged|recommended|desirable|an advantage|priority will be given)\b", text):
         return False
     return bool(re.search(
-        r"\\b(must|required|mandatory|minimum|at least|no more than|maximum|"
-        r"only|cannot|not eligible|ineligible|shall|must not)\\b",
+        r"\b(must|required|mandatory|minimum|at least|no more than|maximum|"
+        r"only|cannot|not eligible|ineligible|shall|must not)\b",
         text,
     ))
-
 
 def _parse_deadline_date(value: str | None) -> str | None:
     """Normalize an explicitly extracted English deadline date to ISO format."""
