@@ -581,5 +581,73 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             for kind, _, text in page.criteria
         ))
 
+    def test_ccip_faq_creates_separate_degree_and_post_selection_rules(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Community College Initiative Program</h1>
+          <p>The applicants must be resident in Pakistan, currently employed in one
+          of the fields listed above, have 14-15 years of education (2-year Bachelors),
+          English language proficiency, potential to have a positive impact on
+          Pakistan's future development and demonstrated leadership.</p>
+          <h2>Important Questions</h2>
+          <p>For whom is this program intended?</p>
+          <p>The program is designed for young professionals from Pakistan with
+          2 year Bachelor's degree and less than 3 years of work experience.</p>
+          <p>I have completed a three year Bachelors degree and I am working in
+          one of the eligible fields, can I apply?</p>
+          <p>Yes, you can apply if you are working in one of the specified fields.</p>
+          <p>I have completed a four years Bachelors degree, can I apply?</p>
+          <p>No, persons with a four years Bachelors degree are ineligible.</p>
+          <p>I have completed my Masters degree, can I apply?</p>
+          <p>No, persons with a Master's degree are ineligible.</p>
+          <p>I am enrolled into a Master's program, can I apply?</p>
+          <p>No, current students are ineligible.</p>
+          <p>After selection, applicants must take the Institutional TOEFL (ITP).
+          A minimum of 400 score (out of 677) is required to qualify.</p>
+          <p>The programme provides tuition and living support.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html, "https://usefp.org/scholarships/ccip.cfm"
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        eligibility = [x[2].casefold() for x in page.criteria if x[0] == "eligibility"]
+        exclusions = [x[2].casefold() for x in page.criteria if x[0] == "ineligibility"]
+        self.assertTrue(any("resident in pakistan" in x for x in eligibility))
+        self.assertTrue(any("three-year bachelor's degree" in x or "three-year bachelor's degree" in x for x in eligibility))
+        self.assertTrue(any("after selection" in x and "400" in x for x in eligibility))
+        self.assertTrue(any("four-year bachelor's degree" in x for x in exclusions))
+        self.assertTrue(any("master's degree" in x for x in exclusions))
+        self.assertTrue(any("currently enrolled" in x for x in exclusions))
+        self.assertFalse(any("less than 3 years" in x for x in exclusions))
+
+    def test_ccap_filters_delivery_notes_and_completes_dual_citizenship_rule(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Community College Administrator Program</h1>
+          <h2>Technical Eligibility Requirements</h2>
+          <ul>
+            <li>Be a Pakistani citizen (dual citizens are eligible</li>
+            <li>All program activities will be in English.</li>
+            <li>No translation services will be provided on the program.</li>
+          </ul>
+          <p>Individuals in the following circumstances are not eligible:</p>
+          <ul><li>Dual U.S.-Pakistan citizens.</li></ul>
+          <p>The programme provides funding for travel and living costs.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html, "https://example.org/scholarships/ccap"
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        criteria = [x[2].casefold() for x in page.criteria]
+        self.assertTrue(any("dual citizenship is generally permitted" in x for x in criteria))
+        self.assertTrue(any("dual u.s.-pakistan citizens" in x for x in criteria))
+        self.assertFalse(any("all program activities" in x for x in criteria))
+        self.assertFalse(any("no translation services" in x for x in criteria))
+
+
 if __name__ == "__main__":
     unittest.main()
