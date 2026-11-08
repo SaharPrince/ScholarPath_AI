@@ -445,7 +445,7 @@ def _extract_ccip_criteria(content_root: BeautifulSoup) -> list[tuple[str, str, 
         ("eligibility", "Applicants must demonstrate potential to make a positive impact on Pakistan's future development."),
         ("eligibility", "Applicants must demonstrate leadership."),
     )
-    criteria.extend((kind, "Eligibility", text) for kind, _, text in overview_rules)
+    criteria.extend((kind, "Eligibility", text) for kind, text in overview_rules)
 
     # FAQ answers explicitly clarify the degree and experience rules.
     faq_rules = (
@@ -713,7 +713,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 ):
                     continue
                 if re.search(
-                    r"(?i)^be a pakistani citizen \\(dual citizens are eligible$",
+                    r"(?i)^be a pakistani citizen \(dual citizens are eligible$",
                     statement,
                 ):
                     statement = (
