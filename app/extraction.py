@@ -1213,6 +1213,8 @@ async def extract_candidate_details(
 ) -> list[dict]:
     """Visit candidates, optionally restricting work to an explicit ID allow-list."""
     if candidate_ids is not None:
+        if reprocess:
+            raise ValueError("Use either global reprocess or targeted candidate_ids, not both.")
         candidate_ids = sorted({int(value) for value in candidate_ids})
         if not candidate_ids:
             return []
