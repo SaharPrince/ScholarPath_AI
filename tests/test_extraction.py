@@ -668,5 +668,33 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertFalse(any("no translation services" in x for x in criteria))
 
 
+    def test_ccap_alternative_routes_are_combined_and_spacing_is_repaired(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Community College Administrator Program</h1>
+          <h2>Technical Eligibility Requirements</h2>
+          <ul>
+            <li>Is a citizen, national, or permanent residentsof Pakistan qualified to hold a valid passport.</li>
+            <li>Is a full-time government official with at least 10 yearsof experience overseeing technical institutions.</li>
+            <li>Is a full-time education administrator with at least 5 years of experience withintechnical institutions.</li>
+          </ul>
+          <p>Funding: The programme provides travel and living support.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html, "https://usefp.org/scholarships/ccap.cfm"
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        eligibility = [x[2] for x in page.criteria if x[0] == "eligibility"]
+        self.assertEqual(len(eligibility), 2)
+        combined = next(x for x in eligibility if "qualify through either" in x)
+        self.assertIn("10 years of experience", combined)
+        self.assertIn("OR", combined)
+        self.assertIn("5 years of experience", combined)
+        self.assertFalse(any("10 yearsof" in x for x in eligibility))
+        self.assertFalse(any("withintechnical" in x for x in eligibility))
+        self.assertTrue(any("permanent residents of Pakistan" in x for x in eligibility))
+
 if __name__ == "__main__":
     unittest.main()
