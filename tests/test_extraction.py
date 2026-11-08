@@ -809,8 +809,7 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
                   <p>Minimum four-year bachelor's degree or 16 years of formal education.</p>
                   <p>Maximum one second division throughout academic career.</p>
                   <p>Maximum age is 40 years for regular government employees and
-                     eligible public-sector faculty/researchers.</p>
-                  <p>Maximum age is 35 years for all other applicants.</p>
+                     eligible public-sector faculty/researchers, and 35 years for all other applicants.</p>
                   <p>Applicants must not be availing another scholarship.</p>
                   <p>Existing PhD degree holders are not eligible.</p>
                   <p>Category I: admission to a top 50 QS-ranked US university.</p>
@@ -876,8 +875,22 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         self.assertTrue(any("one second division" in item for item in criteria))
         self.assertTrue(any("40 years" in item for item in criteria))
         self.assertTrue(any("35 years" in item for item in criteria))
+        age_criteria = [item for item in page.criteria if item[0] == "age_limit"]
+        self.assertTrue(any("specified public-sector" in label for _kind, label, _text in age_criteria))
+        self.assertTrue(any("all other applicants" in label for _kind, label, _text in age_criteria))
+        self.assertTrue(all(_is_mandatory_criterion(kind, text) for kind, _label, text in age_criteria))
         self.assertTrue(any("top 50" in item for item in criteria))
         self.assertTrue(any("51-100" in item for item in criteria))
+        self.assertTrue(any(
+            kind == "category_i_eligibility" and "top 50" in requirement.casefold()
+            for kind, _label, requirement in page.criteria
+        ))
+        self.assertTrue(any(
+            kind == "category_ii_eligibility" and "51-100" in requirement.casefold()
+            for kind, _label, requirement in page.criteria
+        ))
+        self.assertTrue(_is_mandatory_criterion("category_i_eligibility", "Category I admission requirement"))
+        self.assertTrue(_is_mandatory_criterion("category_ii_eligibility", "Category II admission requirement"))
         self.assertTrue(any("not be availing another scholarship" in item for item in criteria))
         self.assertTrue(any("phd degree holders" in item for item in criteria))
         self.assertTrue(any("not required" in item and "ielts" in item for item in criteria))
