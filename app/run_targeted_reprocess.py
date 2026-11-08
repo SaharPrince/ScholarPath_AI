@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 
 from app.config import settings
-from app.database import init_db, get_connection
+from app.database import get_connection
 from app.extraction import extract_candidate_details
 
 
@@ -57,7 +57,6 @@ async def main() -> None:
         print("Review the preview, then rerun with --apply to perform the targeted retry.")
         return
 
-    init_db()
     with get_connection() as connection:
         placeholders = ",".join("?" for _ in candidate_ids)
         connection.execute(
