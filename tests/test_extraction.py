@@ -747,6 +747,37 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("permanent residents of Pakistan" in x for x in eligibility))
 
 
+    def test_age_limits_are_mandatory_even_when_source_uses_case_of_wording(self) -> None:
+        self.assertTrue(
+            _is_mandatory_criterion(
+                "age_limit",
+                "40 Years in case of regular Government Employees.",
+            )
+        )
+        self.assertTrue(
+            _is_mandatory_criterion(
+                "age_limit",
+                "35 Years in case of all other applicants.",
+            )
+        )
+
+    def test_provider_extraction_stops_before_descriptive_clause(self) -> None:
+        from bs4 import BeautifulSoup
+        from app.extraction import _find_provider_statement
+
+        html = """
+        <html><body><main>
+          <p>The scholarships are offered by the Commonwealth Scholarship
+          Commission (CSC) in the UK and are intended to support talented
+          candidates from eligible Commonwealth countries.</p>
+        </main></body></html>
+        """
+        provider = _find_provider_statement(
+            _remove_site_chrome(BeautifulSoup(html, "html.parser"))
+        )
+        self.assertEqual(provider, "Commonwealth Scholarship Commission (CSC)")
+
+
 class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
     def test_sharepoint_rich_content_is_selected_over_site_chrome(self) -> None:
         html = """
