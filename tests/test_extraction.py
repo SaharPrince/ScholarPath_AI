@@ -2,7 +2,7 @@ import unittest
 
 from app.extraction import (
     _classify_application_status, _classify_applicant_category,
-    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, parse_scholarship_page,
+    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, parse_scholarship_page,
 )
 
 
@@ -235,6 +235,36 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "eligibility", "academic_requirements", "age_limit",
             "required_documents", "language_requirements", "study_level",
         }.issubset(criterion_types))
+
+    def test_extracts_explicit_eligibility_from_description_prose(self) -> None:
+        description = (
+            "The Community College Initiative Program supports Pakistani professionals. "
+            "The applicants must be resident in Pakistan, currently employed in a listed field, "
+            "have 14-15 years of education, English language proficiency and demonstrated leadership. "
+            "Participants return home after the programme."
+        )
+        criteria = _extract_description_criteria(description)
+        self.assertEqual(len(criteria), 1)
+        self.assertEqual(criteria[0][0], "eligibility")
+        self.assertIn("must be resident in Pakistan", criteria[0][2])
+
+    def test_distinguishes_host_institution_eligibility_from_applicant_eligibility(self) -> None:
+        description = (
+            "Non-U.S. post-secondary academic institutions are eligible to host a U.S. scholar. "
+            "Projects must be approved by the programme administrator."
+        )
+        criteria = _extract_description_criteria(description)
+        self.assertEqual(len(criteria), 1)
+        self.assertEqual(criteria[0][0], "institution_eligibility")
+
+    def test_recognizes_shortlisted_only_restriction(self) -> None:
+        self.assertEqual(
+            _classify_application_status(
+                "This information is only for candidates who have been shortlisted by HEC.",
+                None,
+            ),
+            "shortlisted_only",
+        )
 
     def test_mandatory_criteria_classification_is_conservative(self) -> None:
         self.assertTrue(_is_mandatory_criterion("eligibility", "Applicants must hold a bachelor's degree."))
