@@ -118,13 +118,19 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     if criterion_type in {"ineligibility", "required_documents"}:
         return True
     text = requirement_text.casefold()
-    if re.search(r"\b(preferred|preferable|encouraged|recommended|desirable|an advantage|priority will be given|particularly welcome)\b", text):
+    if re.search(
+        r"\b(preferred|preferable|encouraged|recommended|desirable|an advantage|"
+        r"priority will be given|particularly welcome|should be poised|poised to assume)\b",
+        text,
+    ):
         return False
     if re.search(
         r"\b(must|required|mandatory|minimum|at least|no more than|maximum|"
         r"only|cannot|not eligible|ineligible|shall|must not|eligible|"
         r"citizens?|nationals?|residing|resident|currently enrolled|"
-        r"hold|possess|completed|degree|years of education|years of experience)\b",
+        r"hold|possess|completed|degree|years of education|years of experience|"
+        r"between\s+\d|currently working|active experience|proficient|"
+        r"government school teachers?|early career|fluency|fluent)\b",
         text,
     ):
         return True
@@ -509,7 +515,10 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     # Official programme pages often use section headings and bullet lists
     # instead of inline "Eligibility: ..." labels.
     section_specs = {
-        "eligibility": ("Eligibility Criteria", "Eligibility", "Who can apply", "Eligible applicants"),
+        "eligibility": (
+            "Eligibility Criteria", "Eligibility", "Who can apply", "Eligible applicants",
+            "Technical Eligibility Requirements",
+        ),
         "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
         "study_level": ("Degree Level", "Study Level", "Level of Study", "Eligible Degree Levels"),
         "nationality": ("Nationality Requirements", "Citizenship Requirements", "Eligible Nationalities", "Eligible Countries"),
@@ -596,8 +605,19 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             statements = _split_criteria_statements(fields[field_name])
             for statement in statements:
                 statement = _clean(statement)
-                if statement:
-                    criteria.append((field_name, field_name.replace("_", " ").title(), statement))
+                if not statement:
+                    continue
+                # Ineligibility sections can include programme history or
+                # selection copy before the next heading. Keep only explicit
+                # disqualification statements.
+                if field_name == "ineligibility" and not re.search(
+                    r"\b(ineligible|not eligible|not be accepted|will not be accepted|"
+                    r"cannot apply|cannot be nominated|not eligible to|are excluded)\b",
+                    statement,
+                    re.I,
+                ):
+                    continue
+                criteria.append((field_name, field_name.replace("_", " ").title(), statement))
 
     if description:
         evidence.append(("description", description))
