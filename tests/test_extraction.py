@@ -947,6 +947,65 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         self.assertEqual(len(category_i), 1)
         self.assertIn("Secured admission", category_i[0][2])
 
+    def test_corridor_repairs_spacing_and_deduplicates_priority_list_items(self) -> None:
+        from bs4 import BeautifulSoup
+        from app.extraction import _clean, _hec_priority_subject_items
+
+        self.assertEqual(
+            _clean("AnnualStipend USD 19,200 FullyFunded 1000Ph.D. DairyScience"),
+            "Annual Stipend USD 19,200 Fully Funded 1000 Ph.D. Dairy Science",
+        )
+        root = BeautifulSoup("""
+            <div>
+              <ul>
+                <li>Crop Production and Soil Sciences</li>
+                <li>Computational Biology and Bioinformatics</li>
+                <li>Crop Production and Soil Sciences</li>
+              </ul>
+              <p>Crop Production and Soil Sciences</p>
+            </div>
+        """, "html.parser")
+        self.assertEqual(
+            _hec_priority_subject_items(root),
+            ["Crop Production and Soil Sciences", "Computational Biology and Bioinformatics"],
+        )
+
+    def test_corridor_captures_numbered_division_faq_clarification(self) -> None:
+        base = "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
+        pages = {
+            "overview": ("""
+                <div class="ms-rtestate-field">
+                  <h1>US-Pakistan Knowledge Corridor PhD Scholarship</h1>
+                  <p>The US-Pakistan Knowledge Corridor provides PhD scholarships
+                     for Pakistani students to study in the United States.</p>
+                </div>
+            """, base + "default.aspx"),
+            "eligibility": ("""
+                <div class="ms-rtestate-field">
+                  <p>Pakistani/AJK nationals</p>
+                  <p>Maximum one second division throughout academic career.</p>
+                </div>
+            """, base + "Eligibility-Criteria.aspx"),
+            "faq": ("""
+                <div class="ms-rtestate-field">
+                  <p>Applicants must have no 2nd or 3rd division throughout their entire academic career.</p>
+                </div>
+            """, base + "FAQ.aspx"),
+        }
+        page = _parse_hec_knowledge_corridor(pages)
+        self.assertIsNotNone(page)
+        assert page is not None
+        faq_rules = [
+            item for item in page.criteria
+            if item[1] == "Academic record – FAQ clarification"
+        ]
+        self.assertEqual(len(faq_rules), 1)
+        self.assertIn("2nd or 3rd division", faq_rules[0][2])
+        self.assertEqual(
+            page.criteria_sources[faq_rules[0]],
+            base + "FAQ.aspx",
+        )
+
     def test_hec_aggregation_requires_overview_and_eligibility_pages(self) -> None:
         self.assertIsNone(_parse_hec_knowledge_corridor({
             "overview": ("<html><body><p>Programme</p></body></html>", "https://example.org/")
