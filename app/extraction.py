@@ -66,6 +66,8 @@ class ExtractedPage:
 
 def _clean(value: str) -> str:
     """Collapse whitespace and repair known missing-space joins in extracted page text."""
+    # Strip invisible formatting characters copied from SharePoint pages.
+    value = re.sub(r"[\\u200b-\\u200f\\u202a-\\u202e\\u2060\\ufeff]", "", value)
     text = " ".join(value.split()).strip()
     # Repair unambiguous joins observed in official CCAP source copy.
     text = re.sub(r"(?i)\b(years?)(of)(experience)\b", r"\1 \2 \3", text)
@@ -1006,9 +1008,17 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
         value = _clean(value)
         if not value:
             return
+        # Collapse source-copy duplicates that differ only in punctuation,
+        # spacing, or invisible formatting characters.
+        normalized = re.sub(r"[^a-z0-9]+", "", value.casefold())
+        if any(
+            old_kind == kind and old_label == label
+            and re.sub(r"[^a-z0-9]+", "", old_value.casefold()) == normalized
+            for old_kind, old_label, old_value in criteria
+        ):
+            return
         item = (kind, label, value)
-        if item not in criteria:
-            criteria.append(item)
+        criteria.append(item)
         criteria_sources[item] = urls[page_name]
 
     overview_root = roots["overview"]
