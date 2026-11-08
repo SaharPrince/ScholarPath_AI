@@ -7,10 +7,24 @@ rechecked periodically and their contents are treated as unverified evidence.
 from app.database import get_connection
 
 
+LEGACY_HEC_URL = "https://www.hec.gov.pk/Site/Scholarship/default.aspx"
+
 OFFICIAL_SOURCES = (
     {
-        "name": "Higher Education Commission Pakistan",
-        "official_url": "https://www.hec.gov.pk/Site/Scholarship/default.aspx",
+        "name": "HEC International Scholarships",
+        "official_url": "https://www.hec.gov.pk/english/scholarshipsgrants/Pages/internationalScholarships.aspx",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
+    {
+        "name": "HEC National Scholarships",
+        "official_url": "https://www.hec.gov.pk/english/scholarshipsgrants/Pages/NationalScholarships.aspx",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
+    {
+        "name": "HEC Learning Opportunities Abroad",
+        "official_url": "https://www.hec.gov.pk/english/scholarshipsgrants/lao/pages/default.aspx",
         "source_type": "government",
         "country": "Pakistan",
     },
@@ -36,9 +50,15 @@ OFFICIAL_SOURCES = (
 
 
 def seed_official_sources() -> int:
-    """Insert curated source indexes without overwriting user changes."""
+    """Insert curated source indexes and retire the unusable legacy HEC index."""
     inserted = 0
     with get_connection() as connection:
+        # Preserve old scholarship/candidate records, but stop repeatedly
+        # crawling the legacy URL that returns an empty anti-bot response.
+        connection.execute(
+            "UPDATE sources SET is_active = 0 WHERE official_url = ?",
+            (LEGACY_HEC_URL,),
+        )
         for source in OFFICIAL_SOURCES:
             cursor = connection.execute(
                 """INSERT OR IGNORE INTO sources
