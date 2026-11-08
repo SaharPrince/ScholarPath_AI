@@ -998,11 +998,14 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertEqual(page.fields["study_destination"], "United Kingdom")
         self.assertEqual(page.fields["study_level"], "Master's and PhD")
         self.assertEqual(page.fields["deadline_text"], "Closing date for CSC applications: Tuesday, 20 October 2026 at 16:00 BST")
+        self.assertEqual(page.fields["deadline_date"], "2026-10-20")
         self.assertEqual(page.fields["application_status"], "closed")
         self.assertEqual(page.application_status, "closed")
         self.assertEqual(page.fields["application_url"], "https://scholarship.hec.gov.pk/")
         criteria = [text.casefold() for _kind, _label, text in page.criteria]
         self.assertTrue(any("pakistani/aj&k" in text and "dual nationals" in text for text in criteria))
+        self.assertFalse(any("national nominating agency" in text for text in criteria))
+        self.assertFalse(any("development themes" in text for text in criteria))
         self.assertTrue(any("no upper age limit" in text for text in criteria))
         self.assertTrue(any("16 years" in text and "first division" in text for text in criteria))
         self.assertTrue(any("17/18 years" in text and "first division" in text for text in criteria))
@@ -1011,6 +1014,10 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(any("60 out of 100" in text for text in criteria))
         self.assertTrue(any("hat-i" in text for text in criteria))
         self.assertTrue(any("nomination process" in text for text in criteria))
+        self.assertEqual(
+            page.description,
+            "The scholarships are for full-time taught Master's and PhD study at a UK university.",
+        )
         portal_evidence = [value for name, value in page.evidence if name == "application_portal"]
         self.assertEqual(len(portal_evidence), 3)
         self.assertTrue(any("commonwealth-masters-scholarships" in value for value in portal_evidence))
