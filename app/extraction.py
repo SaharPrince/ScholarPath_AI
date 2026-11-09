@@ -130,18 +130,10 @@ def _clean(value: str) -> str:
     # A small number of source themes lose the space after this exact comma.
     text = re.sub(r"(?i)\b(access),(?=inclusion\b)", r"\1, ", text)
 
-    # Explicitly repair the recurring HEC theme phrases at the output boundary.
-    # These source joins have been observed in live official SharePoint content.
-    for joined, replacement in (
-        ("healthsystemsandcapacity", "health systems and capacity"),
-        ("managementand", "management and"),
-        ("inclusionand", "inclusion and"),
-    ):
-        text = re.sub(
-            rf"(?i)(?<![A-Za-z]){re.escape(joined)}(?![A-Za-z])",
-            replacement,
-            text,
-        )
+    # Repair observed missing spaces inside HEC development-theme phrases.
+    text = re.sub(r"(?i)\\bmanagement(?=and\\b)", "management ", text)
+    text = re.sub(r"(?i)\\binclusion(?=and\\b)", "inclusion ", text)
+    text = re.sub(r"(?i)\\band(?=capacity\\b)", "and ", text)
 
     # These all-lowercase joins have no word boundary between their
     # component words, so repair the exact observed source forms explicitly.
