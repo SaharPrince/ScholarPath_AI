@@ -1,0 +1,74 @@
+name: Daily official scholarship discovery
+
+on:
+  schedule:
+    # Run daily at 05:17 UTC. GitHub may delay scheduled jobs during peak load.
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-scholarship-discovery
+  cancel-in-progress: false
+
+jobs:
+  discover-and-extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Discover links from official sources
+        run: python -m app.run_discovery
+
+      - name: Extract scholarship facts and eligibility
+        run: python -m app.run_extraction
+
+      - name: Verify official source reachability and parser provenance
+        run: python scripts/live_source_verification.py
+
+      - name: Summarize discovered data
+        run: |
+          python - <<'PY'
+          import sqlite3
+          from app.config import settings
+
+          db = sqlite3.connect(settings.database_path)
+          db.row_factory = sqlite3.Row
+          print("## Daily discovery summary")
+          for title, query in [
+              ("Active official sources", "SELECT COUNT(*) FROM sources WHERE is_active = 1"),
+              ("Discovered candidate links", "SELECT COUNT(*) FROM discovery_candidates"),
+              ("Stored scholarship records", "SELECT COUNT(*) FROM scholarships"),
+              ("Open applications", "SELECT COUNT(*) FROM scholarships WHERE application_status = 'open'"),
+              ("Closed applications", "SELECT COUNT(*) FROM scholarships WHERE application_status = 'closed'"),
+              ("Unknown application status", "SELECT COUNT(*) FROM scholarships WHERE application_status = 'unknown'"),
+              ("Unverified records", "SELECT COUNT(*) FROM scholarships WHERE status = 'unverified'"),
+          ]:
+              print(f"{title}: {db.execute(query).fetchone()[0]}")
+          db.close()
+          PY
+
+      - name: Preserve daily database snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: scholarpath-daily-database-${{ github.run_number }}
+          path: data/scholarpath.db
+          if-no-files-found: error
+          retention-days: 30
