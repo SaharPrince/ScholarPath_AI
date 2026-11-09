@@ -230,9 +230,7 @@ def seed_official_discovery_targets() -> int:
                 """INSERT INTO discovery_candidates
                    (source_id, title, candidate_url, status)
                    VALUES (?, ?, ?, 'candidate')
-                   ON CONFLICT(source_id, candidate_url) DO UPDATE SET
-                       title = excluded.title,
-                       last_seen_at = CURRENT_TIMESTAMP""",
+                   ON CONFLICT(source_id, candidate_url) DO NOTHING""",
                 (source["id"], title, candidate_url),
             )
             inserted += max(cursor.rowcount, 0)
