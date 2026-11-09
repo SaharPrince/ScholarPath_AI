@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.database import database_is_ready, get_connection, init_db
-from app.source_catalog import seed_official_sources
+from app.source_catalog import seed_official_sources, seed_official_discovery_targets
 from app.discovery import discover_from_active_sources
 from app.extraction import extract_candidate_details
 from app.matching import match_profile_to_scholarships
@@ -66,6 +66,7 @@ async def scheduled_discovery(authorization: str | None = Header(default=None)) 
         raise HTTPException(status_code=401, detail="Unauthorized")
     # Sync source indexes on the authenticated cron, not on every cold start.
     source_records_added = seed_official_sources()
+    targeted_candidates_added = seed_official_discovery_targets()
     discovery = await discover_from_active_sources()
 
     # Vercel Hobby functions have a bounded execution window. Process a small
@@ -87,6 +88,7 @@ async def scheduled_discovery(authorization: str | None = Header(default=None)) 
 
     return {
         "source_records_added": source_records_added,
+        "targeted_candidates_added": targeted_candidates_added,
         "discovery": [item.__dict__ for item in discovery],
         "extraction": extraction,
         "extraction_batch_size": len(candidate_ids),
