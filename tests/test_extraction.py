@@ -1084,6 +1084,39 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         self.assertEqual(exclusions[0][1], "Existing PhD holders")
 
 
+    def test_corridor_priority_subject_evidence_preserves_line_breaks(self) -> None:
+        base = "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
+        pages = {
+            "overview": ("""
+                <div class="ms-rtestate-field">
+                  <p>PhD scholarships for Pakistani students to study in the United States.</p>
+                </div>
+            """, base + "default.aspx"),
+            "eligibility": ("""
+                <div class="ms-rtestate-field">
+                  <p>Pakistani/AJK nationals</p>
+                </div>
+            """, base + "Eligibility-Criteria.aspx"),
+            "priority_subjects": ("""
+                <div class="ms-rtestate-field">
+                  <p>Crop Production<br>Soil and Environmental Sciences<br>Computational Biology</p>
+                </div>
+            """, base + "Priority-Subject-Areas.aspx"),
+        }
+        page = _parse_hec_knowledge_corridor(pages)
+        self.assertIsNotNone(page)
+        assert page is not None
+        evidence_text = next(
+            value for name, value in page.evidence
+            if name == "priority_subject_areas"
+        )
+        self.assertIn("Crop Production\\nSoil and Environmental Sciences\\nComputational Biology", evidence_text)
+        self.assertEqual(
+            page.evidence_sources[("priority_subject_areas", evidence_text)],
+            base + "Priority-Subject-Areas.aspx",
+        )
+
+
 
 class HecCommonwealthAnnouncementTests(unittest.TestCase):
     def test_extracts_commonwealth_2027_28_requirements_deadline_and_both_portals(self) -> None:
@@ -1192,8 +1225,41 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
             _clean("CSC'ssix themes; Allapplicants; guaranteefinal selection"),
             "CSC's six themes; All applicants; guarantee final selection",
         )
+        self.assertEqual(
+            _clean("All candidates arerequired to fulfill the scholarship criteria."),
+            "All candidates are required to fulfill the scholarship criteria.",
+        )
         # Preserve source spelling rather than silently correcting factual evidence.
         self.assertIn("Pharmacetuical", _clean("Pharmacetuical Sciences"))
+
+    def test_commonwealth_authority_keeps_one_nomination_and_final_selection_statement(self) -> None:
+        from app.extraction import _parse_hec_commonwealth_announcement
+
+        url = "https://www.hec.gov.pk/english/HECAnnouncements/Pages/CW-Scholarship.aspx"
+        html = """
+        <div class="ms-rtestate-field">
+          <h1>Commonwealth Scholarship Programme 2027-28</h1>
+          <p>The scholarships are for full-time taught Master's and PhD study at a UK university.</p>
+          <p>HEC will undertake the nomination process in Pakistan in accordance with its prescribed
+             eligibility and merit criteria, while the final selection of scholars will be made by
+             the Commonwealth Scholarship Commission. Nomination by HEC does not guarantee final
+             selection, as the final selection is made by the Commonwealth Scholarship Commission.
+             Please note that HEC has only a facilitation role in the nomination process, as the
+             final selection will be made by the donor country.</p>
+        </div>
+        """
+        page = _parse_hec_commonwealth_announcement(html, url)
+        self.assertIsNotNone(page)
+        assert page is not None
+        authority = [
+            value for kind, label, value in page.criteria
+            if kind == "selection_process" and label == "Final selection authority"
+        ]
+        self.assertEqual(len(authority), 1)
+        self.assertIn("HEC will undertake the nomination process", authority[0])
+        self.assertIn("final selection of scholars will be made", authority[0])
+        self.assertNotIn("does not guarantee", authority[0])
+        self.assertNotIn("facilitation role", authority[0])
 
     def test_rejects_unrelated_or_wrong_cycle_hec_page(self) -> None:
         from app.extraction import _parse_hec_commonwealth_announcement
