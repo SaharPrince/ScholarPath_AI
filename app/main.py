@@ -24,10 +24,10 @@ from app.schemas import (
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    # Production PostgreSQL is populated by the explicit, verified migration.
-    # Avoid seeding duplicate source rows before the local database is imported.
-    if not settings.database_url:
-        seed_official_sources()
+    # Source seeding is idempotent (unique official URLs + INSERT OR IGNORE).
+    # Run it in production too so newly curated official providers become active
+    # without a manual database migration or duplicate source records.
+    seed_official_sources()
     yield
 
 
