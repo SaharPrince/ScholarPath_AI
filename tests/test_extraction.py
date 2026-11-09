@@ -8,6 +8,26 @@ from app.extraction import (
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
+    def test_line_preserving_cleanup_repairs_live_hec_theme_joins(self) -> None:
+        from app.extraction import _clean_preserving_lines
+
+        raw = (
+            "Strengthening health systems andcapacity\n"
+            "Access,inclusionand opportunity\n"
+            "Water Managementand Sustainability\n"
+            "CSC'ssix themes"
+        )
+        expected = (
+            "Strengthening health systems and capacity\n"
+            "Access, inclusion and opportunity\n"
+            "Water Management and Sustainability\n"
+            "CSC's six themes"
+        )
+        cleaned = _clean_preserving_lines(raw)
+        self.assertEqual(cleaned, expected)
+        self.assertEqual(_clean_preserving_lines(cleaned), cleaned)
+        self.assertEqual(cleaned.count("\n"), 3)
+
     def test_repairs_known_joined_words_from_official_source_copy(self) -> None:
         cleaned = _clean(
             "permanentresident eligiblefields onbehalf of residents of Pakistan "
@@ -1030,7 +1050,7 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             "faq": ("""
                 <div class="ms-rtestate-field">
                   <p>GRE score 300 and above/HEC-HAT score 60% and above.
-                     All candidates are required to fulfill this scholarship eligibility criterion
+                     All candidates arerequired to fulfill this scholarship eligibility criterion
                      regardless of admission in a U.S. university.</p>
                 </div>
             """, base + "FAQ.aspx"),
@@ -1043,11 +1063,14 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             page.evidence_sources[("description", overview_statement)],
             base + "default.aspx",
         )
-        self.assertTrue(any(
-            kind == "academic_requirements"
-            and label == "GRE or HAT score – all applicants"
-            for kind, label, _value in page.criteria
-        ))
+        shared_score_rules = [
+            (kind, label, value) for kind, label, value in page.criteria
+            if kind == "academic_requirements" and "GRE or HAT score" in label
+        ]
+        self.assertEqual(len(shared_score_rules), 1)
+        self.assertEqual(shared_score_rules[0][1], "GRE or HAT score – all applicants")
+        self.assertIn("All candidates are required", shared_score_rules[0][2])
+        self.assertNotIn("arerequired", shared_score_rules[0][2])
         self.assertFalse(any(
             kind == "required_documents" and "GRE" in value
             for kind, _label, value in page.criteria
@@ -1057,6 +1080,71 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         self.assertIsNone(_parse_hec_knowledge_corridor({
             "overview": ("<html><body><p>Programme</p></body></html>", "https://example.org/")
         }))
+
+
+    def test_corridor_classifies_existing_phd_holders_as_ineligible(self) -> None:
+        base = "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
+        pages = {
+            "overview": ("""
+                <div class="ms-rtestate-field">
+                  <h1>US-Pakistan Knowledge Corridor PhD Scholarship</h1>
+                  <p>The programme provides PhD scholarships for Pakistani students.</p>
+                </div>
+            """, base + "default.aspx"),
+            "eligibility": ("""
+                <div class="ms-rtestate-field">
+                  <p>Pakistani/AJK nationals</p>
+                  <p>Those having PhD Degree are not eligible.</p>
+                </div>
+            """, base + "Eligibility-Criteria.aspx"),
+        }
+        page = _parse_hec_knowledge_corridor(pages)
+        self.assertIsNotNone(page)
+        assert page is not None
+        exclusions = [item for item in page.criteria if item[0] == "ineligibility"]
+        self.assertEqual(len(exclusions), 1)
+        self.assertEqual(exclusions[0][1], "Existing PhD holders")
+
+
+    def test_corridor_priority_subject_evidence_preserves_line_breaks(self) -> None:
+        base = "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
+        pages = {
+            "overview": ("""
+                <div class="ms-rtestate-field">
+                  <p>PhD scholarships for Pakistani students to study in the United States.</p>
+                </div>
+            """, base + "default.aspx"),
+            "eligibility": ("""
+                <div class="ms-rtestate-field">
+                  <p>Pakistani/AJK nationals</p>
+                </div>
+            """, base + "Eligibility-Criteria.aspx"),
+            "priority_subjects": ("""
+                <div class="ms-rtestate-field">
+                  <p>Crop Production<br>Soil and Environmental Sciences<br>Climate Change andEnvironmental Engineering<br>Water Managementand Sustainability<br>Computational Biology</p>
+                </div>
+            """, base + "Priority-Subject-Areas.aspx"),
+        }
+        page = _parse_hec_knowledge_corridor(pages)
+        self.assertIsNotNone(page)
+        assert page is not None
+        evidence_text = next(
+            value for name, value in page.evidence
+            if name == "priority_subject_areas"
+        )
+        expected_subjects = (
+            "Crop Production\nSoil and Environmental Sciences\n"
+            "Climate Change and Environmental Engineering\n"
+            "Water Management and Sustainability\nComputational Biology"
+        )
+        self.assertEqual(evidence_text, expected_subjects)
+        self.assertEqual(page.fields["priority_subject_areas"], expected_subjects)
+        self.assertNotIn("andEnvironmental", evidence_text)
+        self.assertNotIn("Managementand", evidence_text)
+        self.assertEqual(
+            page.evidence_sources[("priority_subject_areas", evidence_text)],
+            base + "Priority-Subject-Areas.aspx",
+        )
 
 
 
@@ -1072,6 +1160,8 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
           for Pakistan, invites applications from eligible Pakistani/AJ&amp;K nationals.
           The scholarships are offered by the Commonwealth Scholarship Commission (CSC).</p>
           <p>The scholarships are for full-time taught Master's and PhD study at a UK university.</p>
+          <p>Strengthening health systems andcapacity</p>
+          <p>Access, inclusionand opportunity</p>
           <h2>Key Dates</h2>
           <ul>
             <li>Closing date for CSC applications: Tuesday, 20 October 2026 at 16:00 BST</li>
@@ -1126,6 +1216,18 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         ]
         self.assertEqual(len(dual_portal), 1)
         self.assertTrue(_is_mandatory_criterion(dual_portal[0][0], dual_portal[0][2]))
+        final_authority = [
+            item for item in page.criteria if item[1] == "Final selection authority"
+        ]
+        self.assertEqual(len(final_authority), 1)
+        self.assertIn("nomination process", final_authority[0][2].casefold())
+        self.assertIn("final selection", final_authority[0][2].casefold())
+        self.assertFalse(any(item[1] == "National nomination authority" for item in page.criteria))
+        self.assertFalse(any(
+            _is_mandatory_criterion(kind, value)
+            for kind, _label, value in page.criteria
+            if kind in {"selection_process", "selection_criteria"}
+        ))
         self.assertFalse(any(
             "national nominating agency" in value.casefold()
             for _kind, _label, value in page.criteria
@@ -1142,12 +1244,176 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(all(source == url for source in page.evidence_sources.values()))
         self.assertTrue(all(source == url for source in page.criteria_sources.values()))
 
+    def test_hec_sharepoint_repairs_joined_words_found_in_saved_eligibility(self) -> None:
+        self.assertEqual(
+            _clean(
+                "throughoutthe academic career; Researchersof approved R&D "
+                "Organizations; first divisionin 17/18 years; "
+                "Pakistannational; attheCommonwealth portal"
+            ),
+            "throughout the academic career; Researchers of approved R&D "
+            "Organizations; first division in 17/18 years; "
+            "Pakistan national; at the Commonwealth portal",
+        )
+
+    def test_hec_output_boundary_repairs_fields_and_commonwealth_criteria(self) -> None:
+        from app.extraction import _clean
+
+        self.assertEqual(
+            _clean("Benefits stated withouta category restriction; "
+                   "applicationto cancer research; Thefemale nomination"),
+            "Benefits stated without a category restriction; "
+            "application to cancer research; The female nomination",
+        )
+        self.assertEqual(_clean("Closing date: 20 October 2026 at 16:00BST"),
+                         "Closing date: 20 October 2026 at 16:00 BST")
+        self.assertEqual(_clean("University(overall ranking)"),
+                         "University (overall ranking)")
+
+    def test_hec_repairs_exact_joined_tokens_from_live_programme_pages(self) -> None:
+        from app.extraction import _clean
+
+        self.assertEqual(
+            _clean(
+                "doctoralstudy at aUK university under the CSC'ssix themes; "
+                "HEC nominationprocess; submit onlineapplication forms; "
+                "Access,inclusion and opportunity; HATtests; "
+                "onlineapplications"
+            ),
+            "doctoral study at a UK university under the CSC's six themes; "
+            "HEC nomination process; submit online application forms; "
+            "Access, inclusion and opportunity; HAT tests; online applications",
+        )
+
+    def test_hec_sharepoint_repairs_observed_joined_words_without_rewriting_other_spelling(self) -> None:
+        self.assertEqual(
+            _clean("Benefits stated withouta category restriction; applicationto cancer research"),
+            "Benefits stated without a category restriction; application to cancer research",
+        )
+        self.assertEqual(
+            _clean("doctoralstudy; benefits without acategory restriction; must not beavailing"),
+            "doctoral study; benefits without a category restriction; must not be availing",
+        )
+        self.assertEqual(
+            _clean("CSC'ssix themes; Allapplicants; guaranteefinal selection"),
+            "CSC's six themes; All applicants; guarantee final selection",
+        )
+        self.assertEqual(
+            _clean("All candidates arerequired to fulfill the scholarship criteria."),
+            "All candidates are required to fulfill the scholarship criteria.",
+        )
+        self.assertEqual(
+            _clean("Climate Change andEnvironmental Engineering"),
+            "Climate Change and Environmental Engineering",
+        )
+        self.assertEqual(_clean("Strengthening globalpeace, security and governance"),
+                         "Strengthening global peace, security and governance")
+        # Preserve source spelling rather than silently correcting factual evidence.
+        self.assertIn("Pharmacetuical", _clean("Pharmacetuical Sciences"))
+
+    def test_hec_repairs_additional_exact_joins_from_live_announcement(self) -> None:
+        from app.extraction import _clean
+
+        self.assertEqual(
+            _clean(
+                "topursue; Master'sand PHD; forthe Commonwealth; bythe CSC; "
+                "femalenomination; permanentresident; fieldof study; "
+                "candidatesmay apply; beforethe session; inHAT test; "
+                "mayupload results; prescribedby HEC; tosubmit forms; fromthe portal"
+            ),
+            "to pursue; Master's and PHD; for the Commonwealth; by the CSC; "
+            "female nomination; permanent resident; field of study; "
+            "candidates may apply; before the session; in HAT test; "
+            "may upload results; prescribed by HEC; to submit forms; from the portal",
+        )
+
+    def test_commonwealth_authority_keeps_one_nomination_and_final_selection_statement(self) -> None:
+        from app.extraction import _parse_hec_commonwealth_announcement
+
+        url = "https://www.hec.gov.pk/english/HECAnnouncements/Pages/CW-Scholarship.aspx"
+        html = """
+        <div class="ms-rtestate-field">
+          <h1>Commonwealth Scholarship Programme 2027-28</h1>
+          <p>The scholarships are for full-time taught Master's and PhD study at a UK university.</p>
+          <p>HEC will undertake the nomination process in Pakistan in accordance with its prescribed
+             eligibility and merit criteria, while the final selection of scholars will be made by
+             the Commonwealth Scholarship Commission. Nomination by HEC does not guarantee final
+             selection, as the final selection is made by the Commonwealth Scholarship Commission.
+             Please note that HEC has only a facilitation role in the nomination process, as the
+             final selection will be made by the donor country.</p>
+        </div>
+        """
+        page = _parse_hec_commonwealth_announcement(html, url)
+        self.assertIsNotNone(page)
+        assert page is not None
+        authority = [
+            value for kind, label, value in page.criteria
+            if kind == "selection_process" and label == "Final selection authority"
+        ]
+        self.assertEqual(len(authority), 1)
+        self.assertIn("HEC will undertake the nomination process", authority[0])
+        self.assertIn("final selection of scholars will be made", authority[0])
+        self.assertNotIn("does not guarantee", authority[0])
+        self.assertNotIn("facilitation role", authority[0])
+
     def test_rejects_unrelated_or_wrong_cycle_hec_page(self) -> None:
         from app.extraction import _parse_hec_commonwealth_announcement
 
         self.assertIsNone(_parse_hec_commonwealth_announcement(
             "<html><body><p>General HEC scholarship information.</p></body></html>"
         ))
+
+
+    def test_line_preserving_cleaner_repairs_live_hec_joined_words(self) -> None:
+        from app.extraction import _clean_preserving_lines
+
+        source = (
+            "Water Managementand Sustainability\n"
+            "Strengthening health systems andcapacity\n"
+            "Access, inclusionand opportunity\n"
+            "Keep this\n\nseparate"
+        )
+        self.assertEqual(
+            _clean_preserving_lines(source),
+            "Water Management and Sustainability\n"
+            "Strengthening health systems and capacity\n"
+            "Access, inclusion and opportunity\n"
+            "Keep this\n\nseparate",
+        )
+
+    def test_commonwealth_output_normalizes_description_and_preserves_theme_lines(self) -> None:
+        from app.extraction import _parse_hec_commonwealth_announcement
+
+        url = "https://www.hec.gov.pk/english/HECAnnouncements/Pages/CW-Scholarship.aspx"
+        html = """
+        <div class="ms-rtestate-field">
+          <h1>Commonwealth Scholarship Programme 2027-28</h1>
+          <p>The scholarships are for full-time taught Master'sand PhD study at aUK university,
+             commencing in September/October 2027, and are offered under the CSC'ssix themes.</p>
+          <p>HEC will undertake the nominationprocess in Pakistan.</p>
+          <p>Applicants are required to submit onlineapplication forms at the HEC portal.</p>
+          <p>Science and technology for development</p>
+          <p>Strengthening health systems andcapacity</p>
+          <p>Access, inclusionand opportunity</p>
+          <a href="https://scholarship.hec.gov.pk/">HEC application portal</a>
+        </div>
+        """
+        page = _parse_hec_commonwealth_announcement(html, url)
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("Master's and PhD study at a UK university", page.description or "")
+        self.assertIn("CSC's six themes", page.description or "")
+        self.assertNotIn("Master'sand", page.description or "")
+        self.assertIn("Strengthening health systems and capacity", page.fields["development_themes"])
+        self.assertIn("Access, inclusion and opportunity", page.fields["development_themes"])
+        self.assertIn("\n", page.fields["development_themes"])
+        theme_evidence = next(
+            value for name, value in page.evidence if name == "development_themes"
+        )
+        self.assertEqual(theme_evidence, page.fields["development_themes"])
+        self.assertEqual(page.evidence_sources[("development_themes", theme_evidence)], url)
+        self.assertTrue(all(source == url for source in page.criteria_sources.values()))
+        self.assertTrue(any("nomination process" in value for _kind, _label, value in page.criteria))
 
 
 if __name__ == "__main__":

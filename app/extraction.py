@@ -78,6 +78,68 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?<=[A-Za-z])(?=\d{4}\b)", " ", text)
     text = re.sub(r"(?i)\b(USD|PKR)(?=\d)", r"\1 ", text)
     text = re.sub(r"(?i)\b(States?)(under|at|for|to)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(without)(a)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(application)(to)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(The)female\b", r"\1 female", text)
+    text = re.sub(r"(?i)(?<=\d)BST\b", " BST", text)
+    # Repair verified missing-space joins observed in current HEC source pages.
+    for left, right in (
+        ("doctoral", "study"),
+        ("a", "category"),
+        ("be", "availing"),
+        ("CSC's", "six"),
+        ("all", "applicants"),
+        ("guarantee", "final"),
+        ("the", "applicant"),
+        ("is", "the"),
+        ("female", "nomination"),
+        ("are", "required"),
+        # Additional exact HEC SharePoint joins found in the saved eligibility
+        # criteria after the targeted extraction.
+        ("throughout", "the"),
+        ("Researchers", "of"),
+        ("division", "in"),
+        ("Pakistan", "national"),
+        ("at", "the"),
+        ("the", "Commonwealth"),
+    ):
+        text = re.sub(
+            rf"(?i)\b({re.escape(left)})({re.escape(right)})\b",
+            r"\1 \2",
+            text,
+        )
+    # Repair exact joined tokens where the component words have no
+    # regex word boundary between them. Keep this list limited to forms
+    # verified in the official HEC pages; do not attempt general segmentation.
+    for left, right in (
+        ("doctoral", "study"),
+        ("CSC's", "six"),
+        ("a", "UK"),
+        ("nomination", "process"),
+        ("online", "application"),
+        ("online", "applications"),
+        ("Management", "and"),
+        ("inclusion", "and"),
+        ("and", "capacity"),
+    ):
+        text = re.sub(
+            rf"(?i)(?<![A-Za-z]){re.escape(left + right)}(?![A-Za-z])",
+            left + " " + right,
+            text,
+        )
+    # A small number of source themes lose the space after this exact comma.
+    text = re.sub(r"(?i)\b(access),(?=inclusion\b)", r"\1, ", text)
+
+    # Repair observed missing spaces inside HEC development-theme phrases.
+    text = re.sub(r"(?i)\bmanagement(?=and\b)", "management ", text)
+    text = re.sub(r"(?i)\binclusion(?=and\b)", "inclusion ", text)
+    text = re.sub(r"(?i)\band(?=capacity\b)", "and ", text)
+
+    # These all-lowercase joins have no word boundary between their
+    # component words, so repair the exact observed source forms explicitly.
+    text = re.sub(r"(?i)\barerequired\b", "are required", text)
+    text = re.sub(r"(?i)\bandEnvironmental\b", "and Environmental", text)
+    text = re.sub(r"(?i)\bglobalpeace\b", "global peace", text)
     # Keep ordinal division references readable after SharePoint spacing repair.
     text = re.sub(r"(?i)\b(and|or)(?=\d(?:st|nd|rd|th)\b)", r"\1 ", text)
     text = re.sub(r"(?i)\b(2|3)\s+(nd|rd)\b", r"\1\2", text)
@@ -101,6 +163,13 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(of)(experience)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(United)(States)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(OR)(?=\(\d+\))", r"\1 ", text)
+    # Repair recurring joined words in HEC SharePoint copy without attempting
+    # unsafe general-purpose word segmentation.
+    text = re.sub(r"(?i)\b(which)(is)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(have)(a)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(required)(to)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(in)(the)(relevant)\b", r"\1 \2 \3", text)
+    text = re.sub(r"(?<=[A-Za-z])\(", " (", text)
 
     # Repair additional missing spaces and punctuation spacing found in CCIP/CCAP copy.
     text = re.sub(r"(?i)\b(may)(apply)\b", r"\1 \2", text)
@@ -111,10 +180,52 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(Department)(of)\b", r"\1 \2", text)
     text = re.sub(r"(?i)(i\.e\.)(?=\S)", r"\1 ", text)
     text = re.sub(r",(?=\S)", ", ", text)
+    # Explicit final repairs for joined tokens observed in live HEC page output.
+    # Keep these exact and conservative; do not attempt general word segmentation.
+    for pattern, replacement in (
+        (r"(?i)\bdoctoralstudy\b", "doctoral study"),
+        (r"(?i)\bCSC'ssix\b", "CSC's six"),
+        (r"(?i)\baUK\b", "a UK"),
+        (r"(?i)\bnominationprocess\b", "nomination process"),
+        (r"(?i)\bHATtests\b", "HAT tests"),
+        (r"(?i)\bonline(applications?)\b", r"online \1"),
+        (r"(?i)\bAccess,inclusion\b", "Access, inclusion"),
+    ):
+        text = re.sub(pattern, replacement, text)
+    # Repair additional exact joins observed in live HEC announcement and
+    # eligibility text. These are deliberately narrow to avoid splitting names.
+    for left, right in (
+        ("to", "pursue"),
+        ("for", "the"),
+        ("by", "the"),
+        ("female", "nomination"),
+        ("permanent", "resident"),
+        ("field", "of"),
+        ("candidates", "may"),
+        ("before", "the"),
+        ("in", "HAT"),
+        ("may", "upload"),
+        ("prescribed", "by"),
+        ("to", "submit"),
+        ("from", "the"),
+    ):
+        text = re.sub(
+            rf"(?i)(?<![A-Za-z]){re.escape(left + right)}(?![A-Za-z])",
+            left + " " + right,
+            text,
+        )
+    text = re.sub(r"(?i)(?<![A-Za-z])Master'sand(?![A-Za-z])", "Master's and", text)
     # Preserve thousands separators in funding and other numeric values.
     text = re.sub(r"(?<=\d),\s+(?=\d{3}\b)", ",", text)
     return text
 
+
+def _clean_preserving_lines(value: str) -> str:
+    """Normalize extracted text line by line without flattening meaningful layout."""
+    return "\n".join(
+        _clean(line) if line.strip() else ""
+        for line in value.splitlines()
+    ).strip()
 
 
 def _save_evidence(connection, scholarship_id: int, evidence: list[tuple[str, str]], evidence_url: str) -> None:
@@ -165,7 +276,8 @@ def _split_criteria_statements(value: str) -> list[str]:
 
 def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Infer mandatory status conservatively, preserving explicit preferences."""
-    if criterion_type == "target_audience":
+    if criterion_type in {"target_audience", "selection_process", "selection_criteria"}:
+        # These describe award administration or ranking, not applicant eligibility.
         return False
     if criterion_type == "application_requirements" and re.search(
         r"(?i)\b(sole responsibility|both (?:the )?(?:commonwealth|hec)|"
@@ -949,6 +1061,9 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         if _clean(requirement)
     ]
 
+    # Description is returned separately from fields, so normalize it explicitly too.
+    description = _clean(description) if description else None
+
     deadline_date = _parse_deadline_date(fields.get("deadline_text"))
     application_status = _classify_application_status(
         body_text, deadline_date, fields.get("application_status")
@@ -1024,6 +1139,17 @@ def _hec_priority_subject_items(root: BeautifulSoup) -> list[str]:
     seen: set[str] = set()
     for item in candidates:
         item = _clean(re.sub(r"^\s*\d+\s*[.)]\s*", "", item))
+        # The official HEC page joins these two separate subject entries in
+        # its rendered text. Split only this observed, unambiguous boundary.
+        item = re.sub(r"(?i)\b(Engineering)(Automotive)\b", r"\1\n\2", item)
+        if "\n" in item:
+            parts = [part.strip() for part in item.splitlines() if part.strip()]
+            for part in parts:
+                key = re.sub(r"[^a-z0-9]+", "", part.casefold())
+                if key and key not in seen:
+                    seen.add(key)
+                    result.append(part)
+            continue
         item = re.sub(
             r"(?i)^following is the list of preferred subject areas?/subjects "
             r"in which scholarship under the .*? is offered effective "
@@ -1058,7 +1184,17 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     criteria_sources: dict[tuple[str, str, str], str] = {}
 
     def add_evidence(field_name: str, value: str, page_name: str) -> None:
-        value = _clean(value)
+        if field_name == "priority_subject_areas":
+            # Preserve the subject-list line structure and apply the same
+            # verified HEC spacing repairs used for the displayed field.
+            value = "\n".join(
+                cleaned for line in value.splitlines()
+                if (cleaned := _clean(line))
+            )
+            value = re.sub(r"(?i)\bandEnvironmental\b", "and Environmental", value)
+        else:
+            value = _clean_preserving_lines(value)
+            value = re.sub(r"(?i)\barerequired\b", "are required", value)
         if not value:
             return
         item = (field_name, value)
@@ -1067,7 +1203,11 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
         evidence_sources[item] = urls[page_name]
 
     def add_criterion(kind: str, label: str, value: str, page_name: str) -> None:
-        value = _clean(value)
+        value = _clean_preserving_lines(value)
+        # Apply the observed FAQ repair at the final criterion boundary too.
+        # This guards against markup extraction paths that preserve the joined
+        # source token after an earlier normalization pass.
+        value = re.sub(r"(?i)\barerequired\b", "are required", value)
         if not value:
             return
         # Collapse source-copy duplicates that differ only in punctuation,
@@ -1163,7 +1303,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 add_criterion("age_limit", age_label, value, "eligibility")
         elif re.search(r"(?i)(another scholarship|any other scholarship|availing.*scholarship)", value):
             add_criterion("ineligibility", "Other scholarship", value, "eligibility")
-        elif re.search(r"(?i)(ph\.?d holders?|already.*ph\.?d|doctoral degree holders?)", value):
+        elif re.search(r"(?i)(ph\.?d holders?|already.*ph\.?d|doctoral degree holders?|those having ph\.?d\s+degree)", value):
             add_criterion("ineligibility", "Existing PhD holders", value, "eligibility")
         elif re.search(r"(?i)(category\s*i\b|top\s*50|qs.*50)", value) and (
             re.search(r"(?i)(secured admission|admission in|must have|must secure)", value)
@@ -1225,6 +1365,30 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 add_criterion("academic_requirements", "GRE or HAT score – all applicants", value, "faq")
             elif re.search(r"(?i)(confirmed admission|domicile|passport|attested academic)", value):
                 add_criterion("required_documents", "Application requirements", value, "faq")
+
+    # The FAQ says the GRE/HAT threshold applies to every candidate, independently
+    # of university admission. Keep that shared rule once; retain the separate
+    # Category I/II university-admission conditions.
+    if any(
+        kind == "academic_requirements" and label == "GRE or HAT score – all applicants"
+        for kind, label, _value in criteria
+    ):
+        retained = []
+        for item in criteria:
+            kind, label, _value = item
+            if (
+                kind == "academic_requirements"
+                and "GRE or HAT score" in label
+                and label != "GRE or HAT score – all applicants"
+            ):
+                # Category headings are not consistently exposed in HEC's
+                # page markup, so labels may be Category I, Category II, or
+                # generic. The FAQ's all-applicant clarification supersedes
+                # every narrower duplicate score label.
+                criteria_sources.pop(item, None)
+            else:
+                retained.append(item)
+        criteria = retained
 
     # Keep category-specific tuition separate from benefits shared by both categories.
     # Preserve the official wording; never calculate a combined funding total.
@@ -1301,9 +1465,51 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
 
     provider = "Higher Education Commission (HEC)"
     add_evidence("provider_name", provider, "overview")
+
+    # Normalize every extracted field at the output boundary, preserving line breaks.
+    for field_name, field_value in list(fields.items()):
+        if isinstance(field_value, str):
+            fields[field_name] = "\n".join(
+                _clean(line) if line.strip() else ""
+                for line in field_value.splitlines()
+            ).strip()
+    # Final output-boundary normalization: keep stored criteria/evidence
+    # consistent with the already-normalized programme fields. Rebuild the
+    # provenance maps alongside the values so repaired facts retain sources.
+    normalized_criteria: list[tuple[str, str, str]] = []
+    normalized_criteria_sources: dict[tuple[str, str, str], str] = {}
+    for kind, label, value in criteria:
+        cleaned_label = _clean_preserving_lines(label)
+        cleaned_value = _clean_preserving_lines(value)
+        item = (kind, cleaned_label, cleaned_value)
+        if item not in normalized_criteria:
+            normalized_criteria.append(item)
+        source_url = criteria_sources.get((kind, label, value))
+        if source_url:
+            normalized_criteria_sources[item] = source_url
+
+    normalized_evidence: list[tuple[str, str]] = []
+    normalized_evidence_sources: dict[tuple[str, str], str] = {}
+    for field_name, value in evidence:
+        if field_name == "priority_subject_areas":
+            cleaned_value = "\n".join(
+                cleaned for line in value.splitlines()
+                if (cleaned := _clean(line))
+            )
+        else:
+            cleaned_value = _clean_preserving_lines(value)
+        item = (field_name, cleaned_value)
+        if cleaned_value and item not in normalized_evidence:
+            normalized_evidence.append(item)
+        source_url = evidence_sources.get((field_name, value))
+        if source_url and cleaned_value:
+            normalized_evidence_sources[item] = source_url
+
     return ExtractedPage(
-        title, description, provider, fields, criteria, evidence,
-        "unknown", "student", evidence_sources, criteria_sources,
+        _clean(title), _clean(description) if description else None,
+        _clean(provider) if provider else None, fields,
+        normalized_criteria, normalized_evidence, "unknown", "student",
+        normalized_evidence_sources, normalized_criteria_sources,
     )
 
 
@@ -1351,7 +1557,7 @@ def _parse_hec_commonwealth_announcement(
     criteria_sources: dict[tuple[str, str, str], str] = {}
 
     def add_evidence(name: str, value: str) -> None:
-        value = _clean(value)
+        value = _clean_preserving_lines(value)
         if not value:
             return
         item = (name, value)
@@ -1360,12 +1566,26 @@ def _parse_hec_commonwealth_announcement(
         evidence_sources[item] = page_url
 
     def add_criterion(kind: str, label: str, value: str) -> None:
-        value = _clean(value)
+        value = _clean_preserving_lines(value)
         if not value:
             return
+        existing_index = next(
+            (index for index, old in enumerate(criteria)
+             if old[0] == kind and old[1] == label),
+            None,
+        )
+        if existing_index is not None:
+            old_kind, old_label, old_value = criteria[existing_index]
+            if value.casefold() not in old_value.casefold():
+                merged = _clean(old_value + " " + value)
+                old_item = (old_kind, old_label, old_value)
+                new_item = (old_kind, old_label, merged)
+                criteria[existing_index] = new_item
+                criteria_sources.pop(old_item, None)
+                criteria_sources[new_item] = page_url
+            return
         item = (kind, label, value)
-        if item not in criteria:
-            criteria.append(item)
+        criteria.append(item)
         criteria_sources[item] = page_url
 
     # Use the actual course-of-study description, not the introductory
@@ -1424,15 +1644,41 @@ def _parse_hec_commonwealth_announcement(
         ):
             add_criterion("application_requirements", "Dual-portal application", item)
         elif re.search(r"final selection", low) and re.search(r"commonwealth scholarship commission", low):
-            for statement in _split_criteria_statements(item):
-                if re.search(r"(?i)final selection", statement) and re.search(
-                    r"(?i)commonwealth scholarship commission", statement
-                ):
-                    add_criterion("selection_process", "Final selection authority", statement)
+            statements = _split_criteria_statements(item)
+            nomination_statement = next(
+                (
+                    statement for statement in statements
+                    if re.search(r"(?i)nomination process", statement)
+                    and re.search(r"(?i)\bhec\b", statement)
+                ),
+                None,
+            )
+            final_statement = next(
+                (
+                    statement for statement in statements
+                    if re.search(r"(?i)final selection", statement)
+                    and re.search(r"(?i)commonwealth scholarship commission", statement)
+                    # A later "does not guarantee" sentence repeats the same
+                    # authority rather than adding a distinct selection rule.
+                    and not re.search(r"(?i)does not guarantee", statement)
+                ),
+                None,
+            )
+            # Keep one HEC nomination statement and one CSC final-selection
+            # statement. Ignore repeated paraphrases in the same source block.
+            authority_parts = list(dict.fromkeys(
+                part for part in (nomination_statement, final_statement) if part
+            ))
+            if authority_parts:
+                add_criterion(
+                    "selection_process",
+                    "Final selection authority",
+                    " ".join(authority_parts),
+                )
         elif re.search(r"nomination process", low) and re.search(r"hec", low):
             for statement in _split_criteria_statements(item):
                 if re.search(r"(?i)nomination process", statement) and re.search(r"(?i)\bhec\b", statement):
-                    add_criterion("selection_process", "National nomination authority", statement)
+                    add_criterion("selection_process", "HEC nomination role", statement)
         # Development themes are programme context, not individual eligibility
         # conditions. They are stored separately below, never as criteria.
 
@@ -1482,6 +1728,7 @@ def _parse_hec_commonwealth_announcement(
                      r"access, inclusion and opportunity)", item)
     ]
     if theme_items:
+        theme_items = [_clean_preserving_lines(item) for item in theme_items]
         fields["development_themes"] = "\n".join(theme_items)[:2000]
         add_evidence("development_themes", fields["development_themes"])
 
@@ -1493,9 +1740,40 @@ def _parse_hec_commonwealth_announcement(
     fields["application_status"] = application_status
     add_evidence("application_status", application_status)
 
+    # Normalize every field and criterion while preserving provenance and line breaks.
+    for field_name, field_value in list(fields.items()):
+        if isinstance(field_value, str):
+            fields[field_name] = "\n".join(
+                _clean(line) if line.strip() else ""
+                for line in field_value.splitlines()
+            ).strip()
+
+    normalized_criteria: list[tuple[str, str, str]] = []
+    normalized_criteria_sources: dict[tuple[str, str, str], str] = {}
+    for kind, label, value in criteria:
+        item = (kind, _clean_preserving_lines(label), _clean_preserving_lines(value))
+        if item not in normalized_criteria:
+            normalized_criteria.append(item)
+        source_url = criteria_sources.get((kind, label, value))
+        if source_url:
+            normalized_criteria_sources[item] = source_url
+
+    normalized_evidence: list[tuple[str, str]] = []
+    normalized_evidence_sources: dict[tuple[str, str], str] = {}
+    for field_name, value in evidence:
+        cleaned_value = _clean_preserving_lines(value)
+        item = (field_name, cleaned_value)
+        if cleaned_value and item not in normalized_evidence:
+            normalized_evidence.append(item)
+        source_url = evidence_sources.get((field_name, value))
+        if source_url and cleaned_value:
+            normalized_evidence_sources[item] = source_url
+
     return ExtractedPage(
-        title, description, provider, fields, criteria, evidence,
-        application_status, "student", evidence_sources, criteria_sources,
+        _clean_preserving_lines(title),
+        _clean_preserving_lines(description) if description else None,
+        _clean_preserving_lines(provider), fields, normalized_criteria, normalized_evidence,
+        application_status, "student", normalized_evidence_sources, normalized_criteria_sources,
     )
 
 
