@@ -79,6 +79,7 @@ async def scheduled_discovery(authorization: str | None = Header(default=None)) 
                  AND NOT EXISTS (
                      SELECT 1 FROM extraction_attempts a
                      WHERE a.candidate_id = c.id
+                       AND a.status <> 'failed'
                  )
                ORDER BY c.id
                LIMIT 3"""
