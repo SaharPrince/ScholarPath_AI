@@ -40,6 +40,7 @@ main{padding:0 0 70px}.stats{display:grid;grid-template-columns:repeat(3,1fr);ga
  <div class="profile-field"><label>HAT score (if taken)</label><input name="hat_score" type="number" min="0" max="100" placeholder="0–100"></div>
  <div class="profile-field"><label>GRE score (if taken)</label><input name="gre_score" type="number" min="0" max="340" placeholder="e.g. 305"></div>
  <div class="profile-field"><label>University QS rank (if known)</label><input name="university_qs_rank" type="number" min="1" max="2000" placeholder="e.g. 42"></div>
+ <div class="profile-field"><label>Confirmed admission to university?</label><select name="admission_confirmed"><option value="">Choose</option><option value="false">No</option><option value="true">Yes</option></select></div>
  <div class="profile-field"><label>Dual nationality?</label><select name="dual_national"><option value="">Choose</option><option value="false">No</option><option value="true">Yes</option></select></div>
  <div class="profile-field"><label>Receiving another scholarship?</label><select name="receiving_other_scholarship"><option value="">Choose</option><option value="false">No</option><option value="true">Yes</option></select></div>
  <div class="profile-field"><label>Already hold a PhD?</label><select name="has_phd"><option value="">Choose</option><option value="false">No</option><option value="true">Yes</option></select></div>
@@ -110,7 +111,7 @@ $("profileForm").addEventListener("submit",async e=>{
  e.preventDefault();const button=$("matchButton"),box=$("matchResults");
  const data=Object.fromEntries(new FormData(e.currentTarget).entries());
  ["age","years_of_education","hat_score","gre_score","university_qs_rank"].forEach(k=>{if(data[k]==="")delete data[k];else if(data[k]!==undefined)data[k]=Number(data[k]);});
- ["dual_national","receiving_other_scholarship","has_phd"].forEach(k=>{if(data[k]==="")delete data[k];else data[k]=data[k]==="true";});
+ ["dual_national","receiving_other_scholarship","has_phd","admission_confirmed"].forEach(k=>{if(data[k]==="")delete data[k];else data[k]=data[k]==="true";});
  Object.keys(data).forEach(k=>{if(data[k]==="")delete data[k];});
  button.disabled=true;button.textContent="Checking your matches…";box.classList.add("show");box.innerHTML="<p>Comparing your answers with official criteria…</p>";
  try{
