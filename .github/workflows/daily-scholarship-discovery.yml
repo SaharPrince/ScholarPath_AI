@@ -34,6 +34,24 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
+      - name: Restore previous persistent SQLite snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data
+          previous_run=$(gh run list --workflow daily-scholarship-discovery.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -n "$previous_run" ]; then
+            artifact_name=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$previous_run/artifacts" --jq '.artifacts[] | select(.name | startswith("scholarpath-daily-database-")) | .name' | head -n 1)
+            if [ -n "$artifact_name" ]; then
+              gh run download "$previous_run" --name "$artifact_name" --dir data
+              echo "Restored database snapshot from run $previous_run"
+            else
+              echo "No prior database artifact found; initializing a new database."
+            fi
+          else
+            echo "No prior successful discovery run; initializing a new database."
+          fi
+
       - name: Discover links from official sources
         run: python -m app.run_discovery
 
