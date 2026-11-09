@@ -1335,5 +1335,57 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         ))
 
 
+    def test_line_preserving_cleaner_repairs_live_hec_joined_words(self) -> None:
+        from app.extraction import _clean_preserving_lines
+
+        source = (
+            "Water Managementand Sustainability\\n"
+            "Strengthening health systems andcapacity\\n"
+            "Access, inclusionand opportunity\\n"
+            "Keep this\\n\\nseparate"
+        )
+        self.assertEqual(
+            _clean_preserving_lines(source),
+            "Water Management and Sustainability\\n"
+            "Strengthening health systems and capacity\\n"
+            "Access, inclusion and opportunity\\n"
+            "Keep this\\n\\nseparate",
+        )
+
+    def test_commonwealth_output_normalizes_description_and_preserves_theme_lines(self) -> None:
+        from app.extraction import _parse_hec_commonwealth_announcement
+
+        url = "https://www.hec.gov.pk/english/HECAnnouncements/Pages/CW-Scholarship.aspx"
+        html = """
+        <div class="ms-rtestate-field">
+          <h1>Commonwealth Scholarship Programme 2027-28</h1>
+          <p>The scholarships are for full-time taught Master'sand PhD study at aUK university,
+             commencing in September/October 2027, and are offered under the CSC'ssix themes.</p>
+          <p>HEC will undertake the nominationprocess in Pakistan.</p>
+          <p>Applicants are required to submit onlineapplication forms at the HEC portal.</p>
+          <p>Science and technology for development</p>
+          <p>Strengthening health systems andcapacity</p>
+          <p>Access, inclusionand opportunity</p>
+          <a href="https://scholarship.hec.gov.pk/">HEC application portal</a>
+        </div>
+        """
+        page = _parse_hec_commonwealth_announcement(html, url)
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("Master's and PhD study at a UK university", page.description or "")
+        self.assertIn("CSC's six themes", page.description or "")
+        self.assertNotIn("Master'sand", page.description or "")
+        self.assertIn("Strengthening health systems and capacity", page.fields["development_themes"])
+        self.assertIn("Access, inclusion and opportunity", page.fields["development_themes"])
+        self.assertIn("\\n", page.fields["development_themes"])
+        theme_evidence = next(
+            value for name, value in page.evidence if name == "development_themes"
+        )
+        self.assertEqual(theme_evidence, page.fields["development_themes"])
+        self.assertEqual(page.evidence_sources[("development_themes", theme_evidence)], url)
+        self.assertTrue(all(source == url for source in page.criteria_sources.values()))
+        self.assertTrue(any("nomination process" in value for _kind, _label, value in page.criteria))
+
+
 if __name__ == "__main__":
     unittest.main()
