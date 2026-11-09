@@ -1508,26 +1508,38 @@ def _parse_hec_commonwealth_announcement(
         ):
             add_criterion("application_requirements", "Dual-portal application", item)
         elif re.search(r"final selection", low) and re.search(r"commonwealth scholarship commission", low):
-            for statement in _split_criteria_statements(item):
-                if re.search(r"(?i)final selection", statement) and re.search(
-                    r"(?i)commonwealth scholarship commission", statement
-                ):
-                    add_criterion("selection_process", "Final selection authority", statement)
-                    break
-        elif (
-            re.search(r"nomination process", low)
-            and re.search(r"hec", low)
-            and not (
-                re.search(r"final selection", low)
-                and re.search(r"commonwealth scholarship commission", low)
+            statements = _split_criteria_statements(item)
+            nomination_statement = next(
+                (
+                    statement for statement in statements
+                    if re.search(r"(?i)nomination process", statement)
+                    and re.search(r"(?i)\bhec\b", statement)
+                ),
+                None,
             )
-        ):
-            # When the same source item already states both HEC's nomination
-            # role and CSC's final authority, the preceding branch captures
-            # the complete sentence once. Do not merge repeated statements.
+            final_statement = next(
+                (
+                    statement for statement in statements
+                    if re.search(r"(?i)final selection", statement)
+                    and re.search(r"(?i)commonwealth scholarship commission", statement)
+                ),
+                None,
+            )
+            # Keep one HEC nomination statement and one CSC final-selection
+            # statement. Ignore repeated paraphrases in the same source block.
+            authority_parts = list(dict.fromkeys(
+                part for part in (nomination_statement, final_statement) if part
+            ))
+            if authority_parts:
+                add_criterion(
+                    "selection_process",
+                    "Final selection authority",
+                    " ".join(authority_parts),
+                )
+        elif re.search(r"nomination process", low) and re.search(r"hec", low):
             for statement in _split_criteria_statements(item):
                 if re.search(r"(?i)nomination process", statement) and re.search(r"(?i)\bhec\b", statement):
-                    add_criterion("selection_process", "Final selection authority", statement)
+                    add_criterion("selection_process", "HEC nomination role", statement)
         # Development themes are programme context, not individual eligibility
         # conditions. They are stored separately below, never as criteria.
 
