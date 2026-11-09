@@ -1410,7 +1410,6 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
         cleaned_label = _clean(label)
         cleaned_value = _clean(value)
         item = (kind, cleaned_label, cleaned_value)
-        item = (kind, label, cleaned_value)
         if item not in normalized_criteria:
             normalized_criteria.append(item)
         source_url = criteria_sources.get((kind, label, value))
