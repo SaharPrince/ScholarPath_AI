@@ -79,6 +79,7 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(USD|PKR)(?=\d)", r"\1 ", text)
     text = re.sub(r"(?i)\b(States?)(under|at|for|to)\b", r"\1 \2", text)
     # Keep ordinal division references readable after SharePoint spacing repair.
+    text = re.sub(r"(?i)\b(and|or)(?=\d(?:st|nd|rd|th)\b)", r"\1 ", text)
     text = re.sub(r"(?i)\b(2|3)\s+(nd|rd)\b", r"\1\2", text)
     # Repair unambiguous joins observed in official CCAP source copy.
     text = re.sub(r"(?i)\b(years?)(of)(experience)\b", r"\1 \2 \3", text)
