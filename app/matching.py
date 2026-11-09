@@ -61,28 +61,38 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         age = _number(profile.get("age"))
         if age is None:
             return _result("unknown", "Add your age to check the published age limit.")
+        range_match = re.search(r"\b(\d{2})\s*(?:-|–|to)\s*(\d{2})\s*(?:years?|yrs?)?\b", lower)
+        if range_match:
+            minimum, maximum = (int(range_match.group(1)), int(range_match.group(2)))
+            if minimum <= age <= maximum:
+                return _result("pass", f"Your age ({int(age)}) is within the published range of {minimum}–{maximum}.")
+            return _result("fail", f"Your age ({int(age)}) is outside the published range of {minimum}–{maximum}.")
+
         limits = [int(x) for x in re.findall(r"\b(\d{2})\s*(?:years?|yrs?)\b", lower)]
         if not limits:
             return _result("unknown", "The age wording needs manual review; no numeric limit was safely identified.")
-        limit = min(limits)
+        limit = min(limits) if len(limits) == 1 else min(limits)
+        if any(word in lower for word in ("minimum age", "at least", "not younger than", "minimum of")):
+            ok = age >= limit
+            return _result("pass" if ok else "fail",
+                           f"Your age ({int(age)}) {'meets' if ok else 'is below'} the published minimum of {limit}.")
         qualified = any(profile.get(k) is True for k in (
             "regular_government_employee", "public_university_faculty", "approved_rd_researcher"
         ))
+        flags = ("regular_government_employee", "public_university_faculty", "approved_rd_researcher")
         if "all other cases" in lower and qualified:
             return _result("informational", "This lower age limit applies to other applicants; your profile indicates a specified public-sector category.")
-        if "all other cases" in lower and not qualified:
-            flags = ("regular_government_employee", "public_university_faculty", "approved_rd_researcher")
-            if all(profile.get(k) is None for k in flags):
-                return _result("unknown", "Confirm whether you belong to one of the specified public-sector employment categories before applying the general age limit.")
+        if "all other cases" in lower and not qualified and all(profile.get(k) is None for k in flags):
+            return _result("unknown", "Confirm whether you belong to one of the specified public-sector employment categories before applying the general age limit.")
         if "regular government" in lower or "public sector" in lower or "approved r&d" in lower:
             if not qualified:
-                flags = ("regular_government_employee", "public_university_faculty", "approved_rd_researcher")
                 if all(profile.get(k) is not False for k in flags):
                     return _result("unknown", "Confirm whether you are a regular government employee, public university faculty member, or approved R&D researcher.")
                 return _result("informational", "The higher public-sector age limit does not apply to the employment category you selected.")
-        if age <= limit:
-            return _result("pass", f"Your age ({int(age)}) is within the published maximum of {limit}.")
-        return _result("fail", f"Your age ({int(age)}) is above the published maximum of {limit}.")
+        ok = age <= limit
+        return _result("pass" if ok else "fail",
+                       f"Your age ({int(age)}) is within the published maximum of {limit}." if ok
+                       else f"Your age ({int(age)}) is above the published maximum of {limit}.")
 
     if kind == "ineligibility":
         if "other scholarship" in lower or "other scholarship" in text.lower():
