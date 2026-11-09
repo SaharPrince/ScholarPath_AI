@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 
@@ -195,6 +196,9 @@ async def discover_from_active_sources() -> list[SourceResult]:
         headers=headers,
         follow_redirects=False,
     ) as client:
-        for source in sources:
-            results.append(await _fetch_source(client, source))
-    return results
+        # Run a small bounded batch concurrently so serverless scheduled
+        # invocations finish within their execution window.
+        results = await asyncio.gather(
+            *(_fetch_source(client, source) for source in sources)
+        )
+    return list(results)
