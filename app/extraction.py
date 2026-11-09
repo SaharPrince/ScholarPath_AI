@@ -175,13 +175,13 @@ def _clean(value: str) -> str:
     # Explicit final repairs for joined tokens observed in live HEC page output.
     # Keep these exact and conservative; do not attempt general word segmentation.
     for pattern, replacement in (
-        (r"(?i)\\bdoctoralstudy\\b", "doctoral study"),
-        (r"(?i)\\bCSC'ssix\\b", "CSC's six"),
-        (r"(?i)\\baUK\\b", "a UK"),
-        (r"(?i)\\bnominationprocess\\b", "nomination process"),
-        (r"(?i)\\bHATtests\\b", "HAT tests"),
-        (r"(?i)\\bonlineapplications?\\b", "online application"),
-        (r"(?i)\\bAccess,inclusion\\b", "Access, inclusion"),
+        (r"(?i)\bdoctoralstudy\b", "doctoral study"),
+        (r"(?i)\bCSC'ssix\b", "CSC's six"),
+        (r"(?i)\baUK\b", "a UK"),
+        (r"(?i)\bnominationprocess\b", "nomination process"),
+        (r"(?i)\bHATtests\b", "HAT tests"),
+        (r"(?i)\bonline(applications?)\b", "online \\1"),
+        (r"(?i)\bAccess,inclusion\b", "Access, inclusion"),
     ):
         text = re.sub(pattern, replacement, text)
     # Preserve thousands separators in funding and other numeric values.
