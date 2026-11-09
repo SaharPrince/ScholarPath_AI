@@ -1043,11 +1043,12 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             page.evidence_sources[("description", overview_statement)],
             base + "default.aspx",
         )
-        self.assertTrue(any(
-            kind == "academic_requirements"
-            and label == "GRE or HAT score – all applicants"
-            for kind, label, _value in page.criteria
-        ))
+        shared_score_rules = [
+            (kind, label, value) for kind, label, value in page.criteria
+            if kind == "academic_requirements" and "GRE or HAT score" in label
+        ]
+        self.assertEqual(len(shared_score_rules), 1)
+        self.assertEqual(shared_score_rules[0][1], "GRE or HAT score – all applicants")
         self.assertFalse(any(
             kind == "required_documents" and "GRE" in value
             for kind, _label, value in page.criteria
@@ -1126,6 +1127,15 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         ]
         self.assertEqual(len(dual_portal), 1)
         self.assertTrue(_is_mandatory_criterion(dual_portal[0][0], dual_portal[0][2]))
+        final_authority = [
+            item for item in page.criteria if item[1] == "Final selection authority"
+        ]
+        self.assertEqual(len(final_authority), 1)
+        self.assertFalse(any(
+            _is_mandatory_criterion(kind, value)
+            for kind, _label, value in page.criteria
+            if kind in {"selection_process", "selection_criteria"}
+        ))
         self.assertFalse(any(
             "national nominating agency" in value.casefold()
             for _kind, _label, value in page.criteria
