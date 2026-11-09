@@ -102,6 +102,31 @@ class DatabaseSchemaTests(unittest.TestCase):
             settings.database_path = previous_path
 
 
+    def test_official_source_seeding_is_idempotent(self) -> None:
+        from app.source_catalog import LEGACY_HEC_URL, OFFICIAL_SOURCES, seed_official_sources
+
+        with database.get_connection() as connection:
+            connection.execute(
+                "INSERT INTO sources (name, official_url) VALUES (?, ?)",
+                ("Legacy HEC source", LEGACY_HEC_URL),
+            )
+
+        first_inserted = seed_official_sources()
+        second_inserted = seed_official_sources()
+
+        with database.get_connection() as connection:
+            rows = connection.execute(
+                "SELECT official_url, is_active FROM sources"
+            ).fetchall()
+        by_url = {row["official_url"]: row["is_active"] for row in rows}
+
+        self.assertEqual(first_inserted, len(OFFICIAL_SOURCES))
+        self.assertEqual(second_inserted, 0)
+        self.assertEqual(len(by_url), len(OFFICIAL_SOURCES) + 1)
+        self.assertEqual(by_url[LEGACY_HEC_URL], 0)
+        for source in OFFICIAL_SOURCES:
+            self.assertEqual(by_url[source["official_url"]], 1)
+
     def test_scholarship_requires_a_source(self) -> None:
         with self.assertRaises(Exception):
             with database.get_connection() as connection:
