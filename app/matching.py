@@ -143,9 +143,10 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         target_key = next((key for key, aliases in target_aliases.items()
                            if target in aliases), target)
         required_level = None
-        if re.search(r"\\b(matric(?:ulation)?|ssc|secondary school certificate)\\b", lower):
+        completed_qualification = re.search(r"\b(pass(?:ed)?|complet(?:e|ed)|qualification|certificate|marks in)\b", lower)
+        if completed_qualification and re.search(r"\b(matric(?:ulation)?|ssc|secondary school certificate)\b", lower):
             required_level = "matric"
-        elif re.search(r"\\b(intermediate|hssc|higher secondary|f\\.?a\\.?|f\\.?sc\\.?|i\\.?cs|i\\.?com)\\b", lower):
+        elif completed_qualification and re.search(r"\b(intermediate|hssc|higher secondary|f\.?a\.?|f\.?sc\.?|i\.?cs|i\.?com)\b", lower):
             required_level = "intermediate"
         if required_level:
             if current_rank is None:
@@ -153,12 +154,12 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             required_rank = level_ranks[required_level]
             if current_rank < required_rank:
                 return _result("fail", f"This opportunity requires {required_level.title()} to be completed; your highest completed level is {current_level.replace('_', ' ').title()}.")
-        if re.search(r"\\b(for|admission to|apply for)\\s+intermediate\\b", lower):
+        if re.search(r"\b(for|admission to|apply for)\s+intermediate\b", lower):
             if not target:
                 return _result("unknown", "Choose what you plan to study next to check this Intermediate opportunity.")
             if target_key != "intermediate":
                 return _result("informational", "This opportunity is for Intermediate study, not your selected next study level.")
-        if re.search(r"\\b(for|admission to|apply for)\\s+(?:matric|ssc)\\b", lower):
+        if re.search(r"\b(for|admission to|apply for)\s+(?:matric|ssc)\b", lower):
             if not target:
                 return _result("unknown", "Choose what you plan to study next to check this Matric opportunity.")
             if target_key != "matric":
@@ -169,7 +170,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         if ("hat" not in lower and "gre" not in lower
                 and any(term in lower for term in ("marks", "aggregate", "percentage", "percent"))):
             percentage_match = re.search(
-                r"(?:minimum|at least|not less than|above|aggregate of|score of)\\s*(\\d{1,3}(?:\\.\\d+)?)\\s*%?",
+                r"(?:minimum|at least|not less than|above|aggregate of|score of)\s*(\d{1,3}(?:\.\d+)?)\s*%?",
                 lower
             )
             if percentage_match and ("%" in lower or "percent" in lower or "marks" in lower):
