@@ -184,6 +184,29 @@ def _clean(value: str) -> str:
         (r"(?i)\bAccess,inclusion\b", "Access, inclusion"),
     ):
         text = re.sub(pattern, replacement, text)
+    # Repair additional exact joins observed in live HEC announcement and
+    # eligibility text. These are deliberately narrow to avoid splitting names.
+    for left, right in (
+        ("to", "pursue"),
+        ("for", "the"),
+        ("by", "the"),
+        ("female", "nomination"),
+        ("permanent", "resident"),
+        ("field", "of"),
+        ("candidates", "may"),
+        ("before", "the"),
+        ("in", "HAT"),
+        ("may", "upload"),
+        ("prescribed", "by"),
+        ("to", "submit"),
+        ("from", "the"),
+    ):
+        text = re.sub(
+            rf"(?i)(?<![A-Za-z]){re.escape(left + right)}(?![A-Za-z])",
+            left + " " + right,
+            text,
+        )
+    text = re.sub(r"(?i)(?<![A-Za-z])Master'sand(?![A-Za-z])", "Master's and", text)
     # Preserve thousands separators in funding and other numeric values.
     text = re.sub(r"(?<=\d),\s+(?=\d{3}\b)", ",", text)
     return text
