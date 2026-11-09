@@ -1131,6 +1131,9 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
             item for item in page.criteria if item[1] == "Final selection authority"
         ]
         self.assertEqual(len(final_authority), 1)
+        self.assertIn("nomination process", final_authority[0][2].casefold())
+        self.assertIn("final selection", final_authority[0][2].casefold())
+        self.assertFalse(any(item[1] == "National nomination authority" for item in page.criteria))
         self.assertFalse(any(
             _is_mandatory_criterion(kind, value)
             for kind, _label, value in page.criteria
@@ -1151,6 +1154,14 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(any("scholarship.hec.gov.pk" in value for value in portal_evidence))
         self.assertTrue(all(source == url for source in page.evidence_sources.values()))
         self.assertTrue(all(source == url for source in page.criteria_sources.values()))
+
+    def test_hec_sharepoint_repairs_observed_joined_words_without_rewriting_other_spelling(self) -> None:
+        self.assertEqual(
+            _clean("Benefits stated withouta category restriction; applicationto cancer research"),
+            "Benefits stated without a category restriction; application to cancer research",
+        )
+        # Preserve source spelling rather than silently correcting factual evidence.
+        self.assertIn("Pharmacetuical", _clean("Pharmacetuical Sciences"))
 
     def test_rejects_unrelated_or_wrong_cycle_hec_page(self) -> None:
         from app.extraction import _parse_hec_commonwealth_announcement
