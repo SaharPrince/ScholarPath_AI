@@ -24,10 +24,11 @@ from app.schemas import (
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    # Source seeding is idempotent (unique official URLs + INSERT OR IGNORE).
-    # Run it in production too so newly curated official providers become active
-    # without a manual database migration or duplicate source records.
-    seed_official_sources()
+    # Production uses the explicitly migrated Supabase source catalog.
+    # Keep startup seeding local-only until production source synchronization
+    # has a dedicated path; avoid extra writes during serverless cold starts.
+    if not settings.database_url:
+        seed_official_sources()
     yield
 
 
