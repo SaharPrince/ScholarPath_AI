@@ -261,7 +261,7 @@ function showMatchDetail(id,rows){
   menu.style.left=left+"px";menu.style.width=width+"px";menu.style.maxHeight=maxHeight+"px";
   menu.style.top=placeAbove?"auto":Math.min(rect.bottom+gap,window.innerHeight-maxHeight-pad)+"px";
   if(placeAbove){menu.style.bottom=(window.innerHeight-rect.top+gap)+"px";}
-  const selected=menu.querySelector('[aria-selected="true"]');if(selected)selected.scrollIntoView({block:"nearest"});
+  const selected=menu.querySelector('[aria-selected="true"]');if(selected)selected.focus({preventScroll:true});
   activeMenu=menu;activeTrigger=trigger;trigger.setAttribute("aria-expanded","true");
   menu.addEventListener("keydown",event=>{
    const items=Array.from(menu.querySelectorAll(".select-option:not(:disabled)")),current=items.indexOf(document.activeElement);
