@@ -1248,11 +1248,12 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
             _clean(
                 "doctoralstudy at aUK university under the CSC'ssix themes; "
                 "HEC nominationprocess; submit onlineapplication forms; "
-                "Access,inclusion and opportunity"
+                "Access,inclusion and opportunity; HATtests; "
+                "onlineapplications"
             ),
             "doctoral study at a UK university under the CSC's six themes; "
             "HEC nomination process; submit online application forms; "
-            "Access, inclusion and opportunity",
+            "Access, inclusion and opportunity; HAT tests; online application",
         )
 
     def test_hec_sharepoint_repairs_observed_joined_words_without_rewriting_other_spelling(self) -> None:
