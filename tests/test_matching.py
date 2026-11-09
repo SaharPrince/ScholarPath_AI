@@ -99,6 +99,29 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(result["match_status"], "likely_eligible")
         self.assertEqual(result["checks_failed"], 0)
 
+
+    def test_category_pass_resolves_unknown_alternative_route(self):
+        scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
+        criteria = [
+            self.criterion("category_i_eligibility", "Category I", "Secured admission in top 50 QS World Ranked US University."),
+            self.criterion("category_ii_eligibility", "Category II", "Secured admission in any top 51-100 QS World Ranked US University."),
+        ]
+        result = match_scholarship(scholarship, criteria, {"university_qs_rank": 42, "admission_confirmed": True})
+        self.assertEqual(result["match_status"], "likely_eligible")
+        self.assertEqual(result["checks_unknown"], 0)
+        self.assertEqual(result["checks"][1]["status"], "informational")
+
+    def test_category_pass_resolves_failed_alternative_route(self):
+        scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
+        criteria = [
+            self.criterion("category_i_eligibility", "Category I", "Secured admission in top 50 QS World Ranked US University."),
+            self.criterion("category_ii_eligibility", "Category II", "Secured admission in any top 51-100 QS World Ranked US University."),
+        ]
+        result = match_scholarship(scholarship, criteria, {"university_qs_rank": 42, "admission_confirmed": True})
+        self.assertEqual(result["match_status"], "likely_eligible")
+        self.assertEqual(result["checks_failed"], 0)
+        self.assertEqual(result["checks"][1]["status"], "informational")
+
     def test_no_structured_criteria_never_means_eligible(self):
         scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
         result = match_scholarship(scholarship, [], {})
