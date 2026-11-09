@@ -52,7 +52,46 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                     return _result("unknown", "Tell us whether you hold another nationality.")
                 if dual:
                     return _result("fail", "The official criteria exclude dual nationals.")
-            return _result("pass", "Your nationality and the supplied residency details meet the published rule.")
+            if "domicile" in lower or "local certificate" in lower or "province" in lower:
+                region_aliases = {
+                    "Punjab": ("punjab",),
+                    "Sindh": ("sindh",),
+                    "Khyber Pakhtunkhwa": ("khyber pakhtunkhwa", "kpk", "k.p."),
+                    "Balochistan": ("balochistan",),
+                    "Islamabad Capital Territory": ("islamabad", "ict"),
+                    "Azad Jammu and Kashmir": ("azad jammu", "ajk"),
+                    "Gilgit-Baltistan": ("gilgit-baltistan", "gilgit baltistan", "gb"),
+                }
+                required_regions = [name for name, aliases in region_aliases.items()
+                                    if any(alias in lower for alias in aliases)]
+                domicile = (profile.get("domicile_region") or "").strip().lower()
+                if len(required_regions) != 1:
+                    return _result("unknown", "The official domicile rule lists multiple or unclear regions; it needs a closer check.")
+                if not domicile:
+                    return _result("unknown", "Choose your province or region of domicile to check this scholarship.")
+                if domicile != required_regions[0].lower():
+                    return _result("fail", f"This scholarship requires domicile in {required_regions[0]}.")
+            return _result("pass", "Your nationality and any supplied domicile details meet the published rule.")
+        if "domicile" in lower or "local certificate" in lower or "province" in lower:
+            region_aliases = {
+                "Punjab": ("punjab",),
+                "Sindh": ("sindh",),
+                "Khyber Pakhtunkhwa": ("khyber pakhtunkhwa", "kpk", "k.p."),
+                "Balochistan": ("balochistan",),
+                "Islamabad Capital Territory": ("islamabad", "ict"),
+                "Azad Jammu and Kashmir": ("azad jammu", "ajk"),
+                "Gilgit-Baltistan": ("gilgit-baltistan", "gilgit baltistan", "gb"),
+            }
+            required_regions = [name for name, aliases in region_aliases.items()
+                                if any(alias in lower for alias in aliases)]
+            domicile = (profile.get("domicile_region") or "").strip().lower()
+            if len(required_regions) != 1:
+                return _result("unknown", "The official domicile rule lists multiple or unclear regions; it needs a closer check.")
+            if not domicile:
+                return _result("unknown", "Choose your province or region of domicile to check this scholarship.")
+            if domicile != required_regions[0].lower():
+                return _result("fail", f"This scholarship requires domicile in {required_regions[0]}.")
+            return _result("pass", f"Your domicile in {required_regions[0]} meets the published regional rule.")
         return _result("unknown", "This nationality rule needs a specific check against the official wording.")
 
     if kind == "age_limit":
