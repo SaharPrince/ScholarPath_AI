@@ -1383,9 +1383,42 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
 
     provider = "Higher Education Commission (HEC)"
     add_evidence("provider_name", provider, "overview")
+
+    # Final output-boundary normalization: keep stored criteria/evidence
+    # consistent with the already-normalized programme fields. Rebuild the
+    # provenance maps alongside the values so repaired facts retain sources.
+    normalized_criteria: list[tuple[str, str, str]] = []
+    normalized_criteria_sources: dict[tuple[str, str, str], str] = {}
+    for kind, label, value in criteria:
+        cleaned_value = _clean(value)
+        item = (kind, label, cleaned_value)
+        if item not in normalized_criteria:
+            normalized_criteria.append(item)
+        source_url = criteria_sources.get((kind, label, value))
+        if source_url:
+            normalized_criteria_sources[item] = source_url
+
+    normalized_evidence: list[tuple[str, str]] = []
+    normalized_evidence_sources: dict[tuple[str, str], str] = {}
+    for field_name, value in evidence:
+        if field_name == "priority_subject_areas":
+            cleaned_value = "\n".join(
+                cleaned for line in value.splitlines()
+                if (cleaned := _clean(line))
+            )
+        else:
+            cleaned_value = _clean(value)
+        item = (field_name, cleaned_value)
+        if cleaned_value and item not in normalized_evidence:
+            normalized_evidence.append(item)
+        source_url = evidence_sources.get((field_name, value))
+        if source_url and cleaned_value:
+            normalized_evidence_sources[item] = source_url
+
     return ExtractedPage(
-        title, description, provider, fields, criteria, evidence,
-        "unknown", "student", evidence_sources, criteria_sources,
+        title, description, provider, fields, normalized_criteria,
+        normalized_evidence, "unknown", "student",
+        normalized_evidence_sources, normalized_criteria_sources,
     )
 
 
@@ -1604,6 +1637,7 @@ def _parse_hec_commonwealth_announcement(
                      r"access, inclusion and opportunity)", item)
     ]
     if theme_items:
+        theme_items = [_clean(item) for item in theme_items]
         fields["development_themes"] = "\n".join(theme_items)[:2000]
         add_evidence("development_themes", fields["development_themes"])
 
@@ -1615,9 +1649,25 @@ def _parse_hec_commonwealth_announcement(
     fields["application_status"] = application_status
     add_evidence("application_status", application_status)
 
+    # Normalize the final theme field and evidence at the output boundary.
+    fields["development_themes"] = "\n".join(
+        _clean(line) for line in fields.get("development_themes", "").splitlines()
+        if _clean(line)
+    )
+    normalized_evidence: list[tuple[str, str]] = []
+    normalized_evidence_sources: dict[tuple[str, str], str] = {}
+    for field_name, value in evidence:
+        cleaned_value = _clean(value)
+        item = (field_name, cleaned_value)
+        if cleaned_value and item not in normalized_evidence:
+            normalized_evidence.append(item)
+        source_url = evidence_sources.get((field_name, value))
+        if source_url and cleaned_value:
+            normalized_evidence_sources[item] = source_url
+
     return ExtractedPage(
-        title, description, provider, fields, criteria, evidence,
-        application_status, "student", evidence_sources, criteria_sources,
+        title, description, provider, fields, criteria, normalized_evidence,
+        application_status, "student", normalized_evidence_sources, criteria_sources,
     )
 
 
