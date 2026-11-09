@@ -73,6 +73,8 @@ def _clean(value: str) -> str:
     # DairyScience, and 1000Ph.D. without splitting acronym endings like PhD.
     text = re.sub(r"(?<=[a-z])(?=[A-Z][a-z])", " ", text)
     text = re.sub(r"(?<=\d)(?=[A-Za-z])", " ", text)
+    # Keep ordinal division references readable after SharePoint spacing repair.
+    text = re.sub(r"(?i)\b(2|3)\s+(nd|rd)\b", r"\1\2", text)
     # Repair unambiguous joins observed in official CCAP source copy.
     text = re.sub(r"(?i)\b(years?)(of)(experience)\b", r"\1 \2 \3", text)
     text = re.sub(r"(?i)\b(years?)(of)\b", r"\1 \2", text)
