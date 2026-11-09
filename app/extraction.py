@@ -80,7 +80,6 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(States?)(under|at|for|to)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(without)(a)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(application)(to)\b", r"\1 \2", text)
-    text = re.sub(r"(?i)\bpharmacetuical\b", "pharmaceutical", text)
     # Keep ordinal division references readable after SharePoint spacing repair.
     text = re.sub(r"(?i)\b(and|or)(?=\d(?:st|nd|rd|th)\b)", r"\1 ", text)
     text = re.sub(r"(?i)\b(2|3)\s+(nd|rd)\b", r"\1\2", text)
