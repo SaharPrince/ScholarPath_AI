@@ -1253,7 +1253,7 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
             ),
             "doctoral study at a UK university under the CSC's six themes; "
             "HEC nomination process; submit online application forms; "
-            "Access, inclusion and opportunity; HAT tests; online application",
+            "Access, inclusion and opportunity; HAT tests; online applications",
         )
 
     def test_hec_sharepoint_repairs_observed_joined_words_without_rewriting_other_spelling(self) -> None:
