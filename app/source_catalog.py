@@ -170,3 +170,70 @@ def seed_official_sources() -> int:
             )
             inserted += cursor.rowcount
     return inserted
+
+
+# Curated opportunity pages are separate from source indexes. These URLs were
+# confirmed on the corresponding official government/programme websites.
+# Keeping them here ensures important school/college-level schemes are queued
+# even when a site's navigation hides the detail page from a generic crawler.
+OFFICIAL_DISCOVERY_TARGETS = (
+    (
+        "https://hed.punjab.gov.pk/rehmatul-lil-alameen_scholarship",
+        "https://hed.punjab.gov.pk/rehmatul-lil-alameen_scholarship",
+        "Punjab Rahmatul-lil-Alameen Scholarship",
+    ),
+    (
+        "https://www.sef.org.pk/scholarship",
+        "https://www.sef.org.pk/news_and_updates/55",
+        "Sindh School Education Scholarship Programme AY 2026-27",
+    ),
+    (
+        "https://ef.kp.gov.pk/eligibility-criteria",
+        "https://ef.kp.gov.pk/eligibility-criteria",
+        "KP Education Foundation Merit-cum-Inaffordability Scholarship Scheme 2026-27",
+    ),
+    (
+        "https://beef.org.pk/policyguideline/",
+        "https://beef.org.pk/shaheed-benazir-bhutto-fully-funded-scholarships-for-district-toppers-of-matric-students-of-balochistan/",
+        "Shaheed Benazir Bhutto Fully Funded Scholarships for Balochistan Matric District Toppers",
+    ),
+    (
+        "https://beef.org.pk/policyguideline/",
+        "https://beef.org.pk/peef-scholarship-for-balochistan/",
+        "PEEF Scholarship for Balochistan",
+    ),
+    (
+        "https://beef.org.pk/policyguideline/",
+        "https://beef.org.pk/cep/",
+        "BEEF Cadet Excellence Scholarship Program",
+    ),
+)
+
+
+def seed_official_discovery_targets() -> int:
+    """Queue curated official opportunity pages for normal evidence-based extraction.
+
+    This only creates discovery candidates. The regular extractor still decides
+    whether a page contains enough facts to create a scholarship record, and
+    extracted records remain unverified until independently reviewed.
+    """
+    inserted = 0
+    with get_connection() as connection:
+        for source_url, candidate_url, title in OFFICIAL_DISCOVERY_TARGETS:
+            source = connection.execute(
+                "SELECT id FROM sources WHERE official_url = ? AND is_active = 1",
+                (source_url,),
+            ).fetchone()
+            if source is None:
+                continue
+            cursor = connection.execute(
+                """INSERT INTO discovery_candidates
+                   (source_id, title, candidate_url, status)
+                   VALUES (?, ?, ?, 'candidate')
+                   ON CONFLICT(source_id, candidate_url) DO UPDATE SET
+                       title = excluded.title,
+                       last_seen_at = CURRENT_TIMESTAMP""",
+                (source["id"], title, candidate_url),
+            )
+            inserted += max(cursor.rowcount, 0)
+    return inserted
