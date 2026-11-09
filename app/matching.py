@@ -104,11 +104,30 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     if kind in {"academic_requirements", "category_i_eligibility", "category_ii_eligibility"}:
         target = (profile.get("target_study_level") or "").lower()
         if "for master" in lower or "master scholarship" in lower:
-            if target and target not in {"master", "masters", "master's"}:
+            if not target:
+                return _result("unknown", "Choose your intended study level to check this Master's-specific requirement.")
+            if target in {"bachelors", "bachelor", "undergraduate"}:
+                return _result("fail", "This scholarship criterion is for Master's applicants, not undergraduate study.")
+            if target not in {"master", "masters", "master's"}:
                 return _result("informational", "This rule applies to Master's applicants, not your selected study level.")
         if "for phd" in lower or "phd scholarship" in lower:
-            if target and target not in {"phd", "doctoral"}:
+            if not target:
+                return _result("unknown", "Choose your intended study level to check this PhD-specific requirement.")
+            if target in {"bachelors", "bachelor", "undergraduate"}:
+                return _result("fail", "This scholarship criterion is for PhD applicants, not undergraduate study.")
+            if target not in {"phd", "doctoral"}:
                 return _result("informational", "This rule applies to PhD applicants, not your selected study level.")
+
+        if "relevant field" in lower or "relevant subject" in lower:
+            return _result("unknown", "Your degree subject must match the scholarship's approved field of study; compare it with the official subject list.")
+
+        if "accepted hat categories" in label.lower() or ("hat-i" in lower and "hat-iv" in lower):
+            category = (profile.get("hat_category") or "").upper()
+            if not category:
+                return _result("unknown", "Select your HAT category (I, II, III or IV).")
+            if category not in {"HAT-I", "HAT-II", "HAT-III", "HAT-IV"}:
+                return _result("fail", "The source accepts only HAT-I, HAT-II, HAT-III or HAT-IV.")
+            return _result("pass", "Your HAT category is one of the categories accepted by the source.")
 
         if "hat" in lower and "gre" in lower and (" or " in lower or "/" in lower):
             hat = _number(profile.get("hat_score"))
@@ -151,8 +170,12 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             division = (profile.get("latest_degree_division") or "").lower()
             if not division:
                 return _result("unknown", "Select the division/class of your latest completed degree.")
+            if division in {"other", "gpa", "cgpa", "percentage", "unknown"}:
+                return _result("unknown", "Your grading system needs comparison with the scholarship's official division-equivalence rules.")
             if "not have a second/third" in lower or "not have second" in lower:
-                ok = division not in {"second", "third", "2nd", "3rd"}
+                if division in {"second", "third", "2nd", "3rd"}:
+                    return _result("fail", "The source excludes a Second/Third Division in the latest degree.")
+                ok = division in {"first", "1st"}
             elif "first division" in lower:
                 ok = division in {"first", "1st"}
             else:
