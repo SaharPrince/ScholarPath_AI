@@ -103,6 +103,15 @@ class ProfileMatchingTests(unittest.TestCase):
         result = match_scholarship(scholarship, [], {})
         self.assertEqual(result["match_status"], "needs_more_information")
 
+    def test_public_sector_age_branches_wait_for_employment_answer(self):
+        higher = self.criterion("age_limit", "Public-sector maximum age", "40 Years in case of regular Government Employees/regular Faculty members of Public Sector Universities")
+        general = self.criterion("age_limit", "Other applicants maximum age", "35 Years in all other cases")
+        self.assertEqual(evaluate_criterion(higher, {"age": 38})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(general, {"age": 38})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(higher, {"age": 38, "regular_government_employee": True})["status"], "pass")
+        self.assertEqual(evaluate_criterion(general, {"age": 38, "regular_government_employee": True})["status"], "informational")
+        self.assertEqual(evaluate_criterion(general, {"age": 38, "regular_government_employee": False, "public_university_faculty": False, "approved_rd_researcher": False})["status"], "fail")
+
 
 if __name__ == "__main__":
     unittest.main()
