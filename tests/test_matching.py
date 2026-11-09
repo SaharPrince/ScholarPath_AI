@@ -128,6 +128,16 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(c, {"hat_category": "HAT-II"})["status"], "pass")
         self.assertEqual(evaluate_criterion(c, {"hat_category": "Other"})["status"], "fail")
 
+    def test_minimum_age_is_not_misread_as_maximum(self):
+        c = self.criterion("age_limit", "Minimum age", "Minimum age 18 years")
+        self.assertEqual(evaluate_criterion(c, {"age": 20})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"age": 17})["status"], "fail")
+
+    def test_age_range_is_checked_as_a_range(self):
+        c = self.criterion("age_limit", "Age range", "Applicants must be 18 to 35 years old")
+        self.assertEqual(evaluate_criterion(c, {"age": 25})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"age": 36})["status"], "fail")
+
 
 if __name__ == "__main__":
     unittest.main()
