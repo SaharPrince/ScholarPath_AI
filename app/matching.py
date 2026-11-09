@@ -101,16 +101,27 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             if target and target not in {"phd", "doctoral"}:
                 return _result("informational", "This rule applies to PhD applicants, not your selected study level.")
 
-        if "hat" in lower and re.search(r"\b(?:minimum|min(?:imum)? score|score of)\s*(?:of\s*)?\d{1,3}", lower):
+        if "hat" in lower and "gre" in lower and (" or " in lower or "/" in lower):
+            hat = _number(profile.get("hat_score"))
+            gre = _number(profile.get("gre_score"))
+            hat_ok = hat is not None and hat >= 60
+            gre_ok = gre is not None and gre >= 300
+            if hat_ok or gre_ok:
+                return _result("pass", "At least one accepted test score meets the published GRE 300 / HEC-HAT 60% alternative.")
+            if hat is None and gre is None:
+                return _result("unknown", "Add your GRE or HEC-HAT score to check this alternative requirement.")
+            return _result("fail", "Neither supplied test score meets the published GRE 300 / HEC-HAT 60% alternative.")
+
+        if "hat" in lower and re.search(r"\\b(?:minimum|min(?:imum)? score|score of)\\s*(?:of\\s*)?\\d{1,3}", lower):
             score = _number(profile.get("hat_score"))
             if score is None:
                 return _result("unknown", "Add your HAT score to check this requirement.")
-            match = re.search(r"\b(?:minimum|min(?:imum)? score|score of)\s*(?:of\s*)?(\d{1,3})", lower)
+            match = re.search(r"\\b(?:minimum|min(?:imum)? score|score of)\\s*(?:of\\s*)?(\\d{1,3})", lower)
             minimum = float(match.group(1)) if match else 60.0
             return _result("pass" if score >= minimum else "fail",
                            f"Your HAT score is {score:g}; the stated minimum is {minimum:g}.")
 
-        if "gre" in lower and re.search(r"\b300\b", lower):
+        if "gre" in lower and re.search(r"\\b300\\b", lower):
             score = _number(profile.get("gre_score"))
             if score is None:
                 return _result("unknown", "Add your GRE score to check this requirement.")
@@ -190,6 +201,17 @@ def match_scholarship(scholarship: dict[str, Any], criteria: list[dict[str, Any]
         })
 
     mandatory = [c for c in checks if c["status"] != "informational"]
+    if not mandatory:
+        checks.append({
+            "criterion_id": None,
+            "criterion_type": "review",
+            "criterion_label": "Eligibility criteria unavailable",
+            "requirement_text": "No mandatory structured criteria are recorded for this scholarship.",
+            "evidence_url": scholarship.get("source_url"),
+            "status": "unknown",
+            "explanation": "We cannot safely mark this scholarship as eligible without structured mandatory criteria.",
+        })
+        mandatory = [checks[-1]]
     failed = [c for c in mandatory if c["status"] == "fail"]
     unknown = [c for c in mandatory if c["status"] == "unknown"]
     if failed:
