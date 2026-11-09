@@ -1397,8 +1397,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     # Normalize every extracted field at the output boundary, preserving line breaks.
     for field_name, field_value in list(fields.items()):
         if isinstance(field_value, str):
-            fields[field_name] = "
-".join(
+            fields[field_name] = "\n".join(
                 _clean(line) if line.strip() else ""
                 for line in field_value.splitlines()
             ).strip()
@@ -1408,7 +1407,9 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     normalized_criteria: list[tuple[str, str, str]] = []
     normalized_criteria_sources: dict[tuple[str, str, str], str] = {}
     for kind, label, value in criteria:
+        cleaned_label = _clean(label)
         cleaned_value = _clean(value)
+        item = (kind, cleaned_label, cleaned_value)
         item = (kind, label, cleaned_value)
         if item not in normalized_criteria:
             normalized_criteria.append(item)
@@ -1434,8 +1435,8 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             normalized_evidence_sources[item] = source_url
 
     return ExtractedPage(
-        title, description, provider, fields, normalized_criteria,
-        normalized_evidence, "unknown", "student",
+        _clean(title), _clean(description), _clean(provider), fields,
+        normalized_criteria, normalized_evidence, "unknown", "student",
         normalized_evidence_sources, normalized_criteria_sources,
     )
 
