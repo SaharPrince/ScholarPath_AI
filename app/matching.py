@@ -70,6 +70,10 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         ))
         if "all other cases" in lower and qualified:
             return _result("informational", "This lower age limit applies to other applicants; your profile indicates a specified public-sector category.")
+        if "all other cases" in lower and not qualified:
+            flags = ("regular_government_employee", "public_university_faculty", "approved_rd_researcher")
+            if all(profile.get(k) is None for k in flags):
+                return _result("unknown", "Confirm whether you belong to one of the specified public-sector employment categories before applying the general age limit.")
         if "regular government" in lower or "public sector" in lower or "approved r&d" in lower:
             if not qualified:
                 flags = ("regular_government_employee", "public_university_faculty", "approved_rd_researcher")
