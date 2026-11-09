@@ -40,8 +40,9 @@ class ProfileMatchingTests(unittest.TestCase):
 
     def test_maximum_age_is_checked(self):
         c = self.criterion("age_limit", "Maximum age", "35 Years in all other cases")
-        self.assertEqual(evaluate_criterion(c, {"age": 34})["status"], "pass")
-        self.assertEqual(evaluate_criterion(c, {"age": 36})["status"], "fail")
+        other_applicant = {"regular_government_employee": False, "public_university_faculty": False, "approved_rd_researcher": False}
+        self.assertEqual(evaluate_criterion(c, {"age": 34, **other_applicant})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"age": 36, **other_applicant})["status"], "fail")
 
     def test_hat_score_is_checked(self):
         c = self.criterion("academic_requirements", "Minimum HAT score", "Minimum score of 60 out of 100 in HAT test.")
