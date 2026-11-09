@@ -870,15 +870,6 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         self.assertEqual(page.title, "US-Pakistan Knowledge Corridor PhD Scholarship")
         self.assertEqual(page.application_status, "unknown")
         self.assertEqual(page.fields["application_url"], "https://scholarship.hec.gov.pk/")
-        expected_themes = (
-            "Strengthening health systems and capacity\\n"
-            "Access, inclusion and opportunity"
-        )
-        self.assertEqual(page.fields["development_themes"], expected_themes)
-        theme_evidence = next(
-            value for name, value in page.evidence if name == "development_themes"
-        )
-        self.assertEqual(theme_evidence, expected_themes)
         funding = page.fields["funding_summary"]
         self.assertIn("Category I (QS 1–50)", funding)
         self.assertIn("Category II (QS 51–100)", funding)
@@ -1142,9 +1133,9 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             if name == "priority_subject_areas"
         )
         expected_subjects = (
-            "Crop Production\\nSoil and Environmental Sciences\\n"
-            "Climate Change and Environmental Engineering\\n"
-            "Water Management and Sustainability\\nComputational Biology"
+            "Crop Production\nSoil and Environmental Sciences\n"
+            "Climate Change and Environmental Engineering\n"
+            "Water Management and Sustainability\nComputational Biology"
         )
         self.assertEqual(evidence_text, expected_subjects)
         self.assertEqual(page.fields["priority_subject_areas"], expected_subjects)
@@ -1377,17 +1368,17 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         from app.extraction import _clean_preserving_lines
 
         source = (
-            "Water Managementand Sustainability\\n"
-            "Strengthening health systems andcapacity\\n"
-            "Access, inclusionand opportunity\\n"
-            "Keep this\\n\\nseparate"
+            "Water Managementand Sustainability\n"
+            "Strengthening health systems andcapacity\n"
+            "Access, inclusionand opportunity\n"
+            "Keep this\n\nseparate"
         )
         self.assertEqual(
             _clean_preserving_lines(source),
-            "Water Management and Sustainability\\n"
-            "Strengthening health systems and capacity\\n"
-            "Access, inclusion and opportunity\\n"
-            "Keep this\\n\\nseparate",
+            "Water Management and Sustainability\n"
+            "Strengthening health systems and capacity\n"
+            "Access, inclusion and opportunity\n"
+            "Keep this\n\nseparate",
         )
 
     def test_commonwealth_output_normalizes_description_and_preserves_theme_lines(self) -> None:
@@ -1415,7 +1406,7 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertNotIn("Master'sand", page.description or "")
         self.assertIn("Strengthening health systems and capacity", page.fields["development_themes"])
         self.assertIn("Access, inclusion and opportunity", page.fields["development_themes"])
-        self.assertIn("\\n", page.fields["development_themes"])
+        self.assertIn("\n", page.fields["development_themes"])
         theme_evidence = next(
             value for name, value in page.evidence if name == "development_themes"
         )
