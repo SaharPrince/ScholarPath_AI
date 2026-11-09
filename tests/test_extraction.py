@@ -952,9 +952,11 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         from app.extraction import _clean, _hec_priority_subject_items
 
         self.assertEqual(
-            _clean("AnnualStipend USD 19,200 FullyFunded 1000Ph.D. DairyScience"),
+            _clean("AnnualStipend USD19,200 FullyFunded 1000Ph.D. DairyScience"),
             "Annual Stipend USD 19,200 Fully Funded 1000 Ph.D. Dairy Science",
         )
+        self.assertEqual(_clean("United Statesunder the programme commencing October2027"),
+                         "United States under the programme commencing October 2027")
         root = BeautifulSoup("""
             <div>
               <ul>
@@ -988,7 +990,7 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             """, base + "Eligibility-Criteria.aspx"),
             "faq": ("""
                 <div class="ms-rtestate-field">
-                  <p>Applicants must have no 2nd or 3rd division throughout their entire academic career.</p>
+                  <p>Applicants must have no 2nd and 3rd division throughout their entire academic career.</p>
                 </div>
             """, base + "FAQ.aspx"),
         }
