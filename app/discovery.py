@@ -195,35 +195,17 @@ async def _fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult
         )
 
     with get_connection() as connection:
-        before = connection.total_changes
+        inserted = 0
         for url, title in discovered.items():
-            connection.execute(
+            cursor = connection.execute(
                 """INSERT INTO discovery_candidates
                    (source_id, title, candidate_url, status)
                    VALUES (?, ?, ?, 'candidate')
-                   ON CONFLICT(source_id, candidate_url) DO UPDATE SET
-                       title = excluded.title,
-                       last_seen_at = CURRENT_TIMESTAMP""",
+                   ON CONFLICT(source_id, candidate_url) DO NOTHING""",
                 (source["id"], title[:300], url),
             )
-
-        # Retire previously queued false positives without deleting their audit
-        # records. This also protects existing local databases on the next run.
-        connection.execute(
-            """UPDATE discovery_candidates
-               SET status = 'reviewed'
-               WHERE status = 'candidate'
-                 AND (
-                     lower(candidate_url) LIKE '%/_layouts/15/authenticate.aspx%'
-                     OR lower(candidate_url) LIKE '%/contactus.aspx%'
-                     OR lower(candidate_url) LIKE '%/inactive-scholarships%'
-                     OR lower(candidate_url) LIKE '%/archive%'
-                     OR lower(candidate_url) LIKE '%/documents/%'
-                     OR lower(candidate_url) =
-                        'https://www.hec.gov.pk/english/scholarshipsgrants/pages/default.aspx'
-                 )"""
-        )
-        inserted = connection.total_changes - before
+            if cursor.rowcount > 0:
+                inserted += cursor.rowcount
     return SourceResult(
         source["id"], source["name"], "completed",
         candidates_found=inserted,
