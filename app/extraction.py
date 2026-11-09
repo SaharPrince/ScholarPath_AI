@@ -73,6 +73,11 @@ def _clean(value: str) -> str:
     # DairyScience, and 1000Ph.D. without splitting acronym endings like PhD.
     text = re.sub(r"(?<=[a-z])(?=[A-Z][a-z])", " ", text)
     text = re.sub(r"(?<=\d)(?=[A-Za-z])", " ", text)
+    # Repair letter-to-number joins in years and monetary amounts, plus
+    # known SharePoint joins where both sides are lowercase.
+    text = re.sub(r"(?<=[A-Za-z])(?=\d{4}\b)", " ", text)
+    text = re.sub(r"(?i)\b(USD|PKR)(?=\d)", r"\1 ", text)
+    text = re.sub(r"(?i)\b(States?)(under|at|for|to)\b", r"\1 \2", text)
     # Keep ordinal division references readable after SharePoint spacing repair.
     text = re.sub(r"(?i)\b(2|3)\s+(nd|rd)\b", r"\1\2", text)
     # Repair unambiguous joins observed in official CCAP source copy.
@@ -1177,7 +1182,15 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 if active_category else "GRE or HAT score"
             )
             add_criterion("academic_requirements", score_label, value, "eligibility")
-        elif len(value) > 35 and re.search(r"(?i)(eligible|applicant|admission|university|degree)", value):
+        elif (
+            len(value) > 35
+            and not re.search(
+                r"(?i)^(?:those who satisfy|for this category.*prospective applicant|"
+                r"the following requirements|eligibility criteria)\b",
+                value.strip(),
+            )
+            and re.search(r"(?i)(eligible|applicant|admission|university|degree)", value)
+        ):
             add_criterion("eligibility", "Eligibility", value, "eligibility")
 
     # FAQ provides additional requirements and clarifications, but only capture
@@ -1190,10 +1203,14 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 add_criterion("post_selection_requirement", "Visa requirement", value, "faq")
             elif re.search(r"(?i)(return to pakistan|serve.*years|bond|contract)", value):
                 add_criterion("post_selection_requirement", "Post-study obligation", value, "faq")
-            elif re.search(
-                r"(?i)(?:no\s+)?(?:2\s*nd|second)\s*(?:/|or)\s*(?:3\s*rd|third)\s*division",
-                value,
-            ) and re.search(r"(?i)(academic career|entire career|degree)", value):
+            elif (
+                re.search(
+                    r"(?i)(?:2\s*nd|second)\s*(?:/|,|and|or)\s*(?:3\s*rd|third)\s*division|"
+                    r"(?:3\s*rd|third)\s*(?:/|,|and|or)\s*(?:2\s*nd|second)\s*division",
+                    value,
+                )
+                and re.search(r"(?i)(academic career|entire career|throughout.*career|all.*career|degree)", value)
+            ):
                 add_criterion("academic_requirements", "Academic record – FAQ clarification", value, "faq")
             elif re.search(r"(?i)(gre|hat).*(300|60\s*%)|(300|60\s*%).*(gre|hat)", value) and re.search(
                 r"(?i)all candidates|all applicants|every candidate|every applicant", value
