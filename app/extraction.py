@@ -80,6 +80,8 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(States?)(under|at|for|to)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(without)(a)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(application)(to)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(The)female\b", r"\1 female", text)
+    text = re.sub(r"(?i)(?<=\d)BST\b", " BST", text)
     # Repair verified missing-space joins observed in current HEC source pages.
     for left, right in (
         ("doctoral", "study"),
@@ -1392,16 +1394,14 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     provider = "Higher Education Commission (HEC)"
     add_evidence("provider_name", provider, "overview")
 
-    # Normalize every extracted field at the output boundary. Preserve
-    # meaningful line breaks in funding and subject lists while repairing
-    # joined words in each line.
+    # Normalize every extracted field at the output boundary, preserving line breaks.
     for field_name, field_value in list(fields.items()):
         if isinstance(field_value, str):
-            fields[field_name] = "\\n".join(
-                _clean(line) for line in field_value.splitlines()
-                if _clean(line)
-            )
-
+            fields[field_name] = "
+".join(
+                _clean(line) if line.strip() else ""
+                for line in field_value.splitlines()
+            ).strip()
     # Final output-boundary normalization: keep stored criteria/evidence
     # consistent with the already-normalized programme fields. Rebuild the
     # provenance maps alongside the values so repaired facts retain sources.
@@ -1667,14 +1667,13 @@ def _parse_hec_commonwealth_announcement(
     fields["application_status"] = application_status
     add_evidence("application_status", application_status)
 
-    # Normalize all fields and criteria at the output boundary, preserving
-    # line-oriented funding/theme content and every criterion source URL.
+    # Normalize every field and criterion while preserving provenance and line breaks.
     for field_name, field_value in list(fields.items()):
         if isinstance(field_value, str):
-            fields[field_name] = "\\n".join(
-                _clean(line) for line in field_value.splitlines()
-                if _clean(line)
-            )
+            fields[field_name] = "\n".join(
+                _clean(line) if line.strip() else ""
+                for line in field_value.splitlines()
+            ).strip()
 
     normalized_criteria: list[tuple[str, str, str]] = []
     normalized_criteria_sources: dict[tuple[str, str, str], str] = {}
