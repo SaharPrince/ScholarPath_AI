@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 
@@ -19,6 +20,7 @@ DISCOVERY_TERMS = (
 MAX_RESPONSE_BYTES = 2_000_000
 MAX_LINKS_PER_SOURCE = 200
 USER_AGENT = "ScholarPathAI/0.1 (+official scholarship source indexer)"
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -175,6 +177,24 @@ async def _fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult
     return SourceResult(source["id"], source["name"], "completed", candidates_found=inserted)
 
 
+async def _safe_fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult:
+    """Keep one malformed or unavailable source from aborting the full discovery run."""
+    try:
+        return await _fetch_source(client, source)
+    except Exception as exc:
+        logger.exception(
+            "Unexpected discovery failure for source_id=%s name=%s",
+            source.get("id"),
+            source.get("name"),
+        )
+        return SourceResult(
+            source["id"],
+            source["name"],
+            "failed",
+            message=f"Unexpected discovery error: {type(exc).__name__}",
+        )
+
+
 async def discover_from_active_sources() -> list[SourceResult]:
     """Index scholarship-related links on configured official source pages.
 
@@ -199,6 +219,6 @@ async def discover_from_active_sources() -> list[SourceResult]:
         # Run a small bounded batch concurrently so serverless scheduled
         # invocations finish within their execution window.
         results = await asyncio.gather(
-            *(_fetch_source(client, source) for source in sources)
+            *(_safe_fetch_source(client, source) for source in sources)
         )
     return list(results)
