@@ -101,6 +101,13 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(of)(experience)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(United)(States)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(OR)(?=\(\d+\))", r"\1 ", text)
+    # Repair recurring joined words in HEC SharePoint copy without attempting
+    # unsafe general-purpose word segmentation.
+    text = re.sub(r"(?i)\b(which)(is)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(have)(a)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(required)(to)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(in)(the)(relevant)\b", r"\1 \2 \3", text)
+    text = re.sub(r"(?<=[A-Za-z])\(", " (", text)
 
     # Repair additional missing spaces and punctuation spacing found in CCIP/CCAP copy.
     text = re.sub(r"(?i)\b(may)(apply)\b", r"\1 \2", text)
@@ -165,7 +172,8 @@ def _split_criteria_statements(value: str) -> list[str]:
 
 def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Infer mandatory status conservatively, preserving explicit preferences."""
-    if criterion_type == "target_audience":
+    if criterion_type in {"target_audience", "selection_process", "selection_criteria"}:
+        # These describe award administration or ranking, not applicant eligibility.
         return False
     if criterion_type == "application_requirements" and re.search(
         r"(?i)\b(sole responsibility|both (?:the )?(?:commonwealth|hec)|"
@@ -1226,6 +1234,24 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             elif re.search(r"(?i)(confirmed admission|domicile|passport|attested academic)", value):
                 add_criterion("required_documents", "Application requirements", value, "faq")
 
+    # The FAQ says the GRE/HAT threshold applies to every candidate, independently
+    # of university admission. Keep that shared rule once; retain the separate
+    # Category I/II university-admission conditions.
+    if any(
+        kind == "academic_requirements" and label == "GRE or HAT score – all applicants"
+        for kind, label, _value in criteria
+    ):
+        retained = []
+        for item in criteria:
+            kind, label, _value = item
+            if kind == "academic_requirements" and label in {
+                "GRE or HAT score – Category I", "GRE or HAT score – Category II"
+            }:
+                criteria_sources.pop(item, None)
+            else:
+                retained.append(item)
+        criteria = retained
+
     # Keep category-specific tuition separate from benefits shared by both categories.
     # Preserve the official wording; never calculate a combined funding total.
     category_i_funding: list[str] = []
@@ -1363,9 +1389,23 @@ def _parse_hec_commonwealth_announcement(
         value = _clean(value)
         if not value:
             return
+        existing_index = next(
+            (index for index, old in enumerate(criteria)
+             if old[0] == kind and old[1] == label),
+            None,
+        )
+        if existing_index is not None:
+            old_kind, old_label, old_value = criteria[existing_index]
+            if value.casefold() not in old_value.casefold():
+                merged = _clean(old_value + " " + value)
+                old_item = (old_kind, old_label, old_value)
+                new_item = (old_kind, old_label, merged)
+                criteria[existing_index] = new_item
+                criteria_sources.pop(old_item, None)
+                criteria_sources[new_item] = page_url
+            return
         item = (kind, label, value)
-        if item not in criteria:
-            criteria.append(item)
+        criteria.append(item)
         criteria_sources[item] = page_url
 
     # Use the actual course-of-study description, not the introductory
