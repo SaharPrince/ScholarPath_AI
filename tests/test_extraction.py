@@ -8,6 +8,26 @@ from app.extraction import (
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
+    def test_line_preserving_cleanup_repairs_live_hec_theme_joins(self) -> None:
+        from app.extraction import _clean_preserving_lines
+
+        raw = (
+            "Strengthening health systems andcapacity\\n"
+            "Access,inclusionand opportunity\\n"
+            "Water Managementand Sustainability\\n"
+            "CSC'ssix themes"
+        )
+        expected = (
+            "Strengthening health systems and capacity\\n"
+            "Access, inclusion and opportunity\\n"
+            "Water Management and Sustainability\\n"
+            "CSC's six themes"
+        )
+        cleaned = _clean_preserving_lines(raw)
+        self.assertEqual(cleaned, expected)
+        self.assertEqual(_clean_preserving_lines(cleaned), cleaned)
+        self.assertEqual(cleaned.count("\\n"), 3)
+
     def test_repairs_known_joined_words_from_official_source_copy(self) -> None:
         cleaned = _clean(
             "permanentresident eligiblefields onbehalf of residents of Pakistan "
