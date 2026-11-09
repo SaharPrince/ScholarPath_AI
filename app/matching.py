@@ -65,12 +65,17 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         if not limits:
             return _result("unknown", "The age wording needs manual review; no numeric limit was safely identified.")
         limit = min(limits)
+        qualified = any(profile.get(k) is True for k in (
+            "regular_government_employee", "public_university_faculty", "approved_rd_researcher"
+        ))
+        if "all other cases" in lower and qualified:
+            return _result("informational", "This lower age limit applies to other applicants; your profile indicates a specified public-sector category.")
         if "regular government" in lower or "public sector" in lower or "approved r&d" in lower:
-            qualified = any(profile.get(k) is True for k in (
-                "regular_government_employee", "public_university_faculty", "approved_rd_researcher"
-            ))
             if not qualified:
-                return _result("unknown", "This higher age limit applies only to specified public-sector applicants. Confirm your employment category.")
+                flags = ("regular_government_employee", "public_university_faculty", "approved_rd_researcher")
+                if all(profile.get(k) is not False for k in flags):
+                    return _result("unknown", "Confirm whether you are a regular government employee, public university faculty member, or approved R&D researcher.")
+                return _result("informational", "The higher public-sector age limit does not apply to the employment category you selected.")
         if age <= limit:
             return _result("pass", f"Your age ({int(age)}) is within the published maximum of {limit}.")
         return _result("fail", f"Your age ({int(age)}) is above the published maximum of {limit}.")
@@ -181,7 +186,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         return _result("unknown", "This academic requirement is shown for transparency but needs a specific check.")
 
     if kind in {"required_documents", "application_requirements"}:
-        return _result("unknown", "Check the listed documents/application steps; ScholarPath does not assume you have submitted them.")
+        return _result("informational", "Application preparation item: review this requirement before applying. It is not treated as an applicant-eligibility failure.")
 
     return _result("unknown", "This requirement is preserved from the source but is not yet safe to automate.")
 
@@ -199,6 +204,16 @@ def match_scholarship(scholarship: dict[str, Any], criteria: list[dict[str, Any]
             "evidence_url": criterion.get("evidence_url"),
             **outcome,
         })
+
+    # Category I and II are alternative routes, not simultaneous conditions.
+    category_checks = [c for c in checks if c["criterion_type"] in {
+        "category_i_eligibility", "category_ii_eligibility"
+    }]
+    if any(c["status"] == "pass" for c in category_checks):
+        for item in category_checks:
+            if item["status"] == "fail":
+                item["status"] = "informational"
+                item["explanation"] = "This is an alternative scholarship category; another category's admission rule is met."
 
     mandatory = [c for c in checks if c["status"] != "informational"]
     if not mandatory:
