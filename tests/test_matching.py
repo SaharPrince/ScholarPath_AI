@@ -18,6 +18,19 @@ class ProfileMatchingTests(unittest.TestCase):
         )
         self.assertEqual(result["status"], "pass")
 
+
+    def test_punjab_domicile_requirement_passes(self):
+        c = self.criterion("nationality", "Domicile", "Applicant must have Punjab domicile.")
+        self.assertEqual(evaluate_criterion(c, {"domicile_region": "Punjab"})["status"], "pass")
+
+    def test_wrong_domicile_region_fails(self):
+        c = self.criterion("nationality", "Domicile", "Applicant must have Punjab domicile.")
+        self.assertEqual(evaluate_criterion(c, {"domicile_region": "Sindh"})["status"], "fail")
+
+    def test_missing_domicile_region_needs_information(self):
+        c = self.criterion("nationality", "Domicile", "Applicant must have Punjab domicile.")
+        self.assertEqual(evaluate_criterion(c, {})["status"], "unknown")
+
     def test_wrong_nationality_fails(self):
         result = evaluate_criterion(
             self.criterion("nationality", "Nationality", "Pakistani/AJK nationals"),
