@@ -1227,6 +1227,20 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
             "Pakistan national; at the Commonwealth portal",
         )
 
+    def test_hec_output_boundary_repairs_fields_and_commonwealth_criteria(self) -> None:
+        from app.extraction import _clean
+
+        self.assertEqual(
+            _clean("Benefits stated withouta category restriction; "
+                   "applicationto cancer research; Thefemale nomination"),
+            "Benefits stated without a category restriction; "
+            "application to cancer research; The female nomination",
+        )
+        self.assertEqual(_clean("Closing date: 20 October 2026 at 16:00BST"),
+                         "Closing date: 20 October 2026 at 16:00 BST")
+        self.assertEqual(_clean("University(overall ranking)"),
+                         "University (overall ranking)")
+
     def test_hec_sharepoint_repairs_observed_joined_words_without_rewriting_other_spelling(self) -> None:
         self.assertEqual(
             _clean("Benefits stated withouta category restriction; applicationto cancer research"),
