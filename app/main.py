@@ -208,6 +208,23 @@ def match_profile(profile: dict) -> dict:
             status_code=422,
             detail=f"Unsupported profile fields: {', '.join(sorted(unknown_fields))}",
         )
+    required_fields = {
+        "nationality": "nationality",
+        "current_education_level": "highest education completed",
+        "target_study_level": "next study level",
+    }
+    missing_fields = [
+        label for field, label in required_fields.items()
+        if not str(profile.get(field) or "").strip()
+    ]
+    if missing_fields:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Please provide the required profile details: "
+                + ", ".join(missing_fields)
+            ),
+        )
     with get_connection() as connection:
         rows = connection.execute(
             """SELECT s.id, s.title, s.provider_name, s.country,
