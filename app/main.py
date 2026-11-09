@@ -61,10 +61,29 @@ async def scheduled_discovery(authorization: str | None = Header(default=None)) 
     if not authorization or not secrets.compare_digest(authorization, expected):
         raise HTTPException(status_code=401, detail="Unauthorized")
     discovery = await discover_from_active_sources()
-    extraction = await extract_candidate_details()
+
+    # Vercel Hobby functions have a bounded execution window. Process a small
+    # ordered batch each day; remaining candidates stay queued for later runs.
+    with get_connection() as connection:
+        pending = connection.execute(
+            """SELECT c.id
+               FROM discovery_candidates c
+               WHERE c.status = 'candidate'
+                 AND NOT EXISTS (
+                     SELECT 1 FROM extraction_attempts a
+                     WHERE a.candidate_id = c.id
+                 )
+               ORDER BY c.id
+               LIMIT 3"""
+        ).fetchall()
+    candidate_ids = [row["id"] for row in pending]
+    extraction = await extract_candidate_details(candidate_ids=candidate_ids)
+
     return {
         "discovery": [item.__dict__ for item in discovery],
         "extraction": extraction,
+        "extraction_batch_size": len(candidate_ids),
+        "remaining_candidates_are_queued": True,
     }
 
 
