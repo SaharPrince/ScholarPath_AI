@@ -131,9 +131,9 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(access),(?=inclusion\b)", r"\1, ", text)
 
     # Repair observed missing spaces inside HEC development-theme phrases.
-    text = re.sub(r"(?i)\\bmanagement(?=and\\b)", "management ", text)
-    text = re.sub(r"(?i)\\binclusion(?=and\\b)", "inclusion ", text)
-    text = re.sub(r"(?i)\\band(?=capacity\\b)", "and ", text)
+    text = re.sub(r"(?i)\bmanagement(?=and\b)", "management ", text)
+    text = re.sub(r"(?i)\binclusion(?=and\b)", "inclusion ", text)
+    text = re.sub(r"(?i)\band(?=capacity\b)", "and ", text)
 
     # These all-lowercase joins have no word boundary between their
     # component words, so repair the exact observed source forms explicitly.
