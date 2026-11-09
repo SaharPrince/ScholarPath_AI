@@ -1229,6 +1229,10 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
             _clean("All candidates arerequired to fulfill the scholarship criteria."),
             "All candidates are required to fulfill the scholarship criteria.",
         )
+        self.assertEqual(
+            _clean("Climate Change andEnvironmental Engineering"),
+            "Climate Change and Environmental Engineering",
+        )
         # Preserve source spelling rather than silently correcting factual evidence.
         self.assertIn("Pharmacetuical", _clean("Pharmacetuical Sciences"))
 
