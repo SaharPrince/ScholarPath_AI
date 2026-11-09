@@ -168,8 +168,8 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     if criterion_type == "target_audience":
         return False
     if criterion_type == "application_requirements" and re.search(
-        r"(?i)\\b(sole responsibility|both (?:the )?(?:commonwealth|hec)|"
-        r"commonwealth and hec|hec and commonwealth)\\b",
+        r"(?i)\b(sole responsibility|both (?:the )?(?:commonwealth|hec)|"
+        r"commonwealth and hec|hec and commonwealth)\b",
         requirement_text,
     ):
         return True
@@ -1416,10 +1416,10 @@ def _parse_hec_commonwealth_announcement(
         elif (
             re.search(r"both.*(?:hec|commonwealth).*portal|both websites", low)
             or (
-                re.search(r"\\b(required|must|sole responsibility|ensure)\\b", low)
-                and re.search(r"\\b(application|apply|submit)\\w*\\b", low)
-                and re.search(r"\\b(commonwealth and hec|hec and commonwealth)\\b", low)
-                and re.search(r"\\b(portal|website)s?\\b", low)
+                re.search(r"\b(required|must|sole responsibility|ensure)\b", low)
+                and re.search(r"\b(application|apply|submit)\\w*\b", low)
+                and re.search(r"\b(commonwealth and hec|hec and commonwealth)\b", low)
+                and re.search(r"\b(portal|website)s?\b", low)
             )
         ):
             add_criterion("application_requirements", "Dual-portal application", item)
@@ -1431,7 +1431,7 @@ def _parse_hec_commonwealth_announcement(
                     add_criterion("selection_process", "Final selection authority", statement)
         elif re.search(r"nomination process", low) and re.search(r"hec", low):
             for statement in _split_criteria_statements(item):
-                if re.search(r"(?i)nomination process", statement) and re.search(r"(?i)\\bhec\\b", statement):
+                if re.search(r"(?i)nomination process", statement) and re.search(r"(?i)\bhec\b", statement):
                     add_criterion("selection_process", "National nomination authority", statement)
         # Development themes are programme context, not individual eligibility
         # conditions. They are stored separately below, never as criteria.
