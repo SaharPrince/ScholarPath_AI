@@ -118,6 +118,9 @@ def _clean(value: str) -> str:
         ("nomination", "process"),
         ("online", "application"),
         ("online", "applications"),
+        ("Management", "and"),
+        ("inclusion", "and"),
+        ("and", "capacity"),
     ):
         text = re.sub(
             rf"(?i)(?<![A-Za-z]){re.escape(left + right)}(?![A-Za-z])",
@@ -211,6 +214,13 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?<=\d),\s+(?=\d{3}\b)", ",", text)
     return text
 
+
+def _clean_preserving_lines(value: str) -> str:
+    """Normalize extracted text line by line without flattening meaningful layout."""
+    return "\n".join(
+        _clean(line) if line.strip() else ""
+        for line in value.splitlines()
+    ).strip()
 
 
 def _save_evidence(connection, scholarship_id: int, evidence: list[tuple[str, str]], evidence_url: str) -> None:
@@ -1178,7 +1188,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             )
             value = re.sub(r"(?i)\bandEnvironmental\b", "and Environmental", value)
         else:
-            value = _clean(value)
+            value = _clean_preserving_lines(value)
             value = re.sub(r"(?i)\barerequired\b", "are required", value)
         if not value:
             return
@@ -1188,7 +1198,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
         evidence_sources[item] = urls[page_name]
 
     def add_criterion(kind: str, label: str, value: str, page_name: str) -> None:
-        value = _clean(value)
+        value = _clean_preserving_lines(value)
         # Apply the observed FAQ repair at the final criterion boundary too.
         # This guards against markup extraction paths that preserve the joined
         # source token after an earlier normalization pass.
@@ -1464,8 +1474,8 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     normalized_criteria: list[tuple[str, str, str]] = []
     normalized_criteria_sources: dict[tuple[str, str, str], str] = {}
     for kind, label, value in criteria:
-        cleaned_label = _clean(label)
-        cleaned_value = _clean(value)
+        cleaned_label = _clean_preserving_lines(label)
+        cleaned_value = _clean_preserving_lines(value)
         item = (kind, cleaned_label, cleaned_value)
         if item not in normalized_criteria:
             normalized_criteria.append(item)
@@ -1482,7 +1492,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 if (cleaned := _clean(line))
             )
         else:
-            cleaned_value = _clean(value)
+            cleaned_value = _clean_preserving_lines(value)
         item = (field_name, cleaned_value)
         if cleaned_value and item not in normalized_evidence:
             normalized_evidence.append(item)
@@ -1542,7 +1552,7 @@ def _parse_hec_commonwealth_announcement(
     criteria_sources: dict[tuple[str, str, str], str] = {}
 
     def add_evidence(name: str, value: str) -> None:
-        value = _clean(value)
+        value = _clean_preserving_lines(value)
         if not value:
             return
         item = (name, value)
@@ -1551,7 +1561,7 @@ def _parse_hec_commonwealth_announcement(
         evidence_sources[item] = page_url
 
     def add_criterion(kind: str, label: str, value: str) -> None:
-        value = _clean(value)
+        value = _clean_preserving_lines(value)
         if not value:
             return
         existing_index = next(
@@ -1713,7 +1723,7 @@ def _parse_hec_commonwealth_announcement(
                      r"access, inclusion and opportunity)", item)
     ]
     if theme_items:
-        theme_items = [_clean(item) for item in theme_items]
+        theme_items = [_clean_preserving_lines(item) for item in theme_items]
         fields["development_themes"] = "\n".join(theme_items)[:2000]
         add_evidence("development_themes", fields["development_themes"])
 
@@ -1736,7 +1746,7 @@ def _parse_hec_commonwealth_announcement(
     normalized_criteria: list[tuple[str, str, str]] = []
     normalized_criteria_sources: dict[tuple[str, str, str], str] = {}
     for kind, label, value in criteria:
-        item = (kind, _clean(label), _clean(value))
+        item = (kind, _clean_preserving_lines(label), _clean_preserving_lines(value))
         if item not in normalized_criteria:
             normalized_criteria.append(item)
         source_url = criteria_sources.get((kind, label, value))
@@ -1746,7 +1756,7 @@ def _parse_hec_commonwealth_announcement(
     normalized_evidence: list[tuple[str, str]] = []
     normalized_evidence_sources: dict[tuple[str, str], str] = {}
     for field_name, value in evidence:
-        cleaned_value = _clean(value)
+        cleaned_value = _clean_preserving_lines(value)
         item = (field_name, cleaned_value)
         if cleaned_value and item not in normalized_evidence:
             normalized_evidence.append(item)
@@ -1755,7 +1765,9 @@ def _parse_hec_commonwealth_announcement(
             normalized_evidence_sources[item] = source_url
 
     return ExtractedPage(
-        title, description, provider, fields, normalized_criteria, normalized_evidence,
+        _clean_preserving_lines(title),
+        _clean_preserving_lines(description) if description else None,
+        _clean_preserving_lines(provider), fields, normalized_criteria, normalized_evidence,
         application_status, "student", normalized_evidence_sources, normalized_criteria_sources,
     )
 
