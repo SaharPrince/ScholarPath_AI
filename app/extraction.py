@@ -167,6 +167,12 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Infer mandatory status conservatively, preserving explicit preferences."""
     if criterion_type == "target_audience":
         return False
+    if criterion_type == "application_requirements" and re.search(
+        r"(?i)\\b(sole responsibility|both (?:the )?(?:commonwealth|hec)|"
+        r"commonwealth and hec|hec and commonwealth)\\b",
+        requirement_text,
+    ):
+        return True
     if criterion_type in {
         "ineligibility", "required_documents", "post_selection_requirement",
         "age_limit", "category_i_eligibility", "category_ii_eligibility",
@@ -1407,12 +1413,26 @@ def _parse_hec_commonwealth_announcement(
             add_criterion("selection_criteria", "Tie-break rule", item)
         elif re.search(r"female|45\s*%", low) and re.search(r"nomination", low):
             add_criterion("selection_criteria", "Female nomination representation", item)
-        elif re.search(r"both.*(?:hec|commonwealth).*portal|both websites", low):
+        elif (
+            re.search(r"both.*(?:hec|commonwealth).*portal|both websites", low)
+            or (
+                re.search(r"\\b(required|must|sole responsibility|ensure)\\b", low)
+                and re.search(r"\\b(application|apply|submit)\\w*\\b", low)
+                and re.search(r"\\b(commonwealth and hec|hec and commonwealth)\\b", low)
+                and re.search(r"\\b(portal|website)s?\\b", low)
+            )
+        ):
             add_criterion("application_requirements", "Dual-portal application", item)
         elif re.search(r"final selection", low) and re.search(r"commonwealth scholarship commission", low):
-            add_criterion("selection_process", "Final selection authority", item)
+            for statement in _split_criteria_statements(item):
+                if re.search(r"(?i)final selection", statement) and re.search(
+                    r"(?i)commonwealth scholarship commission", statement
+                ):
+                    add_criterion("selection_process", "Final selection authority", statement)
         elif re.search(r"nomination process", low) and re.search(r"hec", low):
-            add_criterion("selection_process", "National nomination authority", item)
+            for statement in _split_criteria_statements(item):
+                if re.search(r"(?i)nomination process", statement) and re.search(r"(?i)\\bhec\\b", statement):
+                    add_criterion("selection_process", "National nomination authority", statement)
         # Development themes are programme context, not individual eligibility
         # conditions. They are stored separately below, never as criteria.
 
