@@ -11,6 +11,46 @@ class ProfileMatchingTests(unittest.TestCase):
             "evidence_url": "https://official.example/eligibility",
         }
 
+    def test_bachelors_profile_excludes_masters_and_phd_only_awards(self):
+        from app.matching import match_profile_to_scholarships
+        rows = [
+            {"id": 1, "title": "Master's Scholarship"},
+            {"id": 2, "title": "PhD Scholarship"},
+            {"id": 3, "title": "Undergraduate Scholarship"},
+            {"id": 4, "title": "General Education Support"},
+        ]
+        criteria = {
+            1: [self.criterion("academic_requirements", "Study level", "For Master's applicants.")],
+            2: [self.criterion("academic_requirements", "Study level", "For PhD applicants.")],
+            3: [self.criterion("academic_requirements", "Study level", "For undergraduate applicants.")],
+            4: [self.criterion("nationality", "Nationality", "Pakistani nationals")],
+        }
+        results = match_profile_to_scholarships(rows, criteria, {
+            "target_study_level": "bachelors", "current_education_level": "intermediate",
+            "nationality": "Pakistani",
+        })
+        self.assertEqual({item["id"] for item in results}, {3, 4})
+
+    def test_intermediate_profile_excludes_university_level_awards(self):
+        from app.matching import match_profile_to_scholarships
+        rows = [
+            {"id": 1, "title": "Bachelor's Scholarship"},
+            {"id": 2, "title": "Intermediate Scholarship"},
+        ]
+        criteria = {
+            1: [self.criterion("academic_requirements", "Study level", "For undergraduate applicants.")],
+            2: [self.criterion("academic_requirements", "Study level", "For Intermediate applicants.")],
+        }
+        results = match_profile_to_scholarships(rows, criteria, {"target_study_level": "intermediate"})
+        self.assertEqual([item["id"] for item in results], [2])
+
+    def test_multi_level_masters_and_phd_award_remains_for_phd_profile(self):
+        from app.matching import match_profile_to_scholarships
+        rows = [{"id": 1, "title": "Commonwealth Master's and PhD Scholarship"}]
+        criteria = {1: [self.criterion("academic_requirements", "Study level", "For Master's and PhD applicants.")]}
+        results = match_profile_to_scholarships(rows, criteria, {"target_study_level": "phd"})
+        self.assertEqual(len(results), 1)
+
     def test_pakistani_nationality_passes(self):
         result = evaluate_criterion(
             self.criterion("nationality", "Nationality", "Pakistani/AJK nationals"),
