@@ -82,6 +82,27 @@ class ProfileMatchingTests(unittest.TestCase):
         )
         self.assertEqual(result["status"], "unknown")
 
+    def test_gre_or_hat_alternative_accepts_either_test(self):
+        c = self.criterion("academic_requirements", "GRE or HAT", "GRE score 300 and above/HEC-HAT score 60% and above")
+        self.assertEqual(evaluate_criterion(c, {"hat_score": 65})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"gre_score": 305})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"hat_score": 50, "gre_score": 280})["status"], "fail")
+
+    def test_category_i_and_ii_are_alternative_routes(self):
+        scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
+        criteria = [
+            self.criterion("category_i_eligibility", "Category I", "Secured admission in top 50 QS World Ranked US University."),
+            self.criterion("category_ii_eligibility", "Category II", "Secured admission in any top 51-100 QS World Ranked US University."),
+        ]
+        result = match_scholarship(scholarship, criteria, {"university_qs_rank": 42, "admission_confirmed": True})
+        self.assertEqual(result["match_status"], "likely_eligible")
+        self.assertEqual(result["checks_failed"], 0)
+
+    def test_no_structured_criteria_never_means_eligible(self):
+        scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
+        result = match_scholarship(scholarship, [], {})
+        self.assertEqual(result["match_status"], "needs_more_information")
+
 
 if __name__ == "__main__":
     unittest.main()
