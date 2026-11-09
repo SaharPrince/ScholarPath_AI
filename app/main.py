@@ -156,7 +156,7 @@ def match_profile(profile: dict) -> dict:
         "regular_government_employee", "public_university_faculty",
         "approved_rd_researcher", "receiving_other_scholarship", "has_phd",
         "target_study_level", "years_of_education", "latest_degree_division",
-        "hat_score", "gre_score", "university_qs_rank", "admission_confirmed",
+        "hat_score", "gre_score", "university_qs_rank", "admission_confirmed", "regular_government_employee", "public_university_faculty", "approved_rd_researcher",
     }
     unknown_fields = set(profile) - allowed
     if unknown_fields:
