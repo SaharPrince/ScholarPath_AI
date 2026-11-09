@@ -1434,7 +1434,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             normalized_evidence_sources[item] = source_url
 
     return ExtractedPage(
-        _clean(title), _clean(description), _clean(provider), fields,
+        _clean(title), _clean(description) if description else None,\n        _clean(provider) if provider else None, fields,
         normalized_criteria, normalized_evidence, "unknown", "student",
         normalized_evidence_sources, normalized_criteria_sources,
     )
