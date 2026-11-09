@@ -1002,7 +1002,7 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             if item[1] == "Academic record – FAQ clarification"
         ]
         self.assertEqual(len(faq_rules), 1)
-        self.assertIn("2nd or 3rd division", faq_rules[0][2])
+        self.assertIn("2nd and 3rd division", faq_rules[0][2])
         self.assertEqual(
             page.criteria_sources[faq_rules[0]],
             base + "FAQ.aspx",
