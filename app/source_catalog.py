@@ -200,7 +200,7 @@ OFFICIAL_DISCOVERY_TARGETS = (
     (
         "https://beef.org.pk/policyguideline/",
         "https://beef.org.pk/peef-scholarship-for-balochistan/",
-        "PEEF Scholarship for Balochistan",
+        "PEEF Scholarship for Balochistan (Intermediate and Higher Education)",
     ),
     (
         "https://beef.org.pk/policyguideline/",
