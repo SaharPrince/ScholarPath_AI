@@ -102,6 +102,10 @@ def _clean(value: str) -> str:
         ("Pakistan", "national"),
         ("at", "the"),
         ("the", "Commonwealth"),
+        # Exact lowercase joins verified in the saved HEC Commonwealth record.
+        ("submit", "their"),
+        ("national", "university"),
+        ("or", "actual"),
     ):
         text = re.sub(
             rf"(?i)\b({re.escape(left)})({re.escape(right)})\b",
@@ -278,6 +282,13 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Infer mandatory status conservatively, preserving explicit preferences."""
     if criterion_type in {"target_audience", "selection_process", "selection_criteria"}:
         # These describe award administration or ranking, not applicant eligibility.
+        return False
+    if criterion_type == "age_limit" and re.search(
+        r"(?i)\\bno\\s+(?:upper\\s+)?age\\s+limit\\b",
+        requirement_text,
+    ):
+        # An explicit statement that there is no age ceiling is informational,
+        # not a condition an applicant must satisfy.
         return False
     if criterion_type == "application_requirements" and re.search(
         r"(?i)\b(sole responsibility|both (?:the )?(?:commonwealth|hec)|"
