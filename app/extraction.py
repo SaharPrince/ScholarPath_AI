@@ -1189,7 +1189,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
             elif re.search(r"(?i)(return to pakistan|serve.*years|bond|contract)", value):
                 add_criterion("post_selection_requirement", "Post-study obligation", value, "faq")
             elif re.search(
-                r"(?i)(?:no\s+)?(?:2nd|second)\s*(?:/|or)\s*(?:3rd|third)\s*division",
+                r"(?i)(?:no\s+)?(?:2\s*nd|second)\s*(?:/|or)\s*(?:3\s*rd|third)\s*division",
                 value,
             ) and re.search(r"(?i)(academic career|entire career|degree)", value):
                 add_criterion("academic_requirements", "Academic record – FAQ clarification", value, "faq")
