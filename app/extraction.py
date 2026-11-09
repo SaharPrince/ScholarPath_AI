@@ -1417,7 +1417,7 @@ def _parse_hec_commonwealth_announcement(
             re.search(r"both.*(?:hec|commonwealth).*portal|both websites", low)
             or (
                 re.search(r"\b(required|must|sole responsibility|ensure)\b", low)
-                and re.search(r"\b(application|apply|submit)\\w*\b", low)
+                and re.search(r"\b(application|apply|submit)\w*\b", low)
                 and re.search(r"\b(commonwealth and hec|hec and commonwealth)\b", low)
                 and re.search(r"\b(portal|website)s?\b", low)
             )
