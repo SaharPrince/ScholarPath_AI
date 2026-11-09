@@ -68,7 +68,10 @@ def import_database(source_path: Path) -> dict[str, int]:
         # already contains the curated source catalogue and its original IDs.
         init_db()
 
-        with psycopg.connect(settings.database_url) as target:
+        with psycopg.connect(
+            settings.database_url,
+            prepare_threshold=None,  # Supabase transaction-pooler compatibility.
+        ) as target:
             with target.cursor() as cursor:
                 target_counts = {}
                 for table in TABLES:
