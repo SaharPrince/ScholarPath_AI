@@ -61,7 +61,7 @@ class ProfileMatchingTests(unittest.TestCase):
         scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
         criteria = [self.criterion("selection_process", "Selection", "Final selection is by donor.", False)]
         result = match_scholarship(scholarship, criteria, {})
-        self.assertEqual(result["match_status"], "likely_eligible")
+        self.assertEqual(result["match_status"], "needs_more_information")
 
     def test_unknown_mandatory_criteria_prevent_false_eligible(self):
         scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
