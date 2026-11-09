@@ -96,7 +96,7 @@ POSTGRES_SCHEMA = re.sub(
     flags=re.IGNORECASE,
 )
 # PostgreSQL foreign-key columns must match the BIGSERIAL primary-key type.
-POSTGRES_SCHEMA = re.sub(r"\\bINTEGER\\b", "BIGINT", POSTGRES_SCHEMA, flags=re.IGNORECASE)
+POSTGRES_SCHEMA = re.sub(r"\bINTEGER\b", "BIGINT", POSTGRES_SCHEMA, flags=re.IGNORECASE)
 
 
 class PostgresConnection:
