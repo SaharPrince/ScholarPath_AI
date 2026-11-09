@@ -1241,6 +1241,20 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertEqual(_clean("University(overall ranking)"),
                          "University (overall ranking)")
 
+    def test_hec_repairs_exact_joined_tokens_from_live_programme_pages(self) -> None:
+        from app.extraction import _clean
+
+        self.assertEqual(
+            _clean(
+                "doctoralstudy at aUK university under the CSC'ssix themes; "
+                "HEC nominationprocess; submit onlineapplication forms; "
+                "Access,inclusion and opportunity"
+            ),
+            "doctoral study at a UK university under the CSC's six themes; "
+            "HEC nomination process; submit online application forms; "
+            "Access, inclusion and opportunity",
+        )
+
     def test_hec_sharepoint_repairs_observed_joined_words_without_rewriting_other_spelling(self) -> None:
         self.assertEqual(
             _clean("Benefits stated withouta category restriction; applicationto cancer research"),
