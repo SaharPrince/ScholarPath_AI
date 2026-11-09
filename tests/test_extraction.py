@@ -1215,6 +1215,18 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(all(source == url for source in page.evidence_sources.values()))
         self.assertTrue(all(source == url for source in page.criteria_sources.values()))
 
+    def test_hec_sharepoint_repairs_joined_words_found_in_saved_eligibility(self) -> None:
+        self.assertEqual(
+            _clean(
+                "throughoutthe academic career; Researchersof approved R&D "
+                "Organizations; first divisionin 17/18 years; "
+                "Pakistannational; attheCommonwealth portal"
+            ),
+            "throughout the academic career; Researchers of approved R&D "
+            "Organizations; first division in 17/18 years; "
+            "Pakistan national; at the Commonwealth portal",
+        )
+
     def test_hec_sharepoint_repairs_observed_joined_words_without_rewriting_other_spelling(self) -> None:
         self.assertEqual(
             _clean("Benefits stated withouta category restriction; applicationto cancer research"),
