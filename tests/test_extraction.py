@@ -1311,6 +1311,36 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         # Preserve source spelling rather than silently correcting factual evidence.
         self.assertIn("Pharmacetuical", _clean("Pharmacetuical Sciences"))
 
+    def test_hec_repairs_saved_commonwealth_text_joins(self) -> None:
+        from app.extraction import _clean
+
+        self.assertEqual(
+            _clean(
+                "Academic Year2027-28; 16years Bachelors degree; "
+                "17/18years Masters degree; submittheir final degree; "
+                "Pakistan nationaluniversity; USD 2,000/- oractual, whichever is lower"
+            ),
+            "Academic Year 2027-28; 16 years Bachelors degree; "
+            "17/18 years Masters degree; submit their final degree; "
+            "Pakistan national university; USD 2,000/- or actual, whichever is lower",
+        )
+
+    def test_no_upper_age_limit_is_informational_not_mandatory(self) -> None:
+        from app.extraction import _is_mandatory_criterion
+
+        self.assertFalse(
+            _is_mandatory_criterion(
+                "age_limit",
+                "There is no upper age limit for this scholarship.",
+            )
+        )
+        self.assertTrue(
+            _is_mandatory_criterion(
+                "age_limit",
+                "Maximum age is 35 years.",
+            )
+        )
+
     def test_hec_repairs_additional_exact_joins_from_live_announcement(self) -> None:
         from app.extraction import _clean
 

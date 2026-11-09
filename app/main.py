@@ -1,10 +1,17 @@
-from contextlib import asynccontextmanager
+import secrets
 
-from fastapi import FastAPI, HTTPException, Query
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.database import database_is_ready, get_connection, init_db
 from app.source_catalog import seed_official_sources
+from app.discovery import discover_from_active_sources
+from app.extraction import extract_candidate_details
+from app.matching import match_profile_to_scholarships
 from app.schemas import (
     EligibilityCriterion,
     HealthResponse,
@@ -17,16 +24,27 @@ from app.schemas import (
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    seed_official_sources()
+    # Production PostgreSQL is populated by the explicit, verified migration.
+    # Avoid seeding duplicate source rows before the local database is imported.
+    if not settings.database_url:
+        seed_official_sources()
     yield
 
 
 app = FastAPI(
     title=settings.app_name,
     description="Official-source scholarship discovery and eligibility matching.",
-    version="0.4.0",
+    version="0.6.0",
     lifespan=lifespan,
 )
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
+@app.get("/", include_in_schema=False)
+def scholarship_home() -> FileResponse:
+    """Serve the responsive scholarship discovery interface."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["system"])
@@ -37,13 +55,48 @@ def health_check() -> dict[str, str]:
     return {"status": "ok", "database": "ready"}
 
 
+@app.get("/api/cron/discover", tags=["discovery"])
+async def scheduled_discovery(authorization: str | None = Header(default=None)) -> dict:
+    """Vercel Cron entry point; requires CRON_SECRET and never accepts public calls."""
+    if not settings.cron_secret:
+        raise HTTPException(status_code=503, detail="Scheduled discovery is not configured")
+    expected = f"Bearer {settings.cron_secret}"
+    if not authorization or not secrets.compare_digest(authorization, expected):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    discovery = await discover_from_active_sources()
+
+    # Vercel Hobby functions have a bounded execution window. Process a small
+    # ordered batch each day; remaining candidates stay queued for later runs.
+    with get_connection() as connection:
+        pending = connection.execute(
+            """SELECT c.id
+               FROM discovery_candidates c
+               WHERE c.status = 'candidate'
+                 AND NOT EXISTS (
+                     SELECT 1 FROM extraction_attempts a
+                     WHERE a.candidate_id = c.id
+                 )
+               ORDER BY c.id
+               LIMIT 3"""
+        ).fetchall()
+    candidate_ids = [row["id"] for row in pending]
+    extraction = await extract_candidate_details(candidate_ids=candidate_ids)
+
+    return {
+        "discovery": [item.__dict__ for item in discovery],
+        "extraction": extraction,
+        "extraction_batch_size": len(candidate_ids),
+        "remaining_candidates_are_queued": True,
+    }
+
+
 @app.get("/api/sources", response_model=list[SourceSummary], tags=["sources"])
 def list_sources() -> list[dict]:
-    """List active configured scholarship sources; no sources are seeded."""
+    """List active configured scholarship sources."""
     with get_connection() as connection:
         rows = connection.execute(
             """SELECT id, name, official_url, source_type, country, is_active
-               FROM sources WHERE is_active = 1 ORDER BY name COLLATE NOCASE"""
+               FROM sources WHERE is_active = 1 ORDER BY name"""
         ).fetchall()
     return [dict(row) for row in rows]
 
@@ -59,10 +112,7 @@ def list_scholarships(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
-    """List stored scholarships with optional country/status filters.
-
-    Use status=all for an audit view that includes every stored status.
-    """
+    """List stored scholarships with optional country/status filters."""
     allowed_statuses = {"candidate", "unverified", "verified", "expired", "rejected"}
     if status is not None and status not in allowed_statuses | {"all"}:
         raise HTTPException(status_code=422, detail="Unsupported scholarship status")
@@ -70,8 +120,6 @@ def list_scholarships(
     clauses: list[str] = []
     parameters: list[object] = []
     if status is None:
-        # Keep rejected informational pages and unreviewed candidates out of
-        # the normal scholarship feed; they remain accessible with status filters.
         clauses.extend(["s.status <> 'rejected'", "s.status <> 'candidate'"])
     if country:
         clauses.append("LOWER(s.country) = LOWER(?)")
@@ -92,7 +140,7 @@ def list_scholarships(
                ORDER BY CASE s.status
                    WHEN 'verified' THEN 0 WHEN 'unverified' THEN 1
                    WHEN 'candidate' THEN 2 WHEN 'expired' THEN 3 ELSE 4 END,
-                   s.deadline_date IS NULL, s.deadline_date, s.title COLLATE NOCASE
+                   s.deadline_date IS NULL, s.deadline_date, s.title
                LIMIT ? OFFSET ?"""
     parameters.extend([limit, offset])
     with get_connection() as connection:
@@ -135,6 +183,55 @@ def get_scholarship(scholarship_id: int) -> dict:
     ]
     return result
 
+
+@app.post("/api/match", tags=["matching"])
+def match_profile(profile: dict) -> dict:
+    """Match an in-memory student profile against stored scholarship criteria."""
+    allowed = {
+        "nationality", "residence_country", "dual_national", "age",
+        "regular_government_employee", "public_university_faculty",
+        "approved_rd_researcher", "receiving_other_scholarship", "has_phd",
+        "target_study_level", "years_of_education", "latest_degree_division",
+        "hat_score", "hat_category", "gre_score", "university_qs_rank", "admission_confirmed",
+    }
+    unknown_fields = set(profile) - allowed
+    if unknown_fields:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported profile fields: {', '.join(sorted(unknown_fields))}",
+        )
+    with get_connection() as connection:
+        rows = connection.execute(
+            """SELECT s.id, s.title, s.provider_name, s.country,
+                      s.study_destination, s.funding_summary, s.application_url,
+                      s.deadline_text, s.deadline_date, s.status,
+                      s.application_status, src.name AS source_name,
+                      s.source_record_url AS source_url
+               FROM scholarships s JOIN sources src ON src.id = s.source_id
+               WHERE s.status <> 'candidate' AND s.status <> 'rejected'"""
+        ).fetchall()
+        scholarships = [dict(row) for row in rows]
+        criteria_by_id = {}
+        for row in scholarships:
+            criteria = connection.execute(
+                """SELECT id, criterion_type, criterion_label, requirement_text,
+                          is_mandatory, evidence_url
+                   FROM eligibility_criteria WHERE scholarship_id = ? ORDER BY id""",
+                (row["id"],),
+            ).fetchall()
+            criteria_by_id[row["id"]] = [
+                {**dict(item), "is_mandatory": bool(item["is_mandatory"])}
+                for item in criteria
+            ]
+    results = match_profile_to_scholarships(scholarships, criteria_by_id, profile)
+    return {
+        "total": len(results),
+        "likely_eligible": sum(x["match_status"] == "likely_eligible" for x in results),
+        "needs_more_information": sum(x["match_status"] == "needs_more_information" for x in results),
+        "not_eligible": sum(x["match_status"] == "not_eligible" for x in results),
+        "results": results,
+        "notice": "Preliminary matching only. Unknown or unsupported requirements are not assumed satisfied. Confirm all details with the official source.",
+    }
 
 
 @app.get("/api/discovery/candidates", tags=["discovery"])
