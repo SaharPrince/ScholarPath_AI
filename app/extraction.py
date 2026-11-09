@@ -102,7 +102,7 @@ def _clean(value: str) -> str:
     # component words, so repair the exact observed source forms explicitly.
     text = re.sub(r"(?i)\barerequired\b", "are required", text)
     text = re.sub(r"(?i)\bandEnvironmental\b", "and Environmental", text)
-    text = re.sub(r"(?i)\\bglobalpeace\\b", "global peace", text)
+    text = re.sub(r"(?i)\bglobalpeace\b", "global peace", text)
     # Keep ordinal division references readable after SharePoint spacing repair.
     text = re.sub(r"(?i)\b(and|or)(?=\d(?:st|nd|rd|th)\b)", r"\1 ", text)
     text = re.sub(r"(?i)\b(2|3)\s+(nd|rd)\b", r"\1\2", text)
