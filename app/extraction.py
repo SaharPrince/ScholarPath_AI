@@ -284,7 +284,7 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         # These describe award administration or ranking, not applicant eligibility.
         return False
     if criterion_type == "age_limit" and re.search(
-        r"(?i)\\bno\\s+(?:upper\\s+)?age\\s+limit\\b",
+        r"(?i)\bno\s+(?:upper\s+)?age\s+limit\b",
         requirement_text,
     ):
         # An explicit statement that there is no age ceiling is informational,
