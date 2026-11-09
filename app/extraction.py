@@ -108,6 +108,25 @@ def _clean(value: str) -> str:
             r"\1 \2",
             text,
         )
+    # Repair exact joined tokens where the component words have no
+    # regex word boundary between them. Keep this list limited to forms
+    # verified in the official HEC pages; do not attempt general segmentation.
+    for left, right in (
+        ("doctoral", "study"),
+        ("CSC's", "six"),
+        ("a", "UK"),
+        ("nomination", "process"),
+        ("online", "application"),
+        ("online", "applications"),
+    ):
+        text = re.sub(
+            rf"(?i)(?<![A-Za-z]){re.escape(left + right)}(?![A-Za-z])",
+            left + " " + right,
+            text,
+        )
+    # A small number of source themes lose the space after this exact comma.
+    text = re.sub(r"(?i)\\b(access),(?=inclusion\\b)", r"\\1, ", text)
+
     # These all-lowercase joins have no word boundary between their
     # component words, so repair the exact observed source forms explicitly.
     text = re.sub(r"(?i)\barerequired\b", "are required", text)
