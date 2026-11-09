@@ -80,6 +80,23 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(States?)(under|at|for|to)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(without)(a)\b", r"\1 \2", text)
     text = re.sub(r"(?i)\b(application)(to)\b", r"\1 \2", text)
+    # Repair verified missing-space joins observed in current HEC source pages.
+    for left, right in (
+        ("doctoral", "study"),
+        ("a", "category"),
+        ("be", "availing"),
+        ("CSC's", "six"),
+        ("all", "applicants"),
+        ("guarantee", "final"),
+        ("the", "applicant"),
+        ("is", "the"),
+        ("female", "nomination"),
+    ):
+        text = re.sub(
+            rf"(?i)\b({re.escape(left)})({re.escape(right)})\b",
+            r"\1 \2",
+            text,
+        )
     # Keep ordinal division references readable after SharePoint spacing repair.
     text = re.sub(r"(?i)\b(and|or)(?=\d(?:st|nd|rd|th)\b)", r"\1 ", text)
     text = re.sub(r"(?i)\b(2|3)\s+(nd|rd)\b", r"\1\2", text)
@@ -1034,6 +1051,17 @@ def _hec_priority_subject_items(root: BeautifulSoup) -> list[str]:
     seen: set[str] = set()
     for item in candidates:
         item = _clean(re.sub(r"^\s*\d+\s*[.)]\s*", "", item))
+        # The official HEC page joins these two separate subject entries in
+        # its rendered text. Split only this observed, unambiguous boundary.
+        item = re.sub(r"(?i)\b(Engineering)(Automotive)\b", r"\1\n\2", item)
+        if "\n" in item:
+            parts = [part.strip() for part in item.splitlines() if part.strip()]
+            for part in parts:
+                key = re.sub(r"[^a-z0-9]+", "", part.casefold())
+                if key and key not in seen:
+                    seen.add(key)
+                    result.append(part)
+            continue
         item = re.sub(
             r"(?i)^following is the list of preferred subject areas?/subjects "
             r"in which scholarship under the .*? is offered effective "
@@ -1477,6 +1505,7 @@ def _parse_hec_commonwealth_announcement(
                     r"(?i)commonwealth scholarship commission", statement
                 ):
                     add_criterion("selection_process", "Final selection authority", statement)
+                    break
         elif re.search(r"nomination process", low) and re.search(r"hec", low):
             for statement in _split_criteria_statements(item):
                 if re.search(r"(?i)nomination process", statement) and re.search(r"(?i)\bhec\b", statement):
