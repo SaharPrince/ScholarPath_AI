@@ -392,12 +392,65 @@ def match_scholarship(scholarship: dict[str, Any], criteria: list[dict[str, Any]
     }
 
 
+def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str, Any]], profile: dict[str, Any]) -> str | None:
+    """Return a clear mismatch reason when an award is explicitly for another study level.
+
+    This deliberately filters only explicit level-specific opportunities. Generic
+    awards and unclear criteria remain visible as 'needs more information'.
+    """
+    target = (profile.get("target_study_level") or "").strip().lower()
+    target_aliases = {
+        "matric": {"matric", "ssc", "secondary"},
+        "intermediate": {"intermediate", "hssc", "college", "fa", "f.a.", "fsc", "f.sc.", "ics", "i.com"},
+        "bachelors": {"bachelor", "bachelors", "bachelor's", "undergraduate", "undergraduate degree", "bs", "b.s."},
+        "master": {"master", "masters", "master's", "postgraduate", "ms", "mphil", "m.phil"},
+        "phd": {"phd", "doctoral", "doctorate"},
+    }
+    target_key = next((key for key, aliases in target_aliases.items() if target in aliases), target)
+    if target_key not in {"matric", "intermediate", "bachelors", "master", "phd"}:
+        return None
+
+    title = (scholarship.get("title") or "").lower()
+    criteria_text = " ".join(
+        f"{item.get('criterion_label') or ''} {item.get('requirement_text') or ''}"
+        for item in criteria
+    ).lower()
+    text = re.sub(r"[^a-z0-9]+", " ", f"{title} {criteria_text}").strip()
+
+    # Require explicit programme/applicant wording; a mention of a degree as
+    # a prerequisite (e.g. 16 years of education) is not enough to classify.
+    level_patterns = {
+        "matric": r"\b(?:matric|ssc|secondary school)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:matric|ssc)\b",
+        "intermediate": r"\b(?:intermediate|hssc|higher secondary)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:intermediate|hssc)\b",
+        "bachelors": r"\b(?:bachelor|bachelors|undergraduate)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:bachelor|bachelors|undergraduate)\b",
+        "master": r"\b(?:master|masters|postgraduate|ms|mphil)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:a\s+)?(?:master|masters|postgraduate|ms|mphil)\b",
+        "phd": r"\b(?:phd|doctoral|doctorate)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:a\s+)?(?:phd|doctoral|doctorate)\b",
+    }
+    explicit_levels = {level for level, pattern in level_patterns.items() if re.search(pattern, text)}
+    if not explicit_levels or target_key in explicit_levels:
+        return None
+
+    # Multi-level awards (e.g. Master's and PhD) are valid for either named level.
+    if target_key in {"master", "phd"} and explicit_levels <= {"master", "phd"}:
+        return None
+    target_names = {
+        "matric": "Matric", "intermediate": "Intermediate",
+        "bachelors": "Bachelor's / undergraduate", "master": "Master's",
+        "phd": "PhD",
+    }
+    available = ", ".join(target_names[level] for level in sorted(explicit_levels))
+    return f"This opportunity is explicitly for {available} study, not {target_names[target_key]} study."
+
+
 def match_profile_to_scholarships(rows: list[dict[str, Any]], criteria_by_id: dict[int, list[dict[str, Any]]],
                                   profile: dict[str, Any]) -> list[dict[str, Any]]:
-    results = [
-        match_scholarship(row, criteria_by_id.get(row["id"], []), profile)
-        for row in rows
-    ]
+    results = []
+    for row in rows:
+        criteria = criteria_by_id.get(row["id"], [])
+        mismatch = _target_level_mismatch(row, criteria, profile)
+        if mismatch:
+            continue
+        results.append(match_scholarship(row, criteria, profile))
     priority = {"likely_eligible": 0, "needs_more_information": 1, "not_eligible": 2}
     return sorted(results, key=lambda x: (
         x["application_status"] == "closed",
