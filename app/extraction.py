@@ -180,7 +180,7 @@ def _clean(value: str) -> str:
         (r"(?i)\baUK\b", "a UK"),
         (r"(?i)\bnominationprocess\b", "nomination process"),
         (r"(?i)\bHATtests\b", "HAT tests"),
-        (r"(?i)\bonline(applications?)\b", "online \\1"),
+        (r"(?i)\bonline(applications?)\b", r"online \1"),
         (r"(?i)\bAccess,inclusion\b", "Access, inclusion"),
     ):
         text = re.sub(pattern, replacement, text)
