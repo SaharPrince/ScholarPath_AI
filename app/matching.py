@@ -117,16 +117,16 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 return _result("unknown", "Add your GRE or HEC-HAT score to check this alternative requirement.")
             return _result("fail", "Neither supplied test score meets the published GRE 300 / HEC-HAT 60% alternative.")
 
-        if "hat" in lower and re.search(r"\\b(?:minimum|min(?:imum)? score|score of)\\s*(?:of\\s*)?\\d{1,3}", lower):
+        if "hat" in lower and re.search(r"\b(?:minimum|min(?:imum)? score|score of)\s*(?:of\s*)?\d{1,3}", lower):
             score = _number(profile.get("hat_score"))
             if score is None:
                 return _result("unknown", "Add your HAT score to check this requirement.")
-            match = re.search(r"\\b(?:minimum|min(?:imum)? score|score of)\\s*(?:of\\s*)?(\\d{1,3})", lower)
+            match = re.search(r"\b(?:minimum|min(?:imum)? score|score of)\s*(?:of\s*)?(\d{1,3})", lower)
             minimum = float(match.group(1)) if match else 60.0
             return _result("pass" if score >= minimum else "fail",
                            f"Your HAT score is {score:g}; the stated minimum is {minimum:g}.")
 
-        if "gre" in lower and re.search(r"\\b300\\b", lower):
+        if "gre" in lower and re.search(r"\b300\b", lower):
             score = _number(profile.get("gre_score"))
             if score is None:
                 return _result("unknown", "Add your GRE score to check this requirement.")
