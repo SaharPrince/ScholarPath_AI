@@ -870,6 +870,15 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         self.assertEqual(page.title, "US-Pakistan Knowledge Corridor PhD Scholarship")
         self.assertEqual(page.application_status, "unknown")
         self.assertEqual(page.fields["application_url"], "https://scholarship.hec.gov.pk/")
+        expected_themes = (
+            "Strengthening health systems and capacity\\n"
+            "Access, inclusion and opportunity"
+        )
+        self.assertEqual(page.fields["development_themes"], expected_themes)
+        theme_evidence = next(
+            value for name, value in page.evidence if name == "development_themes"
+        )
+        self.assertEqual(theme_evidence, expected_themes)
         funding = page.fields["funding_summary"]
         self.assertIn("Category I (QS 1–50)", funding)
         self.assertIn("Category II (QS 51–100)", funding)
@@ -1121,7 +1130,7 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             """, base + "Eligibility-Criteria.aspx"),
             "priority_subjects": ("""
                 <div class="ms-rtestate-field">
-                  <p>Crop Production<br>Soil and Environmental Sciences<br>Climate Change andEnvironmental Engineering<br>Computational Biology</p>
+                  <p>Crop Production<br>Soil and Environmental Sciences<br>Climate Change andEnvironmental Engineering<br>Water Managementand Sustainability<br>Computational Biology</p>
                 </div>
             """, base + "Priority-Subject-Areas.aspx"),
         }
@@ -1132,8 +1141,15 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             value for name, value in page.evidence
             if name == "priority_subject_areas"
         )
-        self.assertIn("Crop Production\nSoil and Environmental Sciences\nClimate Change and Environmental Engineering\nComputational Biology", evidence_text)
+        expected_subjects = (
+            "Crop Production\\nSoil and Environmental Sciences\\n"
+            "Climate Change and Environmental Engineering\\n"
+            "Water Management and Sustainability\\nComputational Biology"
+        )
+        self.assertEqual(evidence_text, expected_subjects)
+        self.assertEqual(page.fields["priority_subject_areas"], expected_subjects)
         self.assertNotIn("andEnvironmental", evidence_text)
+        self.assertNotIn("Managementand", evidence_text)
         self.assertEqual(
             page.evidence_sources[("priority_subject_areas", evidence_text)],
             base + "Priority-Subject-Areas.aspx",
@@ -1153,6 +1169,8 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
           for Pakistan, invites applications from eligible Pakistani/AJ&amp;K nationals.
           The scholarships are offered by the Commonwealth Scholarship Commission (CSC).</p>
           <p>The scholarships are for full-time taught Master's and PhD study at a UK university.</p>
+          <p>Strengthening health systems andcapacity</p>
+          <p>Access, inclusionand opportunity</p>
           <h2>Key Dates</h2>
           <ul>
             <li>Closing date for CSC applications: Tuesday, 20 October 2026 at 16:00 BST</li>
