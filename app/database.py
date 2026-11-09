@@ -159,7 +159,11 @@ def get_connection():
         import psycopg
         from psycopg.rows import dict_row
 
-        raw = psycopg.connect(settings.database_url, row_factory=dict_row)
+        raw = psycopg.connect(
+            settings.database_url,
+            row_factory=dict_row,
+            prepare_threshold=None,  # Supabase transaction-pooler compatibility.
+        )
         connection = PostgresConnection(raw)
     else:
         settings.database_path.parent.mkdir(parents=True, exist_ok=True)
