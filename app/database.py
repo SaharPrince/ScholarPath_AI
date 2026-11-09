@@ -97,6 +97,10 @@ POSTGRES_SCHEMA = re.sub(
 )
 # PostgreSQL foreign-key columns must match the BIGSERIAL primary-key type.
 POSTGRES_SCHEMA = re.sub(r"\bINTEGER\b", "BIGINT", POSTGRES_SCHEMA, flags=re.IGNORECASE)
+# SQLite stores timestamps as text; make PostgreSQL defaults explicitly text too.
+POSTGRES_SCHEMA = POSTGRES_SCHEMA.replace(
+    "DEFAULT CURRENT_TIMESTAMP", "DEFAULT (CURRENT_TIMESTAMP::text)"
+)
 
 
 class PostgresConnection:
