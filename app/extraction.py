@@ -98,6 +98,10 @@ def _clean(value: str) -> str:
             r"\1 \2",
             text,
         )
+    # These all-lowercase joins have no word boundary between their
+    # component words, so repair the exact observed source forms explicitly.
+    text = re.sub(r"(?i)\\barerequired\\b", "are required", text)
+    text = re.sub(r"(?i)\\bandEnvironmental\\b", "and Environmental", text)
     # Keep ordinal division references readable after SharePoint spacing repair.
     text = re.sub(r"(?i)\b(and|or)(?=\d(?:st|nd|rd|th)\b)", r"\1 ", text)
     text = re.sub(r"(?i)\b(2|3)\s+(nd|rd)\b", r"\1\2", text)
@@ -1522,6 +1526,9 @@ def _parse_hec_commonwealth_announcement(
                     statement for statement in statements
                     if re.search(r"(?i)final selection", statement)
                     and re.search(r"(?i)commonwealth scholarship commission", statement)
+                    # A later "does not guarantee" sentence repeats the same
+                    # authority rather than adding a distinct selection rule.
+                    and not re.search(r"(?i)does not guarantee", statement)
                 ),
                 None,
             )
