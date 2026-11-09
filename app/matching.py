@@ -128,6 +128,62 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             if target not in {"phd", "doctoral"}:
                 return _result("informational", "This rule applies to PhD applicants, not your selected study level.")
 
+        # Match school and college entry requirements against the student's latest completed level.
+        current_level = (profile.get("current_education_level") or "").lower()
+        level_ranks = {"below_matric": 0, "matric": 1, "intermediate": 2, "bachelors": 3, "masters": 4, "phd": 5}
+        current_rank = level_ranks.get(current_level)
+        target = (profile.get("target_study_level") or "").lower()
+        target_aliases = {
+            "matric": {"matric", "ssc", "secondary"},
+            "intermediate": {"intermediate", "hssc", "college", "fa", "f.a.", "fsc", "f.sc.", "ics", "i.com"},
+            "bachelors": {"bachelor", "bachelors", "undergraduate", "undergraduate degree"},
+            "master": {"master", "masters", "postgraduate", "ms", "mphil"},
+            "phd": {"phd", "doctoral", "doctorate"},
+        }
+        target_key = next((key for key, aliases in target_aliases.items()
+                           if target in aliases), target)
+        required_level = None
+        completed_qualification = re.search(r"\b(pass(?:ed)?|complet(?:e|ed)|qualification|certificate|marks in)\b", lower)
+        if completed_qualification and re.search(r"\b(matric(?:ulation)?|ssc|secondary school certificate)\b", lower):
+            required_level = "matric"
+        elif completed_qualification and re.search(r"\b(intermediate|hssc|higher secondary|f\.?a\.?|f\.?sc\.?|i\.?cs|i\.?com)\b", lower):
+            required_level = "intermediate"
+        if required_level:
+            if current_rank is None:
+                return _result("unknown", "Choose the highest education level you have completed (Matric, Intermediate, Bachelor's or higher).")
+            required_rank = level_ranks[required_level]
+            if current_rank < required_rank:
+                return _result("fail", f"This opportunity requires {required_level.title()} to be completed; your highest completed level is {current_level.replace('_', ' ').title()}.")
+            if not any(term in lower for term in ("marks", "aggregate", "percentage", "percent")):
+                return _result("pass", f"Your completed {required_level.title()} qualification meets this education-level requirement.")
+        if re.search(r"\b(for|admission to|apply for)\s+intermediate\b", lower):
+            if not target:
+                return _result("unknown", "Choose what you plan to study next to check this Intermediate opportunity.")
+            if target_key != "intermediate":
+                return _result("informational", "This opportunity is for Intermediate study, not your selected next study level.")
+        if re.search(r"\b(for|admission to|apply for)\s+(?:matric|ssc)\b", lower):
+            if not target:
+                return _result("unknown", "Choose what you plan to study next to check this Matric opportunity.")
+            if target_key != "matric":
+                return _result("informational", "This opportunity is for Matric study, not your selected next study level.")
+
+        # Compare clearly stated academic marks thresholds without treating GPA,
+        # division, entry-test scores, or unrelated percentages as equivalent.
+        if ("hat" not in lower and "gre" not in lower
+                and any(term in lower for term in ("marks", "aggregate", "percentage", "percent"))):
+            percentage_match = re.search(
+                r"(?:minimum|at least|not less than|above|aggregate of|score of)\s*(\d{1,3}(?:\.\d+)?)\s*%?",
+                lower
+            )
+            if percentage_match and ("%" in lower or "percent" in lower or "marks" in lower):
+                percentage = _number(profile.get("academic_percentage"))
+                minimum_percentage = float(percentage_match.group(1))
+                if percentage is None:
+                    return _result("unknown", "Add the percentage marks from your latest completed class to check this academic requirement.")
+                if percentage < minimum_percentage:
+                    return _result("fail", f"Your reported marks ({percentage:g}%) are below the published minimum of {minimum_percentage:g}%.")
+                return _result("pass", f"Your reported marks ({percentage:g}%) meet the published minimum of {minimum_percentage:g}%.")
+
         if "relevant field" in lower or "relevant subject" in lower:
             return _result("unknown", "Your degree subject must match the scholarship's approved field of study; compare it with the official subject list.")
 

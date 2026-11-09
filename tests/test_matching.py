@@ -142,6 +142,29 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(c, {"target_study_level": "phd", "years_of_education": 16})["status"], "informational")
         self.assertEqual(evaluate_criterion(c, {"target_study_level": "bachelors"})["status"], "fail")
 
+
+    def test_matric_student_meets_matric_requirement(self):
+        c = self.criterion("academic_requirements", "Matric qualification", "Applicant must have passed Matric / SSC.")
+        self.assertEqual(evaluate_criterion(c, {"current_education_level": "matric"})["status"], "pass")
+
+    def test_matric_student_does_not_meet_intermediate_completed_requirement(self):
+        c = self.criterion("academic_requirements", "Intermediate qualification", "Applicant must have completed Intermediate / HSSC.")
+        self.assertEqual(evaluate_criterion(c, {"current_education_level": "matric"})["status"], "fail")
+
+    def test_intermediate_student_meets_matric_requirement(self):
+        c = self.criterion("academic_requirements", "Matric qualification", "Applicant must have passed Matriculation.")
+        self.assertEqual(evaluate_criterion(c, {"current_education_level": "intermediate"})["status"], "pass")
+
+    def test_school_student_marks_threshold_is_checked(self):
+        c = self.criterion("academic_requirements", "Minimum marks", "At least 60% marks in Matric are required.")
+        self.assertEqual(evaluate_criterion(c, {"current_education_level": "matric", "academic_percentage": 75})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"current_education_level": "matric", "academic_percentage": 55})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {"current_education_level": "matric"})["status"], "unknown")
+
+    def test_school_student_target_level_is_not_confused_with_current_level(self):
+        c = self.criterion("academic_requirements", "Intermediate admission", "Scholarship for admission to Intermediate.")
+        self.assertEqual(evaluate_criterion(c, {"current_education_level": "matric", "target_study_level": "intermediate"})["status"], "unknown")
+
     def test_gpa_is_not_assumed_equivalent_to_first_division(self):
         c = self.criterion("academic_requirements", "Academic record", "Must have first division in latest degree.")
         self.assertEqual(evaluate_criterion(c, {"latest_degree_division": "other"})["status"], "unknown")
