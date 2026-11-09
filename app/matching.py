@@ -247,8 +247,11 @@ def match_scholarship(scholarship: dict[str, Any], criteria: list[dict[str, Any]
         "category_i_eligibility", "category_ii_eligibility"
     }]
     if any(c["status"] == "pass" for c in category_checks):
+        # Category I and II are alternative eligibility routes. Once one route
+        # is positively satisfied, an unknown or failed check in the other
+        # route must not block the overall result.
         for item in category_checks:
-            if item["status"] == "fail":
+            if item["status"] != "pass":
                 item["status"] = "informational"
                 item["explanation"] = "This is an alternative scholarship category; another category's admission rule is met."
 
