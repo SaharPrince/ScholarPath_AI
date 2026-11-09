@@ -1847,6 +1847,7 @@ async def extract_candidate_details(
                  AND NOT EXISTS (
                      SELECT 1 FROM extraction_attempts a
                      WHERE a.candidate_id = c.id
+                       AND a.status <> 'failed'
                  )""" + candidate_filter + " ORDER BY c.id",
             candidate_params,
         ).fetchall()]
