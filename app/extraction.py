@@ -1392,6 +1392,16 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     provider = "Higher Education Commission (HEC)"
     add_evidence("provider_name", provider, "overview")
 
+    # Normalize every extracted field at the output boundary. Preserve
+    # meaningful line breaks in funding and subject lists while repairing
+    # joined words in each line.
+    for field_name, field_value in list(fields.items()):
+        if isinstance(field_value, str):
+            fields[field_name] = "\\n".join(
+                _clean(line) for line in field_value.splitlines()
+                if _clean(line)
+            )
+
     # Final output-boundary normalization: keep stored criteria/evidence
     # consistent with the already-normalized programme fields. Rebuild the
     # provenance maps alongside the values so repaired facts retain sources.
@@ -1657,11 +1667,25 @@ def _parse_hec_commonwealth_announcement(
     fields["application_status"] = application_status
     add_evidence("application_status", application_status)
 
-    # Normalize the final theme field and evidence at the output boundary.
-    fields["development_themes"] = "\n".join(
-        _clean(line) for line in fields.get("development_themes", "").splitlines()
-        if _clean(line)
-    )
+    # Normalize all fields and criteria at the output boundary, preserving
+    # line-oriented funding/theme content and every criterion source URL.
+    for field_name, field_value in list(fields.items()):
+        if isinstance(field_value, str):
+            fields[field_name] = "\\n".join(
+                _clean(line) for line in field_value.splitlines()
+                if _clean(line)
+            )
+
+    normalized_criteria: list[tuple[str, str, str]] = []
+    normalized_criteria_sources: dict[tuple[str, str, str], str] = {}
+    for kind, label, value in criteria:
+        item = (kind, _clean(label), _clean(value))
+        if item not in normalized_criteria:
+            normalized_criteria.append(item)
+        source_url = criteria_sources.get((kind, label, value))
+        if source_url:
+            normalized_criteria_sources[item] = source_url
+
     normalized_evidence: list[tuple[str, str]] = []
     normalized_evidence_sources: dict[tuple[str, str], str] = {}
     for field_name, value in evidence:
@@ -1674,8 +1698,8 @@ def _parse_hec_commonwealth_announcement(
             normalized_evidence_sources[item] = source_url
 
     return ExtractedPage(
-        title, description, provider, fields, criteria, normalized_evidence,
-        application_status, "student", normalized_evidence_sources, criteria_sources,
+        title, description, provider, fields, normalized_criteria, normalized_evidence,
+        application_status, "student", normalized_evidence_sources, normalized_criteria_sources,
     )
 
 
