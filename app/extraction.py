@@ -78,6 +78,9 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?<=[A-Za-z])(?=\d{4}\b)", " ", text)
     text = re.sub(r"(?i)\b(USD|PKR)(?=\d)", r"\1 ", text)
     text = re.sub(r"(?i)\b(States?)(under|at|for|to)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(without)(a)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\b(application)(to)\b", r"\1 \2", text)
+    text = re.sub(r"(?i)\bpharmacetuical\b", "pharmaceutical", text)
     # Keep ordinal division references readable after SharePoint spacing repair.
     text = re.sub(r"(?i)\b(and|or)(?=\d(?:st|nd|rd|th)\b)", r"\1 ", text)
     text = re.sub(r"(?i)\b(2|3)\s+(nd|rd)\b", r"\1\2", text)
@@ -1171,7 +1174,7 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
                 add_criterion("age_limit", age_label, value, "eligibility")
         elif re.search(r"(?i)(another scholarship|any other scholarship|availing.*scholarship)", value):
             add_criterion("ineligibility", "Other scholarship", value, "eligibility")
-        elif re.search(r"(?i)(ph\.?d holders?|already.*ph\.?d|doctoral degree holders?)", value):
+        elif re.search(r"(?i)(ph\.?d holders?|already.*ph\.?d|doctoral degree holders?|those having ph\.?d\s+degree)", value):
             add_criterion("ineligibility", "Existing PhD holders", value, "eligibility")
         elif re.search(r"(?i)(category\s*i\b|top\s*50|qs.*50)", value) and (
             re.search(r"(?i)(secured admission|admission in|must have|must secure)", value)
@@ -1478,7 +1481,7 @@ def _parse_hec_commonwealth_announcement(
         elif re.search(r"nomination process", low) and re.search(r"hec", low):
             for statement in _split_criteria_statements(item):
                 if re.search(r"(?i)nomination process", statement) and re.search(r"(?i)\bhec\b", statement):
-                    add_criterion("selection_process", "National nomination authority", statement)
+                    add_criterion("selection_process", "Final selection authority", statement)
         # Development themes are programme context, not individual eligibility
         # conditions. They are stored separately below, never as criteria.
 
