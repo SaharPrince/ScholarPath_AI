@@ -92,6 +92,14 @@ def _clean(value: str) -> str:
         ("is", "the"),
         ("female", "nomination"),
         ("are", "required"),
+        # Additional exact HEC SharePoint joins found in the saved eligibility
+        # criteria after the targeted extraction.
+        ("throughout", "the"),
+        ("Researchers", "of"),
+        ("division", "in"),
+        ("Pakistan", "national"),
+        ("at", "the"),
+        ("the", "Commonwealth"),
     ):
         text = re.sub(
             rf"(?i)\b({re.escape(left)})({re.escape(right)})\b",
