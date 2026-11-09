@@ -1030,7 +1030,7 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             "faq": ("""
                 <div class="ms-rtestate-field">
                   <p>GRE score 300 and above/HEC-HAT score 60% and above.
-                     All candidates are required to fulfill this scholarship eligibility criterion
+                     All candidates arerequired to fulfill this scholarship eligibility criterion
                      regardless of admission in a U.S. university.</p>
                 </div>
             """, base + "FAQ.aspx"),
@@ -1049,6 +1049,8 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         ]
         self.assertEqual(len(shared_score_rules), 1)
         self.assertEqual(shared_score_rules[0][1], "GRE or HAT score – all applicants")
+        self.assertIn("All candidates are required", shared_score_rules[0][2])
+        self.assertNotIn("arerequired", shared_score_rules[0][2])
         self.assertFalse(any(
             kind == "required_documents" and "GRE" in value
             for kind, _label, value in page.criteria
@@ -1099,7 +1101,7 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             """, base + "Eligibility-Criteria.aspx"),
             "priority_subjects": ("""
                 <div class="ms-rtestate-field">
-                  <p>Crop Production<br>Soil and Environmental Sciences<br>Computational Biology</p>
+                  <p>Crop Production<br>Soil and Environmental Sciences<br>Climate Change andEnvironmental Engineering<br>Computational Biology</p>
                 </div>
             """, base + "Priority-Subject-Areas.aspx"),
         }
@@ -1110,7 +1112,8 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             value for name, value in page.evidence
             if name == "priority_subject_areas"
         )
-        self.assertIn("Crop Production\nSoil and Environmental Sciences\nComputational Biology", evidence_text)
+        self.assertIn("Crop Production\nSoil and Environmental Sciences\nClimate Change and Environmental Engineering\nComputational Biology", evidence_text)
+        self.assertNotIn("andEnvironmental", evidence_text)
         self.assertEqual(
             page.evidence_sources[("priority_subject_areas", evidence_text)],
             base + "Priority-Subject-Areas.aspx",
@@ -1233,6 +1236,8 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
             _clean("Climate Change andEnvironmental Engineering"),
             "Climate Change and Environmental Engineering",
         )
+        self.assertEqual(_clean("Strengthening globalpeace, security and governance"),
+                         "Strengthening global peace, security and governance")
         # Preserve source spelling rather than silently correcting factual evidence.
         self.assertIn("Pharmacetuical", _clean("Pharmacetuical Sciences"))
 
