@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -21,7 +22,19 @@ from app.schemas import (
 async def lifespan(_: FastAPI):
     init_db()
     seed_official_sources()
-    yield
+    from app.scheduler import daily_discovery_loop
+
+    discovery_task = asyncio.create_task(
+        daily_discovery_loop(), name="scholarpath-daily-discovery"
+    )
+    try:
+        yield
+    finally:
+        discovery_task.cancel()
+        try:
+            await discovery_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(
