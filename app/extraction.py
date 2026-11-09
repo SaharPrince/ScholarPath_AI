@@ -125,7 +125,7 @@ def _clean(value: str) -> str:
             text,
         )
     # A small number of source themes lose the space after this exact comma.
-    text = re.sub(r"(?i)\\b(access),(?=inclusion\\b)", r"\\1, ", text)
+    text = re.sub(r"(?i)\b(access),(?=inclusion\b)", r"\1, ", text)
 
     # These all-lowercase joins have no word boundary between their
     # component words, so repair the exact observed source forms explicitly.
@@ -172,6 +172,18 @@ def _clean(value: str) -> str:
     text = re.sub(r"(?i)\b(Department)(of)\b", r"\1 \2", text)
     text = re.sub(r"(?i)(i\.e\.)(?=\S)", r"\1 ", text)
     text = re.sub(r",(?=\S)", ", ", text)
+    # Explicit final repairs for joined tokens observed in live HEC page output.
+    # Keep these exact and conservative; do not attempt general word segmentation.
+    for pattern, replacement in (
+        (r"(?i)\\bdoctoralstudy\\b", "doctoral study"),
+        (r"(?i)\\bCSC'ssix\\b", "CSC's six"),
+        (r"(?i)\\baUK\\b", "a UK"),
+        (r"(?i)\\bnominationprocess\\b", "nomination process"),
+        (r"(?i)\\bHATtests\\b", "HAT tests"),
+        (r"(?i)\\bonlineapplications?\\b", "online application"),
+        (r"(?i)\\bAccess,inclusion\\b", "Access, inclusion"),
+    ):
+        text = re.sub(pattern, replacement, text)
     # Preserve thousands separators in funding and other numeric values.
     text = re.sub(r"(?<=\d),\s+(?=\d{3}\b)", ",", text)
     return text
@@ -1010,6 +1022,9 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         for kind, label, requirement in criteria
         if _clean(requirement)
     ]
+
+    # Description is returned separately from fields, so normalize it explicitly too.
+    description = _clean(description) if description else None
 
     deadline_date = _parse_deadline_date(fields.get("deadline_text"))
     application_status = _classify_application_status(
