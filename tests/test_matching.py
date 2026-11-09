@@ -112,6 +112,21 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(general, {"age": 38, "regular_government_employee": True})["status"], "informational")
         self.assertEqual(evaluate_criterion(general, {"age": 38, "regular_government_employee": False, "public_university_faculty": False, "approved_rd_researcher": False})["status"], "fail")
 
+    def test_higher_degree_rules_require_selected_study_level(self):
+        c = self.criterion("academic_requirements", "Master's degree requirement", "For Master scholarship, an applicant must hold a first division in 16 years Bachelors degree.")
+        self.assertEqual(evaluate_criterion(c, {"years_of_education": 16, "latest_degree_division": "first"})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(c, {"target_study_level": "phd", "years_of_education": 16})["status"], "informational")
+        self.assertEqual(evaluate_criterion(c, {"target_study_level": "bachelors"})["status"], "fail")
+
+    def test_gpa_is_not_assumed_equivalent_to_first_division(self):
+        c = self.criterion("academic_requirements", "Academic record", "Must have first division in latest degree.")
+        self.assertEqual(evaluate_criterion(c, {"latest_degree_division": "other"})["status"], "unknown")
+
+    def test_hat_category_is_checked(self):
+        c = self.criterion("academic_requirements", "Accepted HAT categories", "Only HAT categories (HAT-I, II, III and IV) are acceptable.")
+        self.assertEqual(evaluate_criterion(c, {"hat_category": "HAT-II"})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"hat_category": "Other"})["status"], "fail")
+
 
 if __name__ == "__main__":
     unittest.main()
