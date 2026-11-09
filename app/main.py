@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from app.config import settings
 from app.database import database_is_ready, get_connection, init_db
 from app.source_catalog import seed_official_sources
+from app.matching import match_profile_to_scholarships
 from app.schemas import (
     EligibilityCriterion,
     HealthResponse,
@@ -145,6 +146,56 @@ def get_scholarship(scholarship_id: int) -> dict:
     ]
     return result
 
+
+
+@app.post("/api/match", tags=["matching"])
+def match_profile(profile: dict) -> dict:
+    """Match an in-memory student profile against all stored scholarship criteria."""
+    allowed = {
+        "nationality", "residence_country", "dual_national", "age",
+        "regular_government_employee", "public_university_faculty",
+        "approved_rd_researcher", "receiving_other_scholarship", "has_phd",
+        "target_study_level", "years_of_education", "latest_degree_division",
+        "hat_score", "gre_score", "university_qs_rank", "admission_confirmed",
+    }
+    unknown_fields = set(profile) - allowed
+    if unknown_fields:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported profile fields: {', '.join(sorted(unknown_fields))}",
+        )
+    with get_connection() as connection:
+        rows = connection.execute(
+            """SELECT s.id, s.title, s.provider_name, s.country,
+                      s.study_destination, s.funding_summary, s.application_url,
+                      s.deadline_text, s.deadline_date, s.status,
+                      s.application_status, src.name AS source_name,
+                      s.source_record_url AS source_url
+               FROM scholarships s JOIN sources src ON src.id = s.source_id
+               WHERE s.status <> 'candidate' AND s.status <> 'rejected'"""
+        ).fetchall()
+        scholarships = [dict(row) for row in rows]
+        criteria_by_id = {}
+        for row in scholarships:
+            criteria = connection.execute(
+                """SELECT id, criterion_type, criterion_label, requirement_text,
+                          is_mandatory, evidence_url
+                   FROM eligibility_criteria WHERE scholarship_id = ? ORDER BY id""",
+                (row["id"],),
+            ).fetchall()
+            criteria_by_id[row["id"]] = [
+                {**dict(item), "is_mandatory": bool(item["is_mandatory"])}
+                for item in criteria
+            ]
+    results = match_profile_to_scholarships(scholarships, criteria_by_id, profile)
+    return {
+        "total": len(results),
+        "likely_eligible": sum(x["match_status"] == "likely_eligible" for x in results),
+        "needs_more_information": sum(x["match_status"] == "needs_more_information" for x in results),
+        "not_eligible": sum(x["match_status"] == "not_eligible" for x in results),
+        "results": results,
+        "notice": "Preliminary matching only. Unknown or unsupported requirements are not assumed satisfied. Confirm all details with the official source.",
+    }
 
 
 @app.get("/api/discovery/candidates", tags=["discovery"])
