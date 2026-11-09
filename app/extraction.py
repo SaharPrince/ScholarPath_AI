@@ -1244,9 +1244,15 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
         retained = []
         for item in criteria:
             kind, label, _value = item
-            if kind == "academic_requirements" and label in {
-                "GRE or HAT score – Category I", "GRE or HAT score – Category II"
-            }:
+            if (
+                kind == "academic_requirements"
+                and "GRE or HAT score" in label
+                and label != "GRE or HAT score – all applicants"
+            ):
+                # Category headings are not consistently exposed in HEC's
+                # page markup, so labels may be Category I, Category II, or
+                # generic. The FAQ's all-applicant clarification supersedes
+                # every narrower duplicate score label.
                 criteria_sources.pop(item, None)
             else:
                 retained.append(item)
