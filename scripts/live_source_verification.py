@@ -4,7 +4,16 @@ This script performs HTTP GET requests only. It does not initialize or modify
 the application's SQLite database.
 """
 import asyncio
+import sys
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
+
+# Running this file directly sets sys.path[0] to scripts/, not the repository
+# root. Add the project root so "python scripts/live_source_verification.py"
+# can import the app package consistently in GitHub Actions and locally.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import httpx
 
@@ -37,6 +46,7 @@ async def get_page(client: httpx.AsyncClient, url: str) -> tuple[str, str]:
 
 async def main() -> None:
     failures: list[str] = []
+    blocking_failures: list[str] = []
     timeout = TIMEOUT
 
     async with httpx.AsyncClient(
@@ -76,7 +86,9 @@ async def main() -> None:
 
         corridor = _parse_hec_knowledge_corridor(corridor_pages)
         if corridor is None:
-            print("PARSER RESULT | Knowledge Corridor: no complete programme extraction")
+            message = "Knowledge Corridor parser returned no complete programme extraction"
+            print("PARSER RESULT |", message)
+            blocking_failures.append(message)
         else:
             print("PARSER RESULT | Knowledge Corridor:", corridor.title)
             print("Fields:", sorted(corridor.fields))
@@ -87,14 +99,18 @@ async def main() -> None:
             print("Criteria missing provenance:", len(missing_criteria))
             print("Evidence missing provenance:", len(missing_evidence))
             if missing_criteria or missing_evidence:
-                failures.append("Knowledge Corridor extraction contains facts without source URLs")
+                message = "Knowledge Corridor extraction contains facts without source URLs"
+                failures.append(message)
+                blocking_failures.append(message)
 
         print("\n========== HEC COMMONWEALTH PARSER ==========")
         try:
             html, final_url = await get_page(client, HEC_COMMONWEALTH_2027_URL)
             commonwealth = _parse_hec_commonwealth_announcement(html, final_url)
             if commonwealth is None:
-                print("PARSER RESULT | Commonwealth: no matching 2027-28 announcement extracted")
+                message = "Commonwealth parser returned no matching 2027-28 announcement"
+                print("PARSER RESULT |", message)
+                blocking_failures.append(message)
             else:
                 print("PARSER RESULT |", commonwealth.title)
                 print("Provider:", commonwealth.provider_name)
@@ -106,7 +122,9 @@ async def main() -> None:
                 print("Criteria missing provenance:", len(missing_criteria))
                 print("Evidence missing provenance:", len(missing_evidence))
                 if missing_criteria or missing_evidence:
-                    failures.append("Commonwealth extraction contains facts without source URLs")
+                    message = "Commonwealth extraction contains facts without source URLs"
+                    failures.append(message)
+                    blocking_failures.append(message)
         except Exception as exc:
             failures.append(f"HEC Commonwealth: {type(exc).__name__}: {exc}")
             print("UNAVAILABLE | Commonwealth |", type(exc).__name__, str(exc))
@@ -117,9 +135,16 @@ async def main() -> None:
         print("Issues observed:")
         for failure in failures:
             print("-", failure)
-        # The live check is diagnostic because external government websites
-        # may rate-limit or block hosted CI. Unit tests remain the required gate.
-        print("LIVE CHECK RESULT: completed with external-source issues")
+
+    if blocking_failures:
+        print("LIVE CHECK RESULT: FAILED")
+        raise SystemExit(1)
+
+    if failures:
+        # External source indexes can rate-limit or block hosted CI. Preserve
+        # those as visible diagnostics while requiring the dedicated HEC
+        # programme parsers and source-provenance checks to succeed.
+        print("LIVE CHECK RESULT: parser checks passed; some source indexes were unreachable")
     else:
         print("LIVE CHECK RESULT: all requests and parser provenance checks passed")
 
