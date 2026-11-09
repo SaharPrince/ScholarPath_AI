@@ -1060,6 +1060,30 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
         }))
 
 
+    def test_corridor_classifies_existing_phd_holders_as_ineligible(self) -> None:
+        base = "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
+        pages = {
+            "overview": ("""
+                <div class="ms-rtestate-field">
+                  <h1>US-Pakistan Knowledge Corridor PhD Scholarship</h1>
+                  <p>The programme provides PhD scholarships for Pakistani students.</p>
+                </div>
+            """, base + "default.aspx"),
+            "eligibility": ("""
+                <div class="ms-rtestate-field">
+                  <p>Pakistani/AJK nationals</p>
+                  <p>Those having PhD Degree are not eligible.</p>
+                </div>
+            """, base + "Eligibility-Criteria.aspx"),
+        }
+        page = _parse_hec_knowledge_corridor(pages)
+        self.assertIsNotNone(page)
+        assert page is not None
+        exclusions = [item for item in page.criteria if item[0] == "ineligibility"]
+        self.assertEqual(len(exclusions), 1)
+        self.assertEqual(exclusions[0][1], "Existing PhD holders")
+
+
 
 class HecCommonwealthAnnouncementTests(unittest.TestCase):
     def test_extracts_commonwealth_2027_28_requirements_deadline_and_both_portals(self) -> None:
