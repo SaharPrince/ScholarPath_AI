@@ -112,41 +112,91 @@ def _candidate_links(html: str, page_url: str, allowed_host: str) -> list[tuple[
 
 
 async def _fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult:
+    """Crawl a small, same-host set of official index/detail pages.
+
+    Linked pages remain candidates only; the evidence-based extractor decides
+    whether each page represents a real, specific opportunity.
+    """
     source_url = source["official_url"]
     allowed_host = _normalized_host(source_url)
     if not allowed_host:
         return SourceResult(source["id"], source["name"], "skipped", message="Source URL must use HTTPS on the standard port.")
 
-    try:
-        async with client.stream("GET", source_url) as response:
-            if response.status_code != 200:
-                return SourceResult(source["id"], source["name"], "failed", message=f"HTTP {response.status_code}")
-            final_host = _normalized_host(str(response.url))
-            if final_host != allowed_host:
-                return SourceResult(source["id"], source["name"], "skipped", message="Cross-domain redirect was not followed.")
-            content_type = response.headers.get("content-type", "").lower()
-            if "text/html" not in content_type:
-                return SourceResult(source["id"], source["name"], "skipped", message="Source did not return HTML.")
-            length = response.headers.get("content-length")
-            if length and length.isdigit() and int(length) > MAX_RESPONSE_BYTES:
-                return SourceResult(source["id"], source["name"], "skipped", message="Source page exceeds the size limit.")
-            chunks: list[bytes] = []
-            total = 0
-            async for chunk in response.aiter_bytes():
-                total += len(chunk)
-                if total > MAX_RESPONSE_BYTES:
-                    return SourceResult(source["id"], source["name"], "skipped", message="Source page exceeded the size limit while downloading.")
-                chunks.append(chunk)
-            html = b"".join(chunks).decode(response.encoding or "utf-8", errors="replace")
-            links = _candidate_links(html, source_url, allowed_host)
-    except httpx.TimeoutException:
-        return SourceResult(source["id"], source["name"], "failed", message="Source request timed out.")
-    except httpx.HTTPError as exc:
-        return SourceResult(source["id"], source["name"], "failed", message=f"HTTP request failed: {type(exc).__name__}")
+    # Keep the crawl bounded for serverless execution while looking beyond
+    # the first navigation page. Only scholarship-related same-host links are
+    # followed, and each URL is fetched at most once per run.
+    max_pages = 8
+    max_depth = 2
+    queue: list[tuple[str, int]] = [(source_url, 0)]
+    visited: set[str] = set()
+    discovered: dict[str, str] = {}
+    first_page_error: str | None = None
+    successful_pages = 0
+
+    while queue and len(visited) < max_pages:
+        page_url, depth = queue.pop(0)
+        if page_url in visited:
+            continue
+        visited.add(page_url)
+        try:
+            async with client.stream("GET", page_url) as response:
+                if response.status_code != 200:
+                    if depth == 0:
+                        first_page_error = f"HTTP {response.status_code}"
+                    continue
+                final_host = _normalized_host(str(response.url))
+                if final_host != allowed_host:
+                    if depth == 0:
+                        first_page_error = "Cross-domain redirect was not followed."
+                    continue
+                content_type = response.headers.get("content-type", "").lower()
+                if "text/html" not in content_type:
+                    if depth == 0:
+                        first_page_error = "Source did not return HTML."
+                    continue
+                length = response.headers.get("content-length")
+                if length and length.isdigit() and int(length) > MAX_RESPONSE_BYTES:
+                    if depth == 0:
+                        first_page_error = "Source page exceeds the size limit."
+                    continue
+                chunks: list[bytes] = []
+                total = 0
+                async for chunk in response.aiter_bytes():
+                    total += len(chunk)
+                    if total > MAX_RESPONSE_BYTES:
+                        chunks = []
+                        break
+                    chunks.append(chunk)
+                if not chunks:
+                    if depth == 0:
+                        first_page_error = "Source page exceeded the size limit while downloading."
+                    continue
+                html = b"".join(chunks).decode(response.encoding or "utf-8", errors="replace")
+                successful_pages += 1
+        except httpx.TimeoutException:
+            if depth == 0:
+                first_page_error = "Source request timed out."
+            continue
+        except httpx.HTTPError as exc:
+            if depth == 0:
+                first_page_error = f"HTTP request failed: {type(exc).__name__}"
+            continue
+
+        links = _candidate_links(html, page_url, allowed_host)
+        for url, title in links:
+            discovered.setdefault(url, title)
+            if depth < max_depth and url not in visited and all(url != queued for queued, _ in queue):
+                queue.append((url, depth + 1))
+
+    if successful_pages == 0:
+        return SourceResult(
+            source["id"], source["name"], "failed",
+            message=first_page_error or "No official HTML pages could be read.",
+        )
 
     with get_connection() as connection:
         before = connection.total_changes
-        for url, title in links:
+        for url, title in discovered.items():
             connection.execute(
                 """INSERT INTO discovery_candidates
                    (source_id, title, candidate_url, status)
@@ -156,7 +206,6 @@ async def _fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult
                        last_seen_at = CURRENT_TIMESTAMP""",
                 (source["id"], title[:300], url),
             )
-        inserted = connection.total_changes - before
 
         # Retire previously queued false positives without deleting their audit
         # records. This also protects existing local databases on the next run.
@@ -174,7 +223,13 @@ async def _fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult
                         'https://www.hec.gov.pk/english/scholarshipsgrants/pages/default.aspx'
                  )"""
         )
-    return SourceResult(source["id"], source["name"], "completed", candidates_found=inserted)
+        inserted = connection.total_changes - before
+    return SourceResult(
+        source["id"], source["name"], "completed",
+        candidates_found=inserted,
+        message=(f"Read {successful_pages} official pages; some linked pages were unavailable."
+                 if successful_pages < len(visited) else None),
+    )
 
 
 async def _safe_fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult:
