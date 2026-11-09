@@ -24,7 +24,7 @@ main{padding:0 0 70px}.stats{display:grid;grid-template-columns:repeat(3,1fr);ga
 <header class="topbar"><div class="shell nav"><div class="brand"><span class="brandmark">✦</span> ScholarPath <span style="color:#9bcdb2">AI</span></div><div class="navnote">Official-source scholarship discovery</div></div></header>
 <section class="hero"><div class="shell"><div class="eyebrow">A clearer path to your future</div><h1>Find scholarships.<br>Know where you stand.</h1><p>Explore opportunities gathered from official sources and understand the requirements before you apply. Clear information, transparent evidence, no guesswork.</p><div class="hero-tags"><span class="tag">✓ Official-source discovery</span><span class="tag">✓ Eligibility requirements</span><span class="tag">✓ Evidence-linked details</span></div></div></section>
 <main class="shell">
-<div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Scholarships in this view</span></div><div class="stat"><strong id="openCount">—</strong><span>Marked open</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Official sources</span></div></div>
+<div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Scholarships in this view</span></div><div class="stat"><strong id="openCount">—</strong><span>Verified &amp; open</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
 
 <section class="profile-panel" id="profilePanel">
  <div class="eyebrow" style="color:#397d60">Your personal scholarship finder</div>
@@ -60,6 +60,7 @@ main{padding:0 0 70px}.stats{display:grid;grid-template-columns:repeat(3,1fr);ga
 <script>
 const $=id=>document.getElementById(id);
 let allScholarships=[];
+let activeSourceCount=0;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const nice=v=>String(v||"unknown").replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 const statusClass=v=>["open","closed","upcoming"].includes(v)?v:"unknown";
@@ -72,10 +73,10 @@ function render(){
  });
  $("resultCount").textContent=rows.length+" matching "+(rows.length===1?"opportunity":"opportunities");
  $("totalCount").textContent=rows.length;
- $("openCount").textContent=rows.filter(x=>x.application_status==="open").length;
- $("sourceCount").textContent=new Set(rows.map(x=>x.source_name)).size;
+ $("openCount").textContent=rows.filter(x=>x.application_status==="open"&&x.status==="verified").length;
+ $("sourceCount").textContent=activeSourceCount;
  $("cards").innerHTML=rows.length?rows.map(x=>`<article class="card">
- <div class="cardtop"><span class="pill ${statusClass(x.application_status)}">${esc(nice(x.application_status))}</span><span class="trust">${esc(nice(x.status))} record</span></div>
+ <div class="cardtop"><span class="pill ${statusClass(x.application_status==="open"&&x.status!=="verified"?"unknown":x.application_status)}">${esc(x.application_status==="open"&&x.status!=="verified"?"Open · unverified":nice(x.application_status))}</span><span class="trust">${esc(nice(x.status))} record</span></div>
  <h3>${esc(x.title)}</h3><div class="provider">${esc(x.provider_name||"Provider not stated")}</div>
  <div class="meta"><span>⌖ ${esc(x.study_destination||x.country||"Destination not stated")}</span><span>◷ ${esc(x.deadline_text||"Deadline not stated")}</span></div>
  <div class="funding">${esc(x.funding_summary||"Funding details have not been published in this record.")}</div>
@@ -86,7 +87,9 @@ async function load(){
  try{
   const r=await fetch("/api/scholarships?status=all&limit=100");
   if(!r.ok)throw new Error("Scholarship API returned "+r.status);
-  allScholarships=await r.json();render();
+  allScholarships=await r.json();
+  try{const sourceResponse=await fetch("/api/sources");if(sourceResponse.ok){const sources=await sourceResponse.json();activeSourceCount=sources.length;}}catch(_sourceError){}
+  render();
  }catch(e){$("cards").innerHTML='<div class="empty"><strong>We could not load scholarships</strong>Please check that the ScholarPath API is running, then refresh this page.</div>';$("resultCount").textContent="Unable to load records";}
 }
 async function showDetail(id){
