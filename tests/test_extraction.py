@@ -1110,7 +1110,7 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
             value for name, value in page.evidence
             if name == "priority_subject_areas"
         )
-        self.assertIn("Crop Production\\nSoil and Environmental Sciences\\nComputational Biology", evidence_text)
+        self.assertIn("Crop Production\nSoil and Environmental Sciences\nComputational Biology", evidence_text)
         self.assertEqual(
             page.evidence_sources[("priority_subject_areas", evidence_text)],
             base + "Priority-Subject-Areas.aspx",
