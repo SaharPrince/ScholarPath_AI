@@ -91,6 +91,7 @@ def _clean(value: str) -> str:
         ("the", "applicant"),
         ("is", "the"),
         ("female", "nomination"),
+        ("are", "required"),
     ):
         text = re.sub(
             rf"(?i)\b({re.escape(left)})({re.escape(right)})\b",
@@ -1096,7 +1097,14 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
     criteria_sources: dict[tuple[str, str, str], str] = {}
 
     def add_evidence(field_name: str, value: str, page_name: str) -> None:
-        value = _clean(value)
+        if field_name == "priority_subject_areas":
+            # Preserve the subject-list line structure in the evidence record.
+            value = "\n".join(
+                cleaned for line in value.splitlines()
+                if (cleaned := _clean(line))
+            )
+        else:
+            value = _clean(value)
         if not value:
             return
         item = (field_name, value)
@@ -1506,7 +1514,17 @@ def _parse_hec_commonwealth_announcement(
                 ):
                     add_criterion("selection_process", "Final selection authority", statement)
                     break
-        elif re.search(r"nomination process", low) and re.search(r"hec", low):
+        elif (
+            re.search(r"nomination process", low)
+            and re.search(r"hec", low)
+            and not (
+                re.search(r"final selection", low)
+                and re.search(r"commonwealth scholarship commission", low)
+            )
+        ):
+            # When the same source item already states both HEC's nomination
+            # role and CSC's final authority, the preceding branch captures
+            # the complete sentence once. Do not merge repeated statements.
             for statement in _split_criteria_statements(item):
                 if re.search(r"(?i)nomination process", statement) and re.search(r"(?i)\bhec\b", statement):
                     add_criterion("selection_process", "Final selection authority", statement)
