@@ -1282,6 +1282,22 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         # Preserve source spelling rather than silently correcting factual evidence.
         self.assertIn("Pharmacetuical", _clean("Pharmacetuical Sciences"))
 
+    def test_hec_repairs_additional_exact_joins_from_live_announcement(self) -> None:
+        from app.extraction import _clean
+
+        self.assertEqual(
+            _clean(
+                "topursue; Master'sand PHD; forthe Commonwealth; bythe CSC; "
+                "femalenomination; permanentresident; fieldof study; "
+                "candidatesmay apply; beforethe session; inHAT test; "
+                "mayupload results; prescribedby HEC; tosubmit forms; fromthe portal"
+            ),
+            "to pursue; Master's and PHD; for the Commonwealth; by the CSC; "
+            "female nomination; permanent resident; field of study; "
+            "candidates may apply; before the session; in HAT test; "
+            "may upload results; prescribed by HEC; to submit forms; from the portal",
+        )
+
     def test_commonwealth_authority_keeps_one_nomination_and_final_selection_statement(self) -> None:
         from app.extraction import _parse_hec_commonwealth_announcement
 
