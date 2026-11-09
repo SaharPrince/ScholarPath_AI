@@ -46,11 +46,41 @@ OFFICIAL_SOURCES = (
         "source_type": "official_programme",
         "country": "Germany",
     },
+    {
+        "name": "British Council Pakistan Scholarships",
+        "official_url": "https://www.britishcouncil.pk/programmes/education/scholarships",
+        "source_type": "official_programme",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Commonwealth Scholarship Commission",
+        "official_url": "https://cscuk.fcdo.gov.uk/scholarships-filter-search/",
+        "source_type": "official_programme",
+        "country": "United Kingdom",
+    },
+    {
+        "name": "Türkiye Scholarships",
+        "official_url": "https://www.turkiyeburslari.gov.tr/scholarshipsprograms",
+        "source_type": "official_programme",
+        "country": "Türkiye",
+    },
+    {
+        "name": "Erasmus+ Opportunities for Individuals",
+        "official_url": "https://erasmus-plus.ec.europa.eu/opportunities/individuals",
+        "source_type": "government",
+        "country": "European Union",
+    },
+    {
+        "name": "Stipendium Hungaricum",
+        "official_url": "https://stipendiumhungaricum.hu/apply/",
+        "source_type": "official_programme",
+        "country": "Hungary",
+    },
 )
 
 
 def seed_official_sources() -> int:
-    """Insert curated source indexes and retire the unusable legacy HEC index."""
+    """Idempotently add curated source indexes and retire the obsolete HEC index."""
     inserted = 0
     with get_connection() as connection:
         # Preserve old scholarship/candidate records, but stop repeatedly
