@@ -154,6 +154,8 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             required_rank = level_ranks[required_level]
             if current_rank < required_rank:
                 return _result("fail", f"This opportunity requires {required_level.title()} to be completed; your highest completed level is {current_level.replace('_', ' ').title()}.")
+            if not any(term in lower for term in ("marks", "aggregate", "percentage", "percent")):
+                return _result("pass", f"Your completed {required_level.title()} qualification meets this education-level requirement.")
         if re.search(r"\b(for|admission to|apply for)\s+intermediate\b", lower):
             if not target:
                 return _result("unknown", "Choose what you plan to study next to check this Intermediate opportunity.")
