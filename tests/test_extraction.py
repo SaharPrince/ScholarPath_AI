@@ -1184,6 +1184,14 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
             _clean("Benefits stated withouta category restriction; applicationto cancer research"),
             "Benefits stated without a category restriction; application to cancer research",
         )
+        self.assertEqual(
+            _clean("doctoralstudy; benefits without acategory restriction; must not beavailing"),
+            "doctoral study; benefits without a category restriction; must not be availing",
+        )
+        self.assertEqual(
+            _clean("CSC'ssix themes; Allapplicants; guaranteefinal selection"),
+            "CSC's six themes; All applicants; guarantee final selection",
+        )
         # Preserve source spelling rather than silently correcting factual evidence.
         self.assertIn("Pharmacetuical", _clean("Pharmacetuical Sciences"))
 
