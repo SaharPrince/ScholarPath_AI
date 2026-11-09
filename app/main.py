@@ -64,6 +64,8 @@ async def scheduled_discovery(authorization: str | None = Header(default=None)) 
     expected = f"Bearer {settings.cron_secret}"
     if not authorization or not secrets.compare_digest(authorization, expected):
         raise HTTPException(status_code=401, detail="Unauthorized")
+    # Sync source indexes on the authenticated cron, not on every cold start.
+    source_records_added = seed_official_sources()
     discovery = await discover_from_active_sources()
 
     # Vercel Hobby functions have a bounded execution window. Process a small
@@ -84,6 +86,7 @@ async def scheduled_discovery(authorization: str | None = Header(default=None)) 
     extraction = await extract_candidate_details(candidate_ids=candidate_ids)
 
     return {
+        "source_records_added": source_records_added,
         "discovery": [item.__dict__ for item in discovery],
         "extraction": extraction,
         "extraction_batch_size": len(candidate_ids),
@@ -193,7 +196,7 @@ def match_profile(profile: dict) -> dict:
         "regular_government_employee", "public_university_faculty",
         "approved_rd_researcher", "receiving_other_scholarship", "has_phd",
         "target_study_level", "current_education_level", "academic_percentage",
-        "education_field", "years_of_education", "latest_degree_division",
+        "education_field", "domicile_region", "years_of_education", "latest_degree_division",
         "hat_score", "hat_category", "gre_score", "university_qs_rank", "admission_confirmed",
     }
     unknown_fields = set(profile) - allowed

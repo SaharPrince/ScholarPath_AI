@@ -76,6 +76,73 @@ OFFICIAL_SOURCES = (
         "source_type": "official_programme",
         "country": "Hungary",
     },
+
+    {
+        "name": "Punjab Educational Endowment Fund (PEEF) Student Scholarships",
+        "official_url": "https://student.peef.org.pk/",
+        "source_type": "official_programme",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Punjab Higher Education Department – PEEF",
+        "official_url": "https://hed.punjab.gov.pk/peef",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Punjab Rahmatul-lil-Alameen Scholarship",
+        "official_url": "https://hed.punjab.gov.pk/rehmatul-lil-alameen_scholarship",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Punjab Educational Scholarships for Religious Minorities",
+        "official_url": "https://scholarships-hrma.punjab.gov.pk/",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Punjab Zakat Education Stipends",
+        "official_url": "https://zakat.punjab.gov.pk/node/138",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Sindh Education Foundation – School Education Scholarship Programme",
+        "official_url": "https://www.sef.org.pk/scholarship",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Sindh Educational Endowment Fund",
+        "official_url": "https://seef.sindh.gov.pk/about-us",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Khyber Pakhtunkhwa Education Foundation Scholarships",
+        "official_url": "https://ef.kp.gov.pk/eligibility-criteria",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Khyber Pakhtunkhwa Zakat Education Stipends",
+        "official_url": "https://swkpk.gov.pk/edu%20stipends.php",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Balochistan Education Endowment Fund (BEEF) Scholarships",
+        "official_url": "https://beef.org.pk/policyguideline/",
+        "source_type": "official_programme",
+        "country": "Pakistan",
+    },
+    {
+        "name": "Balochistan Provincial Minorities Scholarship Scheme",
+        "official_url": "https://minorities.balochistan.gov.pk/",
+        "source_type": "government",
+        "country": "Pakistan",
+    },
 )
 
 
