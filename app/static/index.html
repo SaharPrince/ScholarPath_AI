@@ -55,6 +55,22 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const nice=v=>String(v||"unknown").replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 const statusClass=v=>["open","closed","upcoming"].includes(v)?v:"unknown";
 const shortText=v=>v?String(v):"Not stated by the source";
+function summarizeRequirement(text,label){
+ const raw=String(text||"").replace(/\s+/g," ").trim();
+ const lower=raw.toLowerCase();
+ const level=lower.match(/\b(intermediate|hssc|higher secondary|f\.?a\.?|f\.?sc\.?|i\.?cs|i\.?com|matric(?:ulation)?|ssc|secondary school certificate)\b/);
+ const pct=lower.match(/(?:minimum(?: of)?|at least|not less than|aggregate of|marks? of)\s*(\d{1,3}(?:\.\d+)?)\s*(?:%|percent)?|\b(\d{1,3}(?:\.\d+)?)\s*(?:%|percent)/);
+ if(level&&pct){
+  const name=/intermediate|hssc|higher secondary|f\.?a\.?|f\.?sc\.?|i\.?cs|i\.?com/.test(level[0])?"Intermediate":"Matric";
+  return name+": "+(pct[1]||pct[2])+"% marks";
+ }
+ if(pct)return "At least "+(pct[1]||pct[2])+"% marks";
+ const age=lower.match(/(?:maximum age|upper age limit|not more than|below|under)\s*(\d{2})\s*years?/);
+ if(age)return "Age: up to "+age[1]+" years";
+ const minAge=lower.match(/(?:minimum age|at least|not younger than)\s*(\d{2})\s*years?/);
+ if(minAge)return "Age: at least "+minAge[1]+" years";
+ return raw||"Requirement not clearly stated by source";
+}
 function render(){
  const q=$("search").value.trim().toLowerCase(),s=$("status").value,t=$("trust").value;
  const rows=allScholarships.filter(x=>{
@@ -95,7 +111,7 @@ async function showDetail(id){
   $("detailBody").innerHTML=`<div class="detailfacts">${facts.map(([k,v])=>`<div class="fact"><small>${esc(k)}</small><strong>${esc(shortText(v))}</strong></div>`).join("")}</div>
   <div class="links"><a href="${esc(x.source_url)}" target="_blank" rel="noopener">Official source page ↗</a>${x.application_url?`<a href="${esc(x.application_url)}" target="_blank" rel="noopener">Application portal ↗</a>`:""}</div>
   <h3>Eligibility & application requirements · ${criteria.length}</h3>
-  ${criteria.length?Object.entries(groups).map(([type,list])=>`<h3 style="margin:20px 0 8px;color:#64766d;font-size:12px;text-transform:uppercase;letter-spacing:.08em">${esc(nice(type))}</h3>${list.map(c=>`<article class="criterion"><div class="criteriontop"><h4>${esc(c.criterion_label)}</h4><span class="mandatory ${c.is_mandatory?"":"info"}">${c.is_mandatory?"Required":"Informational"}</span></div><p>${esc(c.requirement_text)}</p>${c.evidence_url?`<a href="${esc(c.evidence_url)}" target="_blank" rel="noopener">View criterion evidence ↗</a>`:'<span class="trust">No separate evidence link recorded</span>'}</article>`).join("")}`).join(""):'<p>No structured eligibility criteria are recorded yet.</p>'}
+  ${criteria.length?Object.entries(groups).map(([type,list])=>`<h3 style="margin:20px 0 8px;color:#64766d;font-size:12px;text-transform:uppercase;letter-spacing:.08em">${esc(nice(type))}</h3>${list.map(c=>`<article class="criterion"><div class="criteriontop"><h4>${esc(c.criterion_label)}</h4><span class="mandatory ${c.is_mandatory?"":"info"}">${c.is_mandatory?"Required":"Informational"}</span></div><p>${esc(summarizeRequirement(c.requirement_text,c.criterion_label))}</p>${c.requirement_text&&summarizeRequirement(c.requirement_text,c.criterion_label)!==String(c.requirement_text).replace(/\\s+/g," ").trim()?`<details><summary style="cursor:pointer;color:#64766d;font-size:11px">View full source wording</summary><p>${esc(c.requirement_text)}</p></details>`:""}${c.evidence_url?`<a href="${esc(c.evidence_url)}" target="_blank" rel="noopener">View criterion evidence ↗</a>`:'<span class="trust">No separate evidence link recorded</span>'}</article>`).join("")}`).join(""):'<p>No structured eligibility criteria are recorded yet.</p>'}
   <p class="notice">ScholarPath presents information captured from the listed source. “Unverified” means the record has not been independently verified. Confirm current requirements and deadlines with the official provider before applying.</p>`;
  }catch(e){$("detailBody").innerHTML='<div class="empty">Unable to load this scholarship. Please try again.</div>';}
 }
@@ -122,7 +138,7 @@ $("profileForm").addEventListener("submit",async e=>{
 function showMatchDetail(id,rows){
  const x=rows.find(v=>v.id===id);if(!x)return;$("overlay").classList.add("show");document.body.style.overflow="hidden";$("detailTitle").textContent=x.title;$("detailProvider").textContent=x.provider_name||"Provider not stated";
  const labels={pass:"Meets requirement",fail:"Does not meet",unknown:"Needs checking",informational:"Information"};
- $("detailBody").innerHTML=`<div class="links"><a href="${esc(x.source_url)}" target="_blank" rel="noopener">Official source ↗</a></div><h3>Why this result?</h3>${x.checks.map(c=>`<article class="criterion"><div class="criteriontop"><h4>${esc(c.criterion_label)}</h4><span class="mandatory info">${labels[c.status]||c.status}</span></div><p>${esc(c.requirement_text)}</p><p>${esc(c.explanation)}</p>${c.evidence_url?`<a href="${esc(c.evidence_url)}" target="_blank" rel="noopener">Official evidence ↗</a>`:""}</article>`).join("")}<p class="notice">Preliminary matching only. This is not an official decision by the scholarship provider.</p>`;
+ $("detailBody").innerHTML=`<div class="links"><a href="${esc(x.source_url)}" target="_blank" rel="noopener">Official source ↗</a></div><h3>Why this result?</h3>${x.checks.map(c=>`<article class="criterion"><div class="criteriontop"><h4>${esc(c.criterion_label)}</h4><span class="mandatory info">${labels[c.status]||c.status}</span></div><p><strong>${esc(summarizeRequirement(c.requirement_text,c.criterion_label))}</strong></p>${summarizeRequirement(c.requirement_text,c.criterion_label)!==String(c.requirement_text||"").replace(/\\s+/g," ").trim()?`<details><summary style="cursor:pointer;color:#64766d;font-size:11px">View full source wording</summary><p>${esc(c.requirement_text)}</p></details>`:""}<p>${esc(c.explanation)}</p>${c.evidence_url?`<a href="${esc(c.evidence_url)}" target="_blank" rel="noopener">Official evidence ↗</a>`:""}</article>`).join("")}<p class="notice">Preliminary matching only. This is not an official decision by the scholarship provider.</p>`;
 }
 
 load();
