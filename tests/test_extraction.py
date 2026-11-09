@@ -1062,7 +1062,7 @@ class HecKnowledgeCorridorExtractionTests(unittest.TestCase):
 
 class HecCommonwealthAnnouncementTests(unittest.TestCase):
     def test_extracts_commonwealth_2027_28_requirements_deadline_and_both_portals(self) -> None:
-        from app.extraction import _parse_hec_commonwealth_announcement
+        from app.extraction import _parse_hec_commonwealth_announcement, _is_mandatory_criterion
 
         url = "https://www.hec.gov.pk/english/HECAnnouncements/Pages/CW-Scholarship.aspx"
         html = """
@@ -1120,6 +1120,16 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(any("60 out of 100" in text for text in criteria))
         self.assertTrue(any("hat-i" in text for text in criteria))
         self.assertTrue(any("nomination process" in text for text in criteria))
+        dual_portal = [
+            (kind, label, value) for kind, label, value in page.criteria
+            if label == "Dual-portal application"
+        ]
+        self.assertEqual(len(dual_portal), 1)
+        self.assertTrue(_is_mandatory_criterion(dual_portal[0][0], dual_portal[0][2]))
+        self.assertFalse(any(
+            "national nominating agency" in value.casefold()
+            for _kind, _label, value in page.criteria
+        ))
         self.assertEqual(
             page.description,
             "The scholarships are for full-time taught Master's and PhD study at a UK university.",
