@@ -95,6 +95,8 @@ POSTGRES_SCHEMA = re.sub(
     SQLITE_SCHEMA.replace("PRAGMA foreign_keys = ON;", ""),
     flags=re.IGNORECASE,
 )
+# PostgreSQL foreign-key columns must match the BIGSERIAL primary-key type.
+POSTGRES_SCHEMA = re.sub(r"\\bINTEGER\\b", "BIGINT", POSTGRES_SCHEMA, flags=re.IGNORECASE)
 
 
 class PostgresConnection:
@@ -102,6 +104,11 @@ class PostgresConnection:
 
     def __init__(self, connection):
         self._connection = connection
+        self._total_changes = 0
+
+    @property
+    def total_changes(self) -> int:
+        return self._total_changes
 
     def execute(self, sql: str, parameters=()):
         # All application SQL uses positional qmark parameters. Translate only
@@ -130,7 +137,10 @@ class PostgresConnection:
                 flags=re.IGNORECASE,
             )
             statement = statement.rstrip().rstrip(";") + " ON CONFLICT DO NOTHING"
-        return self._connection.execute(statement, parameters)
+        cursor = self._connection.execute(statement, parameters)
+        if cursor.rowcount and cursor.rowcount > 0:
+            self._total_changes += cursor.rowcount
+        return cursor
 
     def commit(self):
         self._connection.commit()
