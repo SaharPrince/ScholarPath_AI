@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.database import database_is_ready, get_connection, init_db
@@ -24,9 +26,17 @@ async def lifespan(_: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     description="Official-source scholarship discovery and eligibility matching.",
-    version="0.4.0",
+    version="0.5.0",
     lifespan=lifespan,
 )
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
+@app.get("/", include_in_schema=False)
+def scholarship_home() -> FileResponse:
+    """Serve the responsive scholarship discovery interface."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["system"])
