@@ -87,6 +87,25 @@ button,input,select{max-width:100%}
  .drawer{padding:15px 12px}
 }
 
+
+/* Responsive custom dropdown menus: browser-native option popups cannot be sized reliably on phones. */
+.select-control{position:relative;width:100%;min-width:0}
+.select-control>select{position:absolute!important;inset:0;width:100%!important;height:100%!important;opacity:0!important;pointer-events:none!important}
+.select-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-width:0;height:44px;padding:0 13px;border:1px solid var(--line);border-radius:10px;background:#fbfdfb;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.select-trigger:focus-visible{outline:0;border-color:#5b9c7d;box-shadow:0 0 0 3px #dff2e9}
+.select-trigger .select-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.select-trigger .select-chevron{flex:0 0 auto;color:#647572;font-size:12px}
+.select-menu{position:fixed;z-index:30;overflow-y:auto;overscroll-behavior:contain;max-height:min(45vh,320px);background:#fff;border:1px solid #dce7e0;border-radius:12px;padding:5px;box-shadow:0 16px 44px rgba(18,45,35,.2);-webkit-overflow-scrolling:touch}
+.select-option{display:flex;align-items:center;width:100%;min-height:42px;padding:9px 11px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.select-option[aria-selected="true"]{background:#e2f2e9;color:#176348;font-weight:750}
+.select-option:focus-visible,.select-option:hover{outline:0;background:#edf5f0}
+.select-option:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:600px){
+ .select-trigger{height:46px;font-size:16px}
+ .select-menu{max-height:min(48vh,340px);padding:6px}
+ .select-option{min-height:46px;font-size:16px}
+}
+
 </style>
 </head>
 <body>
@@ -213,6 +232,58 @@ function showMatchDetail(id,rows){
  const labels={pass:"Meets requirement",fail:"Does not meet",unknown:"Needs checking",informational:"Information"};
  $("detailBody").innerHTML=`<div class="links"><a href="${esc(x.source_url)}" target="_blank" rel="noopener">Official source ↗</a></div><h3>Why this result?</h3>${x.checks.map(c=>`<article class="criterion"><div class="criteriontop"><h4>${esc(c.criterion_label)}</h4><span class="mandatory info">${labels[c.status]||c.status}</span></div><p><strong>${esc(summarizeRequirement(c.requirement_text,c.criterion_label))}</strong></p>${summarizeRequirement(c.requirement_text,c.criterion_label)!==String(c.requirement_text||"").replace(/\s+/g," ").trim()?`<details><summary style="cursor:pointer;color:#64766d;font-size:11px">View full source wording</summary><p>${esc(c.requirement_text)}</p></details>`:""}<p>${esc(c.explanation)}</p>${c.evidence_url?`<a href="${esc(c.evidence_url)}" target="_blank" rel="noopener">Official evidence ↗</a>`:""}</article>`).join("")}<p class="notice">Preliminary matching only. This is not an official decision by the scholarship provider.</p>`;
 }
+
+
+/* Build viewport-aware dropdowns while retaining native select values for forms and APIs. */
+(function enhanceSelectMenus(){
+ const selects=Array.from(document.querySelectorAll("select"));
+ let activeMenu=null,activeTrigger=null;
+ function closeMenu(){if(activeMenu)activeMenu.remove();if(activeTrigger)activeTrigger.setAttribute("aria-expanded","false");activeMenu=null;activeTrigger=null;}
+ function openMenu(select,trigger){
+  closeMenu();
+  const menu=document.createElement("div");menu.className="select-menu";menu.setAttribute("role","listbox");
+  menu.setAttribute("aria-label",select.getAttribute("aria-label")||select.closest(".profile-field")?.querySelector("label")?.textContent||"Options");
+  Array.from(select.options).forEach((option,index)=>{
+   const item=document.createElement("button");item.type="button";item.className="select-option";item.setAttribute("role","option");item.setAttribute("aria-selected",String(index===select.selectedIndex));item.textContent=option.textContent;item.disabled=option.disabled;
+   item.addEventListener("click",()=>{
+    select.selectedIndex=index;select.dispatchEvent(new Event("change",{bubbles:true}));trigger.querySelector(".select-value").textContent=option.textContent;closeMenu();trigger.focus();
+   });
+   menu.appendChild(item);
+  });
+  document.body.appendChild(menu);
+  const rect=trigger.getBoundingClientRect(),gap=6,pad=12;
+  const width=Math.min(rect.width,window.innerWidth-pad*2);
+  const left=Math.max(pad,Math.min(rect.left,window.innerWidth-width-pad));
+  const availableBelow=window.innerHeight-rect.bottom-gap-pad;
+  const availableAbove=rect.top-gap-pad;
+  const maxHeight=Math.min(window.innerWidth<=600?window.innerHeight*.48:320,Math.max(120,Math.max(availableBelow,availableAbove)));
+  const placeAbove=availableBelow<Math.min(220,menu.scrollHeight)&&availableAbove>availableBelow;
+  menu.style.left=left+"px";menu.style.width=width+"px";menu.style.maxHeight=maxHeight+"px";
+  menu.style.top=placeAbove?"auto":Math.min(rect.bottom+gap,window.innerHeight-maxHeight-pad)+"px";
+  if(placeAbove){menu.style.bottom=(window.innerHeight-rect.top+gap)+"px";}
+  const selected=menu.querySelector('[aria-selected="true"]');if(selected)selected.scrollIntoView({block:"nearest"});
+  activeMenu=menu;activeTrigger=trigger;trigger.setAttribute("aria-expanded","true");
+  menu.addEventListener("keydown",event=>{
+   const items=Array.from(menu.querySelectorAll(".select-option:not(:disabled)")),current=items.indexOf(document.activeElement);
+   if(event.key==="Escape"){event.preventDefault();closeMenu();trigger.focus();}
+   else if(event.key==="ArrowDown"||event.key==="ArrowUp"){event.preventDefault();items[Math.max(0,Math.min(items.length-1,current+(event.key==="ArrowDown"?1:-1))) ]?.focus();}
+  });
+ }
+ selects.forEach((select,index)=>{
+  const wrapper=document.createElement("div");wrapper.className="select-control";
+  select.parentNode.insertBefore(wrapper,select);wrapper.appendChild(select);
+  const trigger=document.createElement("button");trigger.type="button";trigger.className="select-trigger";trigger.setAttribute("aria-haspopup","listbox");trigger.setAttribute("aria-expanded","false");trigger.setAttribute("aria-label",select.getAttribute("aria-label")||select.closest(".profile-field")?.querySelector("label")?.textContent||"Choose an option");
+  trigger.innerHTML='<span class="select-value"></span><span class="select-chevron" aria-hidden="true">▾</span>';
+  trigger.querySelector(".select-value").textContent=select.options[select.selectedIndex]?.textContent||"Choose";
+  wrapper.appendChild(trigger);
+  trigger.addEventListener("click",()=>activeTrigger===trigger?closeMenu():openMenu(select,trigger));
+  select.addEventListener("change",()=>{trigger.querySelector(".select-value").textContent=select.options[select.selectedIndex]?.textContent||"Choose";});
+  select.addEventListener("invalid",()=>{trigger.focus();});
+ });
+ document.addEventListener("pointerdown",event=>{if(activeMenu&&!activeMenu.contains(event.target)&&!activeTrigger?.contains(event.target))closeMenu();});
+ window.addEventListener("resize",closeMenu);window.addEventListener("scroll",closeMenu,true);
+ document.addEventListener("keydown",event=>{if(event.key==="Escape"&&activeMenu){closeMenu();}});
+})();
 
 load();
 </script>
