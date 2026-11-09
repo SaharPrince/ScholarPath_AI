@@ -1102,13 +1102,16 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
 
     def add_evidence(field_name: str, value: str, page_name: str) -> None:
         if field_name == "priority_subject_areas":
-            # Preserve the subject-list line structure in the evidence record.
+            # Preserve the subject-list line structure and apply the same
+            # verified HEC spacing repairs used for the displayed field.
             value = "\n".join(
                 cleaned for line in value.splitlines()
                 if (cleaned := _clean(line))
             )
+            value = re.sub(r"(?i)\bandEnvironmental\b", "and Environmental", value)
         else:
             value = _clean(value)
+            value = re.sub(r"(?i)\barerequired\b", "are required", value)
         if not value:
             return
         item = (field_name, value)
@@ -1118,6 +1121,10 @@ def _parse_hec_knowledge_corridor(pages: dict[str, tuple[str, str]]) -> Extracte
 
     def add_criterion(kind: str, label: str, value: str, page_name: str) -> None:
         value = _clean(value)
+        # Apply the observed FAQ repair at the final criterion boundary too.
+        # This guards against markup extraction paths that preserve the joined
+        # source token after an earlier normalization pass.
+        value = re.sub(r"(?i)\barerequired\b", "are required", value)
         if not value:
             return
         # Collapse source-copy duplicates that differ only in punctuation,
