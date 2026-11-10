@@ -703,6 +703,41 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
     return extracted
 
 
+def extract_criteria_from_html(html: str) -> list[tuple[str, str, str]]:
+    """Extract eligibility from a linked official requirements page."""
+    soup = BeautifulSoup(html, "html.parser")
+    content_root = _remove_site_chrome(soup)
+    section_specs = {
+        "eligibility": ("Eligibility", "Eligibility Criteria", "Who can apply", "Eligible applicants", "Requirements"),
+        "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
+        "study_level": ("Degree Level", "Study Level", "Level of Study", "Academic qualification"),
+        "nationality": ("Nationality Requirements", "Citizenship Requirements", "Eligible Nationalities", "Eligible Countries"),
+        "academic_requirements": ("Academic Requirements", "Academic Eligibility", "Minimum Academic Requirements", "Minimum Grades", "Minimum GPA"),
+        "age_limit": ("Age Limit", "Age Requirements", "Age Eligibility"),
+        "required_documents": ("Required Documents", "Documents Required", "Supporting Documents"),
+        "language_requirements": ("Language Requirements", "Language Proficiency", "English Language Requirements"),
+        "work_experience": ("Work Experience", "Professional Experience", "Relevant Experience"),
+    }
+    found: list[tuple[str, str, str]] = []
+    for kind, headings in section_specs.items():
+        section = _find_heading_section(content_root, headings)
+        if not section:
+            continue
+        for statement in _split_criteria_statements(section):
+            statement = _clean(statement)
+            if statement and len(statement) >= 18:
+                found.append((kind, kind.replace("_", " ").title(), statement))
+    found.extend(_extract_unlabelled_criteria(content_root))
+    unique = []
+    seen = set()
+    for item in found:
+        key = item[2].casefold()
+        if key not in seen:
+            unique.append(item)
+            seen.add(key)
+    return unique
+
+
 def _extract_ccip_criteria(content_root: BeautifulSoup) -> list[tuple[str, str, str]]:
     """Extract CCIP requirements from its official overview and FAQ answers."""
     page_text = _clean(content_root.get_text(" ", strip=True))
