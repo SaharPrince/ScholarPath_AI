@@ -112,7 +112,7 @@ button,input,select{max-width:100%}
 <header class="topbar"><div class="shell nav"><div class="brand"><span class="brandmark">✦</span> ScholarPath <span style="color:#9bcdb2">AI</span></div><div class="navnote">Official-source scholarship discovery</div></div></header>
 <section class="hero"><div class="shell"><div class="eyebrow">A clearer path to your future</div><h1>Find scholarships.<br>Know where you stand.</h1><p>Explore German scholarships from official providers and universities. Check the requirements before you apply. Clear information, transparent evidence, no guesswork.</p><div class="hero-tags"><span class="tag">✓ Official German sources</span><span class="tag">✓ Eligibility requirements</span><span class="tag">✓ Evidence-linked details</span></div></div></section>
 <main class="shell">
-<div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Scholarships in this view</span></div><div class="stat"><strong id="openCount">—</strong><span>Verified &amp; open</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
+<div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Live opportunities found</span></div><div class="stat"><strong id="openCount">—</strong><span>Open according to source</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
 
 <section class="profile-panel" id="profilePanel">
  <div class="eyebrow" style="color:#397d60">Your personal scholarship finder</div>
@@ -187,13 +187,13 @@ function render(){
  });
  $("resultCount").textContent=rows.length+" matching "+(rows.length===1?"opportunity":"opportunities");
  $("totalCount").textContent=rows.length;
- $("openCount").textContent=rows.filter(x=>x.application_status==="open"&&x.status==="verified").length;
+ $("openCount").textContent=rows.filter(x=>x.application_status==="open").length;
  $("sourceCount").textContent=activeSourceCount;
  $("cards").innerHTML=rows.length?rows.map(x=>`<article class="card">
- <div class="cardtop"><span class="pill ${statusClass(x.application_status==="open"&&x.status!=="verified"?"unknown":x.application_status)}">${esc(x.application_status==="open"&&x.status!=="verified"?"Open · unverified":nice(x.application_status))}</span><span class="trust">${esc(nice(x.status))} record</span></div>
+ <div class="cardtop"><span class="pill ${statusClass(x.application_status==="open"&&x.status!=="verified"?"unknown":x.application_status)}">${esc(x.application_status==="open"&&x.status!=="verified"?"Open · unverified":nice(x.application_status))}</span><span class="trust">Fetched live · ${esc(nice(x.status))}</span></div>
  <h3>${esc(x.title)}</h3><div class="provider">${esc(x.provider_name||"Provider not stated")}</div>
  <div class="meta"><span>⌖ ${esc(x.study_destination||x.country||"Destination not stated")}</span><span>◷ ${esc(x.deadline_text||"Deadline not stated")}</span></div>
- <div class="funding">${esc(x.funding_summary||"Funding details have not been published in this record.")}</div>
+ <div class="funding">${esc(x.funding_summary||"Funding details are not stated on the source page.")}</div>
  <div class="cardfoot"><span class="source" title="${esc(x.source_name)}">Source: ${esc(x.source_name)}</span><button class="detailbtn" data-id="${x.id}">View requirements ↗</button></div></article>`).join(""):(allScholarships.length===0?'<div class="empty"><strong>No current opportunities found</strong>This live scan did not identify a specific opportunity. Some providers may temporarily block automated access; try again later or visit the official source list.</div>':'<div class="empty"><strong>No matching scholarships found</strong>Try changing your search or filters.</div>');
  $("cards").querySelectorAll("[data-id]").forEach(b=>b.addEventListener("click",()=>showDetail(Number(b.dataset.id))));
 }
