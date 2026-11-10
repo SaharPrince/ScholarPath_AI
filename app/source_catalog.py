@@ -7,6 +7,8 @@ identify a specific opportunity before it is added to the catalogue.
 from app.database import get_connection
 
 
+LEGACY_HEC_URL = "https://www.hec.gov.pk/Site/Scholarship/default.aspx"
+
 GERMANY_SOURCES = (
     {"name": "DAAD Pakistan – Scholarship Programmes for Pakistan", "official_url": "https://www.daad.pk/en/find-funding/daad-scholarship-programmes-for-pakistan/", "source_type": "official_programme", "country": "Germany"},
     {"name": "DAAD Pakistan – Scholarship Database", "official_url": "https://www.daad.pk/en/find-funding/scholarship-database/?intention=&onlydaad=0&origin=194&pg=1&q=&status=0&subject=0&tab=&target=194&type=a", "source_type": "official_database", "country": "Germany"},
@@ -56,7 +58,11 @@ def seed_official_sources() -> int:
             )
 
         for source in GERMANY_SOURCES:
-            cursor = connection.execute(
+            already_exists = connection.execute(
+                "SELECT 1 FROM sources WHERE official_url = ?",
+                (source["official_url"],),
+            ).fetchone()
+            connection.execute(
                 """INSERT INTO sources
                    (name, official_url, source_type, country, is_active)
                    VALUES (?, ?, ?, ?, 1)
@@ -67,7 +73,8 @@ def seed_official_sources() -> int:
                      is_active = 1""",
                 (source["name"], source["official_url"], source["source_type"], source["country"]),
             )
-            inserted += max(cursor.rowcount, 0)
+            if already_exists is None:
+                inserted += 1
     return inserted
 
 
