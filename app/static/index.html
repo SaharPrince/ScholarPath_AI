@@ -110,13 +110,13 @@ button,input,select{max-width:100%}
 </head>
 <body>
 <header class="topbar"><div class="shell nav"><div class="brand"><span class="brandmark">✦</span> ScholarPath <span style="color:#9bcdb2">AI</span></div><div class="navnote">Official-source scholarship discovery</div></div></header>
-<section class="hero"><div class="shell"><div class="eyebrow">A clearer path to your future</div><h1>Find scholarships.<br>Know where you stand.</h1><p>Explore opportunities gathered from official sources and understand the requirements before you apply. Clear information, transparent evidence, no guesswork.</p><div class="hero-tags"><span class="tag">✓ Official-source discovery</span><span class="tag">✓ Eligibility requirements</span><span class="tag">✓ Evidence-linked details</span></div></div></section>
+<section class="hero"><div class="shell"><div class="eyebrow">A clearer path to your future</div><h1>Find scholarships.<br>Know where you stand.</h1><p>Explore German scholarships from official providers and universities. Check the requirements before you apply. Clear information, transparent evidence, no guesswork.</p><div class="hero-tags"><span class="tag">✓ Official German sources</span><span class="tag">✓ Eligibility requirements</span><span class="tag">✓ Evidence-linked details</span></div></div></section>
 <main class="shell">
 <div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Scholarships in this view</span></div><div class="stat"><strong id="openCount">—</strong><span>Verified &amp; open</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
 
 <section class="profile-panel" id="profilePanel">
  <div class="eyebrow" style="color:#397d60">Your personal scholarship finder</div>
- <h2>Find scholarships that fit you</h2>
+ <h2>Find scholarships in Germany that fit you</h2>
  <p>Tell us three basics so we can match you accurately: nationality, your completed education level, and what you want to study next. Age, marks, subject and domicile can be left blank.</p>
  <form id="profileForm"><div class="profile-grid">
   <div class="profile-field"><label>Nationality <span style="color:#a34a3c">required</span></label><select name="nationality" required><option value="">Choose</option><option>Pakistani</option><option>Afghan</option><option>Bangladeshi</option><option>Chinese</option><option>Indian</option><option>Other</option></select></div>
@@ -128,7 +128,7 @@ button,input,select{max-width:100%}
   </div><div class="profile-field"><label>Province / domicile <span style="font-weight:400;color:#7b8983">optional</span></label><select name="domicile_region"><option value="">Choose if applicable</option><option value="Punjab">Punjab</option><option value="Sindh">Sindh</option><option value="Khyber Pakhtunkhwa">Khyber Pakhtunkhwa</option><option value="Balochistan">Balochistan</option><option value="Islamabad Capital Territory">Islamabad Capital Territory</option><option value="Azad Jammu and Kashmir">Azad Jammu and Kashmir</option><option value="Gilgit-Baltistan">Gilgit-Baltistan</option></select></div><button class="match-button" id="matchButton">Find my scholarships →</button> <span class="privacy-note">🔒 Answers are used for matching only and are not saved.</span>
   </form>
  <div class="match-results" id="matchResults" aria-live="polite"></div>
-</section><div class="section-head"><div><h2>Explore opportunities</h2><p>Search verified source records and inspect their eligibility criteria.</p></div></div>
+</section><div class="section-head"><div><h2>Explore Germany scholarships</h2><p>Search opportunities from German scholarship providers, foundations and universities.</p></div></div>
 <div class="filters"><div class="field"><input id="search" type="search" placeholder="Search scholarship, provider or destination…" aria-label="Search scholarships"></div><div class="field"><select id="status" aria-label="Application status"><option value="">All application statuses</option><option value="open">Open</option><option value="upcoming">Upcoming</option><option value="closed">Closed</option><option value="unknown">Status unknown</option><option value="discontinued">Discontinued</option><option value="shortlisted_only">Shortlisted only</option></select></div><div class="field"><select id="trust" aria-label="Verification status"><option value="">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select></div></div>
 <div class="resultsline"><span id="resultCount">Loading scholarships…</span><span>Only source-backed records are shown</span></div>
 <div class="grid" id="cards"><div class="loading">Loading official-source opportunities…</div></div>
@@ -144,39 +144,39 @@ const nice=v=>String(v||"unknown").replaceAll("_"," ").replace(/\b\w/g,c=>c.toUp
 const statusClass=v=>["open","closed","upcoming"].includes(v)?v:"unknown";
 const shortText=v=>v?String(v):"Not stated by the source";
 function summarizeRequirement(text,label){
- const raw=String(text||"").replace(/\\s+/g," ").trim();
+ const raw=String(text||"").replace(/\s+/g," ").trim();
  const lower=raw.toLowerCase();
  if(!raw)return "Check official source";
  if(/no upper age limit|there is no upper age limit/.test(lower))return "No upper age limit";
- let m=raw.match(/minimum score of (\\d+) out of (\\d+) in ([A-Za-z-]+)/i);
+ let m=raw.match(/minimum score of (\d+) out of (\d+) in ([A-Za-z-]+)/i);
  if(m)return m[3].toUpperCase()+" score: at least "+m[1]+"/"+m[2];
- m=raw.match(/(\\d{2})\\s*years? in case of regular government employees/i);
+ m=raw.match(/(\d{2})\s*years? in case of regular government employees/i);
  if(m)return "Age: up to "+m[1]+" years (government, faculty or research staff)";
- m=raw.match(/(\\d{2})\\s*years? in all other cases/i);
+ m=raw.match(/(\d{2})\s*years? in all other cases/i);
  if(m)return "Age: up to "+m[1]+" years (other applicants)";
- if(/pakistani\\s*\\/\\s*aj&?k nationals?/i.test(raw))return "Pakistani/AJ&K nationality required";
+ if(/pakistani\s*\/\s*aj&?k nationals?/i.test(raw))return "Pakistani/AJ&K nationality required";
  if(/dual nationals? are not eligible|dual nationality/i.test(lower))return "Dual nationality not accepted";
- if(/not have a second\\/third division|no second\\/third division/.test(lower))return "No 2nd/3rd division in latest degree";
+ if(/not have a second\/third division|no second\/third division/.test(lower))return "No 2nd/3rd division in latest degree";
  if(/maximum of one second division/.test(lower))return "At most one 2nd division in academic record";
- m=raw.match(/first division in (\\d{2}) years? (bachelors?|master'?s?|ms|m\\.?phil\\.?).*?(?:relevant field)?/i);
+ m=raw.match(/first division in (\d{2}) years? (bachelors?|master'?s?|ms|m\.?phil\.?).*?(?:relevant field)?/i);
  if(m)return m[2].replace(/bachelor/i,"Bachelor's").replace(/master/i,"Master's")+" ("+m[1]+" years), first division";
- m=raw.match(/minimum (\\d{1,2}) years? (bachelors?|master'?s?|ms|m\\.?phil\\.?)/i);
+ m=raw.match(/minimum (\d{1,2}) years? (bachelors?|master'?s?|ms|m\.?phil\.?)/i);
  if(m)return "Minimum "+m[1]+" years "+m[2];
- m=raw.match(/minimum (?:score of )?(\\d{1,3})\\s*(?:%|percent)/i);
+ m=raw.match(/minimum (?:score of )?(\d{1,3})\s*(?:%|percent)/i);
  if(m)return "At least "+m[1]+"% marks";
- m=raw.match(/(\\d{1,3})\\s*(?:%|percent)\\s*(?:and above|or above|minimum)/i);
+ m=raw.match(/(\d{1,3})\s*(?:%|percent)\s*(?:and above|or above|minimum)/i);
  if(m)return "At least "+m[1]+"% marks";
  if(/all disciplines are eligible/i.test(lower))return "All study fields accepted";
  if(/result-awaiting candidates may apply/i.test(lower))return "Awaiting results accepted; final documents due before studies start";
  if(/confirmed admission|secured admission/i.test(lower))return "Admission offer required";
  let compact=raw
-  .replace(/^(all )?applicants? (are )?(required to|must|should)\\s+/i,"")
-  .replace(/^(an )?applicant must\\s+/i,"")
-  .replace(/^must\\s+/i,"")
-  .replace(/\\bplease note that\\b/ig,"")
-  .replace(/\\bfor consideration\\b/ig,"")
-  .replace(/\\s+/g," ").trim();
- if(compact.length>112)compact=compact.slice(0,109).replace(/\\s+\\S*$/,"")+"…";
+  .replace(/^(all )?applicants? (are )?(required to|must|should)\s+/i,"")
+  .replace(/^(an )?applicant must\s+/i,"")
+  .replace(/^must\s+/i,"")
+  .replace(/\bplease note that\b/ig,"")
+  .replace(/\bfor consideration\b/ig,"")
+  .replace(/\s+/g," ").trim();
+ if(compact.length>112)compact=compact.slice(0,109).replace(/\s+\\S*$/,"")+"…";
  return compact;
 }
 function render(){
@@ -199,10 +199,12 @@ function render(){
 }
 async function load(){
  try{
-  const r=await fetch("/api/scholarships?status=all&limit=100");
+  const r=await fetch("/api/scholarships?status=all&limit=100",{cache:"no-store"});
   if(!r.ok)throw new Error("Scholarship API returned "+r.status);
-  allScholarships=await r.json();
-  try{const sourceResponse=await fetch("/api/sources");if(sourceResponse.ok){const sources=await sourceResponse.json();activeSourceCount=sources.length;}}catch(_sourceError){}
+  const payload=await r.json();
+  allScholarships=Array.isArray(payload)?payload:(Array.isArray(payload.items)?payload.items:null);
+  if(!allScholarships)throw new Error("Scholarship API returned an unexpected response.");
+  try{const sourceResponse=await fetch("/api/sources",{cache:"no-store"});if(sourceResponse.ok){const sources=await sourceResponse.json();activeSourceCount=sources.length;}}catch(_sourceError){}
   render();
  }catch(e){$("cards").innerHTML='<div class="empty"><strong>We could not load scholarships</strong>Please check that the ScholarPath API is running, then refresh this page.</div>';$("resultCount").textContent="Unable to load records";}
 }
