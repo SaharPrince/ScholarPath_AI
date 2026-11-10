@@ -1351,6 +1351,28 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertEqual(preference[0], "selection_criteria")
         self.assertFalse(any("30 September 2027" in text for text in texts))
 
+    def test_scrapes_requirements_from_linked_official_eligibility_page(self) -> None:
+        from app.extraction import extract_criteria_from_html
+
+        html = """
+        <main>
+          <h1>Eligibility</h1>
+          <h2>Who can apply</h2>
+          <ul>
+            <li>Applicants must hold a recognised bachelor's degree.</li>
+            <li>Applicants must be citizens of an eligible country.</li>
+          </ul>
+          <h2>Language requirements</h2>
+          <p>Applicants must demonstrate English language proficiency.</p>
+        </main>
+        """
+        criteria = extract_criteria_from_html(html)
+        texts = [item[2] for item in criteria]
+
+        self.assertTrue(any("recognised bachelor's degree" in text for text in texts))
+        self.assertTrue(any("eligible country" in text for text in texts))
+        self.assertTrue(any("English language proficiency" in text for text in texts))
+
     def test_no_upper_age_limit_is_informational_not_mandatory(self) -> None:
         from app.extraction import _is_mandatory_criterion
 
