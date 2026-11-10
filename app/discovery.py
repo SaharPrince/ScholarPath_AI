@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from dataclasses import dataclass
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -18,7 +18,7 @@ DISCOVERY_TERMS = (
     "studentship",
 )
 MAX_RESPONSE_BYTES = 2_000_000
-MAX_LINKS_PER_SOURCE = 200
+MAX_LINKS_PER_SOURCE = 400
 USER_AGENT = "ScholarPathAI/0.1 (+official scholarship source indexer)"
 logger = logging.getLogger(__name__)
 
@@ -100,10 +100,14 @@ def _candidate_links(html: str, page_url: str, allowed_host: str) -> list[tuple[
         if path_lower.rstrip("/") == "/english/scholarshipsgrants/pages/default.aspx":
             continue
 
-        searchable = f"{title} {parsed.path}".lower()
-        if not any(term in searchable for term in DISCOVERY_TERMS):
+        row = anchor.find_parent(["tr", "article", "li"])
+        context = row.get_text(" ", strip=True) if row else anchor.parent.get_text(" ", strip=True)
+        searchable = f"{title} {context} {parsed.path}".lower()
+        is_daad_detail = "detail_to_show=" in parsed.query
+        if not is_daad_detail and not any(term in searchable for term in DISCOVERY_TERMS):
             continue
-        clean_url = parsed._replace(query="", fragment="").geturl()
+        # DAAD stores the selected programme ID in the query string; preserve it.
+        clean_url = parsed._replace(fragment="").geturl() if is_daad_detail else parsed._replace(query="", fragment="").geturl()
         if clean_url == page_url:
             continue
         fallback = parsed.path.rsplit("/", 1)[-1] or "Scholarship information"
@@ -125,9 +129,20 @@ async def _fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult
     # Keep the crawl bounded for serverless execution while looking beyond
     # the first navigation page. Only scholarship-related same-host links are
     # followed, and each URL is fetched at most once per run.
-    max_pages = 8
+    is_daad_database = "scholarship-database" in source_url
+    max_pages = 18 if is_daad_database else 8
     max_depth = 2
     queue: list[tuple[str, int]] = [(source_url, 0)]
+    if is_daad_database:
+        # The DAAD Pakistan database paginates its results with pg=1..17.
+        # Fetch each official result page so every programme's detail link is indexed.
+        parsed_source = urlparse(source_url)
+        query = parse_qs(parsed_source.query, keep_blank_values=True)
+        for page_number in range(2, 18):
+            page_query = dict(query)
+            page_query["pg"] = [str(page_number)]
+            page_url = urlunparse(parsed_source._replace(query=urlencode(page_query, doseq=True)))
+            queue.append((page_url, 0))
     visited: set[str] = set()
     discovered: dict[str, str] = {}
     first_page_error: str | None = None
