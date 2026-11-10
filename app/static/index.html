@@ -144,24 +144,40 @@ const nice=v=>String(v||"unknown").replaceAll("_"," ").replace(/\b\w/g,c=>c.toUp
 const statusClass=v=>["open","closed","upcoming"].includes(v)?v:"unknown";
 const shortText=v=>v?String(v):"Not stated by the source";
 function summarizeRequirement(text,label){
- const raw=String(text||"").replace(/\s+/g," ").trim();
+ const raw=String(text||"").replace(/\\s+/g," ").trim();
  const lower=raw.toLowerCase();
- const level=lower.match(/\b(intermediate|hssc|higher secondary|f\.?a\.?|f\.?sc\.?|i\.?cs|i\.?com|matric(?:ulation)?|ssc|secondary school certificate)\b/);
- const maximum=lower.match(/(?:maximum|up to|not more than|less than|below)\s*(\d{1,3}(?:\.\d+)?)\s*(?:%|percent)/);
- const minimum=lower.match(/(?:minimum(?: of)?|at least|not less than|aggregate of|marks? of)\s*(\d{1,3}(?:\.\d+)?)\s*(?:%|percent)?/);
- const anyPercent=lower.match(/\b(\d{1,3}(?:\.\d+)?)\s*(?:%|percent)/);
- const pct=maximum||minimum||anyPercent;
- if(level&&pct){
-  const name=/intermediate|hssc|higher secondary|f\.?a\.?|f\.?sc\.?|i\.?cs|i\.?com/.test(level[0])?"Intermediate":"Matric";
-  const qualifier=maximum?"maximum ":minimum?"minimum ":"";
-  return name+": "+qualifier+pct[1]+"% marks";
- }
- if(pct)return (maximum?"Up to ":minimum?"At least ":"")+pct[1]+"% marks";
- const age=lower.match(/(?:maximum age|upper age limit|not more than|below|under)\s*(\d{2})\s*years?/);
- if(age)return "Age: up to "+age[1]+" years";
- const minAge=lower.match(/(?:minimum age|at least|not younger than)\s*(\d{2})\s*years?/);
- if(minAge)return "Age: at least "+minAge[1]+" years";
- return raw||"Requirement not clearly stated by source";
+ if(!raw)return "Check official source";
+ if(/no upper age limit|there is no upper age limit/.test(lower))return "No upper age limit";
+ let m=raw.match(/minimum score of (\\d+) out of (\\d+) in ([A-Za-z-]+)/i);
+ if(m)return m[3].toUpperCase()+" score: at least "+m[1]+"/"+m[2];
+ m=raw.match(/(\\d{2})\\s*years? in case of regular government employees/i);
+ if(m)return "Age: up to "+m[1]+" years (government, faculty or research staff)";
+ m=raw.match(/(\\d{2})\\s*years? in all other cases/i);
+ if(m)return "Age: up to "+m[1]+" years (other applicants)";
+ if(/pakistani\\s*\\/\\s*aj&?k nationals?/i.test(raw))return "Pakistani/AJ&K nationality required";
+ if(/dual nationals? are not eligible|dual nationality/i.test(lower))return "Dual nationality not accepted";
+ if(/not have a second\\/third division|no second\\/third division/.test(lower))return "No 2nd/3rd division in latest degree";
+ if(/maximum of one second division/.test(lower))return "At most one 2nd division in academic record";
+ m=raw.match(/first division in (\\d{2}) years? (bachelors?|master'?s?|ms|m\\.?phil\\.?).*?(?:relevant field)?/i);
+ if(m)return m[2].replace(/bachelor/i,"Bachelor's").replace(/master/i,"Master's")+" ("+m[1]+" years), first division";
+ m=raw.match(/minimum (\\d{1,2}) years? (bachelors?|master'?s?|ms|m\\.?phil\\.?)/i);
+ if(m)return "Minimum "+m[1]+" years "+m[2];
+ m=raw.match(/minimum (?:score of )?(\\d{1,3})\\s*(?:%|percent)/i);
+ if(m)return "At least "+m[1]+"% marks";
+ m=raw.match(/(\\d{1,3})\\s*(?:%|percent)\\s*(?:and above|or above|minimum)/i);
+ if(m)return "At least "+m[1]+"% marks";
+ if(/all disciplines are eligible/i.test(lower))return "All study fields accepted";
+ if(/result-awaiting candidates may apply/i.test(lower))return "Awaiting results accepted; final documents due before studies start";
+ if(/confirmed admission|secured admission/i.test(lower))return "Admission offer required";
+ let compact=raw
+  .replace(/^(all )?applicants? (are )?(required to|must|should)\\s+/i,"")
+  .replace(/^(an )?applicant must\\s+/i,"")
+  .replace(/^must\\s+/i,"")
+  .replace(/\\bplease note that\\b/ig,"")
+  .replace(/\\bfor consideration\\b/ig,"")
+  .replace(/\\s+/g," ").trim();
+ if(compact.length>112)compact=compact.slice(0,109).replace(/\\s+\\S*$/,"")+"…";
+ return compact;
 }
 function render(){
  const q=$("search").value.trim().toLowerCase(),s=$("status").value,t=$("trust").value;
@@ -202,8 +218,8 @@ async function showDetail(id){
   const groups={};criteria.forEach(c=>(groups[c.criterion_type]??=[]).push(c));
   $("detailBody").innerHTML=`<div class="detailfacts">${facts.map(([k,v])=>`<div class="fact"><small>${esc(k)}</small><strong>${esc(shortText(v))}</strong></div>`).join("")}</div>
   <div class="links"><a href="${esc(x.source_url)}" target="_blank" rel="noopener">Official source page ↗</a>${x.application_url?`<a href="${esc(x.application_url)}" target="_blank" rel="noopener">Application portal ↗</a>`:""}</div>
-  <h3>Eligibility & application requirements · ${criteria.length}</h3>
-  ${criteria.length?Object.entries(groups).map(([type,list])=>`<h3 style="margin:20px 0 8px;color:#64766d;font-size:12px;text-transform:uppercase;letter-spacing:.08em">${esc(nice(type))}</h3>${list.map(c=>`<article class="criterion"><div class="criteriontop"><h4>${esc(c.criterion_label)}</h4><span class="mandatory ${c.is_mandatory?"":"info"}">${c.is_mandatory?"Required":"Informational"}</span></div><p>${esc(summarizeRequirement(c.requirement_text,c.criterion_label))}</p>${c.requirement_text&&summarizeRequirement(c.requirement_text,c.criterion_label)!==String(c.requirement_text).replace(/\s+/g," ").trim()?`<details><summary style="cursor:pointer;color:#64766d;font-size:11px">View full source wording</summary><p>${esc(c.requirement_text)}</p></details>`:""}${c.evidence_url?`<a href="${esc(c.evidence_url)}" target="_blank" rel="noopener">View criterion evidence ↗</a>`:'<span class="trust">No separate evidence link recorded</span>'}</article>`).join("")}`).join(""):'<p>No structured eligibility criteria are recorded yet.</p>'}
+  <h3>Key requirements · ${criteria.filter(c=>!["selection_process","selection_criteria"].includes(c.criterion_type)).length}</h3>
+  ${criteria.filter(c=>!["selection_process","selection_criteria"].includes(c.criterion_type)).length?Object.entries(groups).filter(([type])=>!["selection_process","selection_criteria"].includes(type)).map(([type,list])=>`<h3 style="margin:20px 0 8px;color:#64766d;font-size:12px;text-transform:uppercase;letter-spacing:.08em">${esc(nice(type))}</h3>${list.map(c=>`<article class="criterion"><div class="criteriontop"><h4>${esc(c.criterion_label)}</h4><span class="mandatory ${c.is_mandatory?"":"info"}">${c.is_mandatory?"Required":"Informational"}</span></div><p>${esc(summarizeRequirement(c.requirement_text,c.criterion_label))}</p>${c.requirement_text&&summarizeRequirement(c.requirement_text,c.criterion_label)!==String(c.requirement_text).replace(/\s+/g," ").trim()?`<details><summary style="cursor:pointer;color:#64766d;font-size:11px">View full source wording</summary><p>${esc(c.requirement_text)}</p></details>`:""}${c.evidence_url?`<a href="${esc(c.evidence_url)}" target="_blank" rel="noopener">View criterion evidence ↗</a>`:'<span class="trust">No separate evidence link recorded</span>'}</article>`).join("")}`).join(""):'<p>No structured eligibility criteria are recorded yet.</p>'}
   <p class="notice">ScholarPath presents information captured from the listed source. “Unverified” means the record has not been independently verified. Confirm current requirements and deadlines with the official provider before applying.</p>`;
  }catch(e){$("detailBody").innerHTML='<div class="empty">Unable to load this scholarship. Please try again.</div>';}
 }
