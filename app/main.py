@@ -79,7 +79,11 @@ async def scheduled_discovery(authorization: str | None = Header(default=None)) 
                      WHERE a.candidate_id = c.id
                        AND a.status <> 'failed'
                  )
-               ORDER BY c.id
+               ORDER BY CASE
+                   WHEN s.source_type = 'official_database' THEN 0
+                   WHEN s.name LIKE 'DAAD%' THEN 1
+                   ELSE 2
+               END, c.id
                LIMIT 8"""
         ).fetchall()
     candidate_ids = [row["id"] for row in pending]
