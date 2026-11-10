@@ -1,6 +1,9 @@
 name: Live scholarship discovery
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     # Recheck official scholarship sources every six hours.
     - cron: "0 */6 * * *"
