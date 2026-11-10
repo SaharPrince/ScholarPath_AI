@@ -79,7 +79,7 @@ async def scheduled_discovery(authorization: str | None = Header(default=None)) 
                        AND a.status <> 'failed'
                  )
                ORDER BY c.id
-               LIMIT 3"""
+               LIMIT 8"""
         ).fetchall()
     candidate_ids = [row["id"] for row in pending]
     extraction = await extract_candidate_details(candidate_ids=candidate_ids)
