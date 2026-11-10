@@ -632,6 +632,77 @@ def _extract_description_criteria(description: str) -> list[tuple[str, str, str]
     return extracted
 
 
+def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str, str, str]]:
+    """Scrape eligibility statements from ordinary paragraphs and lists.
+
+    Providers often publish requirements without an 'Eligibility' heading or
+    labelled fields. This fallback scans visible page content, but only keeps
+    statements that explicitly describe applicant conditions; it never invents
+    missing thresholds or turns selection preferences into hard requirements.
+    """
+    extracted: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    requirement_signal = re.compile(
+        r"(?i)\\b(?:must|must not|required|are required|is required|"
+        r"should have|should hold|need to|needs to|eligible|ineligible|"
+        r"not eligible|only applicants|only candidates|can apply|may apply|"
+        r"cannot apply|at least|minimum of|maximum age|no older than|"
+        r"no more than|between \\d|from the following countries|"
+        r"citizens? of|nationals? of|resident in|residing in|"
+        r"hold a (?:bachelor|master|doctoral)|have completed)\\b"
+    )
+    applicant_signal = re.compile(
+        r"(?i)\\b(?:applicants?|candidates?|students?|graduates?|"
+        r"doctoral candidates?|postdocs?|researchers?|scholars?|"
+        r"international students?|citizens?|nationals?|residents?)\\b"
+    )
+    for node in content_root.find_all(["p", "li", "dd", "dt"]):
+        raw = _clean(node.get_text(" ", strip=True))
+        if not raw or len(raw) < 24 or len(raw) > 1400:
+            continue
+        if not requirement_signal.search(raw):
+            continue
+        for statement in _split_criteria_statements(raw):
+            statement = _clean(statement)
+            key = statement.casefold()
+            if not statement or key in seen or len(statement) < 24 or len(statement) > 1000:
+                continue
+            if not requirement_signal.search(statement):
+                continue
+            # A condition must identify applicants, or be an unmistakable
+            # qualification fragment such as "at least two years of experience".
+            has_actor = bool(applicant_signal.search(statement))
+            has_qualification = bool(re.search(
+                r"(?i)\\b(?:degree|bachelor|master|doctorate|phd|gpa|grade|"
+                r"academic|language|ielts|toefl|experience|age|nationality|"
+                r"citizenship|residence|enrol(?:led|ment)|study level)\\b",
+                statement,
+            ))
+            if not (has_actor or has_qualification):
+                continue
+            lowered = statement.casefold()
+            if re.search(r"(?i)\\b(preferred|preferable|desirable|recommended|"
+                         r"an advantage|priority will be given)\\b", statement):
+                kind, label = "selection_criteria", "Selection preference"
+            elif re.search(r"(?i)\\b(ineligible|not eligible|cannot apply|must not)\\b", statement):
+                kind, label = "ineligibility", "Ineligibility"
+            elif re.search(r"(?i)\\b(language|ielts|toefl|german|english proficiency)\\b", statement):
+                kind, label = "language_requirements", "Language requirements"
+            elif re.search(r"(?i)\\b(age|years old|younger than|older than)\\b", statement):
+                kind, label = "age_limit", "Age requirements"
+            elif re.search(r"(?i)\\b(nationality|citizenship|citizen|national|resident|residing)\\b", statement):
+                kind, label = "nationality", "Nationality and residence"
+            elif re.search(r"(?i)\\b(bachelor|master|doctorate|phd|degree|enrolled|graduate)\\b", statement):
+                kind, label = "study_level", "Academic qualification"
+            elif re.search(r"(?i)\\b(experience|professional|employment|employed|work)\\b", statement):
+                kind, label = "work_experience", "Work experience"
+            else:
+                kind, label = "eligibility", "Eligibility"
+            extracted.append((kind, label, statement))
+            seen.add(key)
+    return extracted
+
+
 def _extract_ccip_criteria(content_root: BeautifulSoup) -> list[tuple[str, str, str]]:
     """Extract CCIP requirements from its official overview and FAQ answers."""
     page_text = _clean(content_root.get_text(" ", strip=True))
@@ -989,6 +1060,15 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         # Descriptive copy is used only when it contains explicit eligibility
         # language and a clearly identified applicant or host actor.
         criteria.extend(_extract_description_criteria(description))
+
+    # Fallback for official pages that publish eligibility as ordinary prose
+    # or list items without an explicit Eligibility heading or field label.
+    fallback_criteria = _extract_unlabelled_criteria(content_root)
+    existing_text = {item[2].casefold() for item in criteria}
+    for item in fallback_criteria:
+        if item[2].casefold() not in existing_text:
+            criteria.append(item)
+            existing_text.add(item[2].casefold())
 
     if urlparse(page_url).path.casefold().endswith("/ccip.cfm"):
         ccip_criteria = _extract_ccip_criteria(content_root)
