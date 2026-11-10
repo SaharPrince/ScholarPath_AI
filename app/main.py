@@ -72,6 +72,7 @@ async def scheduled_discovery(authorization: str | None = Header(default=None)) 
         pending = connection.execute(
             """SELECT c.id
                FROM discovery_candidates c
+               JOIN sources s ON s.id = c.source_id
                WHERE c.status = 'candidate'
                  AND NOT EXISTS (
                      SELECT 1 FROM extraction_attempts a
