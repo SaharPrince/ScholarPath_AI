@@ -194,7 +194,7 @@ function render(){
  <h3>${esc(x.title)}</h3><div class="provider">${esc(x.provider_name||"Provider not stated")}</div>
  <div class="meta"><span>⌖ ${esc(x.study_destination||x.country||"Destination not stated")}</span><span>◷ ${esc(x.deadline_text||"Deadline not stated")}</span></div>
  <div class="funding">${esc(x.funding_summary||"Funding details have not been published in this record.")}</div>
- <div class="cardfoot"><span class="source" title="${esc(x.source_name)}">Source: ${esc(x.source_name)}</span><button class="detailbtn" data-id="${x.id}">View requirements ↗</button></div></article>`).join(""):'<div class="empty"><strong>No matching scholarships found</strong>Try changing your search or filters. New opportunities appear when official sources are checked.</div>';
+ <div class="cardfoot"><span class="source" title="${esc(x.source_name)}">Source: ${esc(x.source_name)}</span><button class="detailbtn" data-id="${x.id}">View requirements ↗</button></div></article>`).join(""):(allScholarships.length===0?'<div class="empty"><strong>Germany scholarships are being indexed</strong>No German opportunities have been indexed yet. The official-source scan will add individual programmes as they are found and checked.</div>':'<div class="empty"><strong>No matching scholarships found</strong>Try changing your search or filters.</div>');
  $("cards").querySelectorAll("[data-id]").forEach(b=>b.addEventListener("click",()=>showDetail(Number(b.dataset.id))));
 }
 async function load(){
