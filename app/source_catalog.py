@@ -32,6 +32,10 @@ GERMANY_SOURCES = (
 )
 
 
+# Compatibility name for the live source verification workflow.
+OFFICIAL_SOURCES = GERMANY_SOURCES
+
+
 OFFICIAL_DISCOVERY_TARGETS: tuple[tuple[str, str, str], ...] = ()
 
 
