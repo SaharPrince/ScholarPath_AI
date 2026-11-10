@@ -24,11 +24,8 @@ from app.schemas import (
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    # Production uses the explicitly migrated Supabase source catalog.
-    # Keep startup seeding local-only until production source synchronization
-    # has a dedicated path; avoid extra writes during serverless cold starts.
-    if not settings.database_url:
-        seed_official_sources()
+    # Idempotent one-time reset removes legacy records and activates Germany sources.
+    seed_official_sources()
     yield
 
 
@@ -144,6 +141,7 @@ def list_scholarships(
                FROM scholarships AS s
                JOIN sources AS src ON src.id = s.source_id
                {where_sql}
+               {"AND" if where_sql else "WHERE"} LOWER(COALESCE(NULLIF(s.study_destination, ''), NULLIF(s.country, ''), src.country, '')) IN ('germany', 'de')
                ORDER BY CASE s.status
                    WHEN 'verified' THEN 0 WHEN 'unverified' THEN 1
                    WHEN 'candidate' THEN 2 WHEN 'expired' THEN 3 ELSE 4 END,
@@ -171,7 +169,8 @@ def get_scholarship(scholarship_id: int) -> dict:
                       src.name AS source_name, s.source_record_url AS source_url
                FROM scholarships AS s
                JOIN sources AS src ON src.id = s.source_id
-               WHERE s.id = ?""",
+               WHERE s.id = ?
+                 AND LOWER(COALESCE(NULLIF(s.study_destination, ''), NULLIF(s.country, ''), src.country, '')) IN ('germany', 'de')""",
             (scholarship_id,),
         ).fetchone()
         if row is None:
@@ -233,7 +232,8 @@ def match_profile(profile: dict) -> dict:
                       s.application_status, src.name AS source_name,
                       s.source_record_url AS source_url
                FROM scholarships s JOIN sources src ON src.id = s.source_id
-               WHERE s.status <> 'candidate' AND s.status <> 'rejected'"""
+               WHERE s.status <> 'candidate' AND s.status <> 'rejected'
+                 AND LOWER(COALESCE(NULLIF(s.study_destination, ''), NULLIF(s.country, ''), src.country, '')) IN ('germany', 'de')"""
         ).fetchall()
         scholarships = [dict(row) for row in rows]
         criteria_by_id = {}
