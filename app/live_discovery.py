@@ -20,10 +20,10 @@ from app.extraction import (
 from app.source_catalog import GERMANY_SOURCES
 
 
-MAX_CANDIDATES_PER_SOURCE = 3
+MAX_CANDIDATES_PER_SOURCE = 2
 MAX_LIVE_RESULTS = 100
-REQUEST_TIMEOUT = httpx.Timeout(9.0, connect=5.0)
-REQUEST_LIMITS = httpx.Limits(max_connections=10, max_keepalive_connections=5)
+REQUEST_TIMEOUT = httpx.Timeout(5.0, connect=3.0)
+REQUEST_LIMITS = httpx.Limits(max_connections=20, max_keepalive_connections=10)
 
 
 def _opportunity_id(url: str) -> int:
@@ -75,7 +75,7 @@ def _as_record(parsed, source: dict, url: str) -> dict:
 
 async def discover_live_scholarships() -> list[dict]:
     """Fetch current official source pages and extract specific opportunities."""
-    semaphore = asyncio.Semaphore(10)
+    semaphore = asyncio.Semaphore(20)
     results: dict[str, dict] = {}
 
     async with httpx.AsyncClient(
@@ -135,7 +135,7 @@ async def discover_live_scholarships() -> list[dict]:
                 *(inspect_source(dict(source)) for source in GERMANY_SOURCES),
                 return_exceptions=True,
             ),
-            timeout=48.0,
+            timeout=9.0,
         )
 
     ordered = sorted(
