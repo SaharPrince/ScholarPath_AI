@@ -194,36 +194,38 @@ function render(){
  <h3>${esc(x.title)}</h3><div class="provider">${esc(x.provider_name||"Provider not stated")}</div>
  <div class="meta"><span>⌖ ${esc(x.study_destination||x.country||"Destination not stated")}</span><span>◷ ${esc(x.deadline_text||"Deadline not stated")}</span></div>
  <div class="funding">${esc(x.funding_summary||"Funding details have not been published in this record.")}</div>
- <div class="cardfoot"><span class="source" title="${esc(x.source_name)}">Source: ${esc(x.source_name)}</span><button class="detailbtn" data-id="${x.id}">View requirements ↗</button></div></article>`).join(""):(allScholarships.length===0?'<div class="empty"><strong>Germany scholarships are being indexed</strong>No German opportunities have been indexed yet. The official-source scan will add individual programmes as they are found and checked.</div>':'<div class="empty"><strong>No matching scholarships found</strong>Try changing your search or filters.</div>');
+ <div class="cardfoot"><span class="source" title="${esc(x.source_name)}">Source: ${esc(x.source_name)}</span><button class="detailbtn" data-id="${x.id}">View requirements ↗</button></div></article>`).join(""):(allScholarships.length===0?'<div class="empty"><strong>No current opportunities found</strong>This live scan did not identify a specific opportunity. Some providers may temporarily block automated access; try again later or visit the official source list.</div>':'<div class="empty"><strong>No matching scholarships found</strong>Try changing your search or filters.</div>');
  $("cards").querySelectorAll("[data-id]").forEach(b=>b.addEventListener("click",()=>showDetail(Number(b.dataset.id))));
 }
 async function load(){
+ $("cards").innerHTML='<div class="empty"><strong>Searching official German sources…</strong>Fetching current scholarship information directly from providers. Nothing is loaded from a stored scholarship catalogue.</div>';
+ $("resultCount").textContent="Searching live sources…";
  try{
   const r=await fetch("/api/scholarships?status=all&limit=100",{cache:"no-store"});
-  if(!r.ok)throw new Error("Scholarship API returned "+r.status);
-  const payload=await r.json();
-  allScholarships=Array.isArray(payload)?payload:(Array.isArray(payload.items)?payload.items:null);
-  if(!allScholarships)throw new Error("Scholarship API returned an unexpected response.");
-  try{const sourceResponse=await fetch("/api/sources",{cache:"no-store"});if(sourceResponse.ok){const sources=await sourceResponse.json();activeSourceCount=sources.length;}}catch(_sourceError){}
+  if(!r.ok){const p=await r.json().catch(()=>({}));throw new Error(p.detail||"Live scholarship scan returned "+r.status);}
+  allScholarships=await r.json();
+  const sourceResponse=await fetch("/api/sources",{cache:"no-store"});
+  if(sourceResponse.ok){const sources=await sourceResponse.json();activeSourceCount=sources.length;}
   render();
- }catch(e){$("cards").innerHTML='<div class="empty"><strong>We could not load scholarships</strong>Please check that the ScholarPath API is running, then refresh this page.</div>';$("resultCount").textContent="Unable to load records";}
+ }catch(e){
+  $("cards").innerHTML='<div class="empty"><strong>Live discovery is temporarily unavailable</strong>'+esc(e.message)+' Please try again shortly.</div>';
+  $("resultCount").textContent="Live scan unavailable";
+  $("totalCount").textContent="—";$("openCount").textContent="—";$("sourceCount").textContent=activeSourceCount||"—";
+ }
 }
 async function showDetail(id){
+ const x=allScholarships.find(item=>Number(item.id)===Number(id));
+ if(!x)return;
  $("overlay").classList.add("show");document.body.style.overflow="hidden";
- $("detailTitle").textContent="Loading…";$("detailProvider").textContent="";
- $("detailBody").innerHTML='<p>Loading scholarship details and evidence…</p>';
- try{
-  const r=await fetch("/api/scholarships/"+id);if(!r.ok)throw new Error("Could not load details");
-  const x=await r.json();$("detailTitle").textContent=x.title;$("detailProvider").textContent=x.provider_name||"Provider not stated";
-  const facts=[["Application status",nice(x.application_status)],["Verification",nice(x.status)],["Study destination",x.study_destination||x.country],["Deadline",x.deadline_text],["Funding",x.funding_summary],["Applicant category",nice(x.applicant_category)]];
-  const criteria=x.criteria||[];
-  const groups={};criteria.forEach(c=>(groups[c.criterion_type]??=[]).push(c));
-  $("detailBody").innerHTML=`<div class="detailfacts">${facts.map(([k,v])=>`<div class="fact"><small>${esc(k)}</small><strong>${esc(shortText(v))}</strong></div>`).join("")}</div>
-  <div class="links"><a href="${esc(x.source_url)}" target="_blank" rel="noopener">Official source page ↗</a>${x.application_url?`<a href="${esc(x.application_url)}" target="_blank" rel="noopener">Application portal ↗</a>`:""}</div>
-  <h3>Key requirements · ${criteria.filter(c=>!["selection_process","selection_criteria"].includes(c.criterion_type)).length}</h3>
-  ${criteria.filter(c=>!["selection_process","selection_criteria"].includes(c.criterion_type)).length?Object.entries(groups).filter(([type])=>!["selection_process","selection_criteria"].includes(type)).map(([type,list])=>`<h3 style="margin:20px 0 8px;color:#64766d;font-size:12px;text-transform:uppercase;letter-spacing:.08em">${esc(nice(type))}</h3>${list.map(c=>`<article class="criterion"><div class="criteriontop"><h4>${esc(c.criterion_label)}</h4><span class="mandatory ${c.is_mandatory?"":"info"}">${c.is_mandatory?"Required":"Informational"}</span></div><p>${esc(summarizeRequirement(c.requirement_text,c.criterion_label))}</p>${c.evidence_url?`<a href="${esc(c.evidence_url)}" target="_blank" rel="noopener">Official source ↗</a>`:'<span class="trust">No separate evidence link recorded</span>'}</article>`).join("")}`).join(""):'<p>No structured eligibility criteria are recorded yet.</p>'}
-  <p class="notice">ScholarPath presents information captured from the listed source. “Unverified” means the record has not been independently verified. Confirm current requirements and deadlines with the official provider before applying.</p>`;
- }catch(e){$("detailBody").innerHTML='<div class="empty">Unable to load this scholarship. Please try again.</div>';}
+ $("detailTitle").textContent=x.title;$("detailProvider").textContent=x.provider_name||"Provider not stated";
+ const facts=[["Application status",nice(x.application_status)],["Source status","Fetched live · not independently verified"],["Study destination",x.study_destination||x.country],["Deadline",x.deadline_text],["Funding",x.funding_summary],["Applicant category",nice(x.applicant_category)]];
+ const criteria=x.criteria||[];
+ const groups={};criteria.forEach(c=>(groups[c.criterion_type]??=[]).push(c));
+ $("detailBody").innerHTML=`<div class="detailfacts">${facts.map(([k,v])=>`<div class="fact"><small>${esc(k)}</small><strong>${esc(shortText(v))}</strong></div>`).join("")}</div>
+ <div class="links"><a href="${esc(x.source_url)}" target="_blank" rel="noopener">Official source page ↗</a>${x.application_url?`<a href="${esc(x.application_url)}" target="_blank" rel="noopener">Application portal ↗</a>`:""}</div>
+ <h3>Key requirements · ${criteria.filter(c=>!["selection_process","selection_criteria"].includes(c.criterion_type)).length}</h3>
+ ${criteria.filter(c=>!["selection_process","selection_criteria"].includes(c.criterion_type)).length?Object.entries(groups).filter(([type])=>!["selection_process","selection_criteria"].includes(type)).map(([type,list])=>`<h3 style="margin:20px 0 8px;color:#64766d;font-size:12px;text-transform:uppercase;letter-spacing:.08em">${esc(nice(type))}</h3>${list.map(c=>`<article class="criterion"><div class="criteriontop"><h4>${esc(c.criterion_label)}</h4><span class="mandatory ${c.is_mandatory?"":"info"}">${c.is_mandatory?"Required":"Informational"}</span></div><p>${esc(summarizeRequirement(c.requirement_text,c.criterion_label))}</p>${c.evidence_url?`<a href="${esc(c.evidence_url)}" target="_blank" rel="noopener">Official source ↗</a>`:'<span class="trust">Source page</span>'}</article>`).join("")}`).join(""):'<p>The live page did not expose structured eligibility criteria. Check the official source before applying.</p>'}
+ <p class="notice">These details were fetched from the official source during this search and are not stored by ScholarPath. The information is not independently verified; confirm all requirements and deadlines with the provider.</p>`;
 }
 function closeDetail(){$("overlay").classList.remove("show");document.body.style.overflow="";}
 $("close").addEventListener("click",closeDetail);$("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeDetail();});
@@ -240,7 +242,7 @@ $("profileForm").addEventListener("submit",async e=>{
  try{
   const r=await fetch("/api/match",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}),p=await r.json();if(!r.ok)throw new Error(p.detail||"Matching failed");
   const labels={likely_eligible:"Likely eligible",needs_more_information:"More information needed",not_eligible:"Not eligible"};
-  box.innerHTML=`<h3>Your scholarship matches</h3><p>We checked ${p.total} scholarship records against your answers.</p><div class="match-summary"><div class="match-stat"><strong>${p.likely_eligible}</strong><span>Likely eligible</span></div><div class="match-stat"><strong>${p.needs_more_information}</strong><span>Need more information</span></div><div class="match-stat"><strong>${p.not_eligible}</strong><span>Not eligible</span></div></div>${p.results.map(x=>`<article class="match-result"><div><h4>${esc(x.title)}</h4><p>${esc(x.provider_name||"Provider not stated")} · ${esc(x.deadline_text||"Deadline not stated")} · ${x.checks_passed} passed · ${x.checks_unknown} to check</p><a href="${esc(x.source_url)}" target="_blank" rel="noopener" style="font-size:11px;color:#176b55">Official source ↗</a> · <button type="button" data-match="${x.id}" style="border:0;background:none;color:#176b55;font-size:11px;font-weight:700">Why this result?</button></div><span class="match-state ${x.match_status}">${labels[x.match_status]}</span></article>`).join("")||"<p>No scholarship records are available to match yet.</p>"}<p class="notice">${esc(p.notice)}</p>`;
+  box.innerHTML=`<h3>Your scholarship matches</h3><p>We checked ${p.total} opportunities fetched live from official sources.</p><div class="match-summary"><div class="match-stat"><strong>${p.likely_eligible}</strong><span>Likely eligible</span></div><div class="match-stat"><strong>${p.needs_more_information}</strong><span>Need more information</span></div><div class="match-stat"><strong>${p.not_eligible}</strong><span>Not eligible</span></div></div>${p.results.map(x=>`<article class="match-result"><div><h4>${esc(x.title)}</h4><p>${esc(x.provider_name||"Provider not stated")} · ${esc(x.deadline_text||"Deadline not stated")} · ${x.checks_passed} passed · ${x.checks_unknown} to check</p><a href="${esc(x.source_url)}" target="_blank" rel="noopener" style="font-size:11px;color:#176b55">Official source ↗</a> · <button type="button" data-match="${x.id}" style="border:0;background:none;color:#176b55;font-size:11px;font-weight:700">Why this result?</button></div><span class="match-state ${x.match_status}">${labels[x.match_status]}</span></article>`).join("")||"<p>No matching opportunities were returned by this live scan.</p>"}<p class="notice">${esc(p.notice)}</p>`;
   box.querySelectorAll("[data-match]").forEach(b=>b.addEventListener("click",()=>showMatchDetail(Number(b.dataset.match),p.results)));
  }catch(err){box.innerHTML="<div class='empty'><strong>Matching could not be completed</strong>"+esc(err.message)+"</div>";}
  finally{button.disabled=false;button.textContent="Find my scholarships →";}
