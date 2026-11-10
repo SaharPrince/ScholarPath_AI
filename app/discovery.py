@@ -115,7 +115,7 @@ def _candidate_links(html: str, page_url: str, allowed_host: str) -> list[tuple[
             continue
 
         row = anchor.find_parent(["tr", "article", "li"])
-        context = row.get_text(" ", strip=True) if row else anchor.parent.get_text(" ", strip=True)
+        context = row.get_text(" ", strip=True) if row else ""
         searchable = f"{title} {context} {parsed.path}".lower()
         is_daad_detail = "detail_to_show=" in parsed.query
         if not is_daad_detail and not any(term in searchable for term in DISCOVERY_TERMS):
