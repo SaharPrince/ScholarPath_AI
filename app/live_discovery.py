@@ -23,9 +23,13 @@ from app.extraction import (
 from app.source_catalog import GERMANY_SOURCES
 
 
-MAX_CANDIDATES_PER_SOURCE = 2
+MAX_CANDIDATES_PER_SOURCE = 1
 MAX_LIVE_RESULTS = 100
-REQUEST_TIMEOUT = httpx.Timeout(4.0, connect=2.0)
+# Keep each source request short enough to return partial results within
+# common serverless execution limits. Slow sources must not block all others.
+REQUEST_TIMEOUT = httpx.Timeout(2.5, connect=1.5)
+DISCOVERY_BUDGET_SECONDS = 6.5
+MAX_DAAD_INDEX_PAGES = 4
 REQUEST_LIMITS = httpx.Limits(max_connections=40, max_keepalive_connections=20)
 
 
@@ -138,6 +142,7 @@ async def discover_live_scholarships() -> list[dict]:
     """Fetch current official source pages and extract specific opportunities."""
     semaphore = asyncio.Semaphore(40)
     results: dict[str, dict] = {}
+    successful_pages = 0
 
     async with httpx.AsyncClient(
         timeout=REQUEST_TIMEOUT,
@@ -151,9 +156,11 @@ async def discover_live_scholarships() -> list[dict]:
                 return await _fetch_page(client, url)
 
         async def inspect_page(source: dict, url: str, candidate_title: str | None = None):
+            nonlocal successful_pages
             html, error = await fetch(url)
             if not html:
                 return None, [], None
+            successful_pages += 1
             parsed = parse_scholarship_page(html, url, candidate_title)
             host = _normalized_host(url)
             links = _candidate_links(html, url, host) if host else []
@@ -162,9 +169,10 @@ async def discover_live_scholarships() -> list[dict]:
         async def inspect_source(source: dict):
             source_url = source["official_url"]
             index_urls = _daad_database_page_urls(source_url)
-            # DAAD Pakistan publishes a paginated scholarship database. Other
-            # providers are checked from their official landing/index page.
-            index_urls = index_urls[:17]
+            # Check only the first few DAAD result pages per student request.
+            # Crawling all 17 pages on every request caused avoidable timeouts;
+            # subsequent searches will fetch fresh data again.
+            index_urls = index_urls[:MAX_DAAD_INDEX_PAGES]
             index_results = await asyncio.gather(
                 *(inspect_page(source, url, source["name"]) for url in index_urls),
                 return_exceptions=True,
@@ -206,13 +214,31 @@ async def discover_live_scholarships() -> list[dict]:
                                     _merge_linked_criteria(record, extracted, requirements_url)
                         results[record["source_url"]] = record
 
-        await asyncio.wait_for(
-            asyncio.gather(
-                *(inspect_source(dict(source)) for source in GERMANY_SOURCES),
-                return_exceptions=True,
-            ),
-            timeout=8.5,
+        # Return opportunities from sources that respond within the request
+        # budget. One slow provider must never discard results from every other
+        # official provider.
+        tasks = [
+            asyncio.create_task(inspect_source(dict(source)))
+            for source in GERMANY_SOURCES
+        ]
+        done, pending = await asyncio.wait(
+            tasks,
+            timeout=DISCOVERY_BUDGET_SECONDS,
+            return_when=asyncio.ALL_COMPLETED,
         )
+        for task in pending:
+            task.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+        # Consume exceptions from completed source tasks; source failures are
+        # isolated and do not prevent partial live results from being returned.
+        for task in done:
+            try:
+                task.result()
+            except Exception:
+                continue
+        if successful_pages == 0:
+            raise RuntimeError("No official scholarship source pages responded")
 
     ordered = sorted(
         results.values(),
