@@ -5,7 +5,9 @@ Only the curated source registry is persistent (as application code).
 """
 import asyncio
 import hashlib
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
+
+from bs4 import BeautifulSoup
 
 import httpx
 
@@ -13,6 +15,7 @@ from app.discovery import _candidate_links, _daad_database_page_urls, _normalize
 from app.extraction import (
     USER_AGENT,
     _fetch_page,
+    extract_criteria_from_html,
     _is_mandatory_criterion,
     _parse_deadline_date,
     parse_scholarship_page,
@@ -29,6 +32,64 @@ REQUEST_LIMITS = httpx.Limits(max_connections=40, max_keepalive_connections=20)
 def _opportunity_id(url: str) -> int:
     """Stable, non-persistent identifier suitable for browser detail links."""
     return int(hashlib.sha256(url.encode("utf-8")).hexdigest()[:12], 16)
+
+
+
+def _eligibility_links(html: str, page_url: str, limit: int = 3) -> list[str]:
+    """Find same-site official pages likely to contain programme requirements."""
+    soup = BeautifulSoup(html, "html.parser")
+    base = urlparse(page_url)
+    keywords = (
+        "eligibility", "eligible", "requirements", "who can apply",
+        "application criteria", "selection criteria", "qualifications",
+        "language requirements", "admission requirements",
+    )
+    found: list[str] = []
+    seen: set[str] = set()
+    for link in soup.find_all("a", href=True):
+        label = " ".join(link.get_text(" ", strip=True).casefold().split())
+        href = link.get("href", "").strip()
+        if not href or href.startswith(("#", "mailto:", "javascript:")):
+            continue
+        if not any(word in label for word in keywords):
+            continue
+        target = urljoin(page_url, href)
+        parsed = urlparse(target)
+        if parsed.scheme != "https" or parsed.hostname != base.hostname:
+            continue
+        normalized = parsed._replace(fragment="").geturl()
+        if normalized == page_url or normalized in seen:
+            continue
+        found.append(normalized)
+        seen.add(normalized)
+        if len(found) >= limit:
+            break
+    return found
+
+
+def _merge_linked_criteria(record: dict, criteria: list[tuple[str, str, str]], evidence_url: str) -> None:
+    """Attach criteria scraped from a related official page, with its own evidence URL."""
+    existing = {item["requirement_text"].casefold() for item in record["criteria"]}
+    for kind, label, requirement in criteria:
+        key = requirement.casefold()
+        if key in existing:
+            continue
+        index = len(record["criteria"])
+        record["criteria"].append({
+            "id": f'{record["id"]}-{index}',
+            "criterion_type": kind,
+            "criterion_label": label,
+            "requirement_text": requirement,
+            "is_mandatory": _is_mandatory_criterion(kind, requirement),
+            "evidence_url": evidence_url,
+        })
+        existing.add(key)
+    if criteria:
+        record["evidence"].append({
+            "field_name": "additional_eligibility",
+            "evidence_text": f"Additional eligibility details scraped from {evidence_url}",
+            "evidence_url": evidence_url,
+        })
 
 
 def _as_record(parsed, source: dict, url: str) -> dict:
@@ -92,11 +153,11 @@ async def discover_live_scholarships() -> list[dict]:
         async def inspect_page(source: dict, url: str, candidate_title: str | None = None):
             html, error = await fetch(url)
             if not html:
-                return None, []
+                return None, [], None
             parsed = parse_scholarship_page(html, url, candidate_title)
             host = _normalized_host(url)
             links = _candidate_links(html, url, host) if host else []
-            return ( _as_record(parsed, source, url) if parsed else None ), links
+            return (_as_record(parsed, source, url) if parsed else None), links, html
 
         async def inspect_source(source: dict):
             source_url = source["official_url"]
@@ -112,7 +173,7 @@ async def discover_live_scholarships() -> list[dict]:
             for item in index_results:
                 if isinstance(item, Exception):
                     continue
-                record, links = item
+                record, links, _html = item
                 if record:
                     results[record["source_url"]] = record
                 for url, title in links:
@@ -126,8 +187,23 @@ async def discover_live_scholarships() -> list[dict]:
                 for item in details:
                     if isinstance(item, Exception):
                         continue
-                    record, _ = item
+                    record, _links, detail_html = item
                     if record:
+                        # Follow a few clearly labelled same-domain requirements
+                        # pages when the programme page contains no eligibility.
+                        if detail_html and not record["criteria"]:
+                            requirements_urls = _eligibility_links(detail_html, record["source_url"])
+                            pages = await asyncio.gather(
+                                *(fetch(requirements_url) for requirements_url in requirements_urls),
+                                return_exceptions=True,
+                            )
+                            for requirements_url, page_result in zip(requirements_urls, pages):
+                                if isinstance(page_result, Exception):
+                                    continue
+                                requirements_html, _error = page_result
+                                if requirements_html:
+                                    extracted = extract_criteria_from_html(requirements_html)
+                                    _merge_linked_criteria(record, extracted, requirements_url)
                         results[record["source_url"]] = record
 
         await asyncio.wait_for(
