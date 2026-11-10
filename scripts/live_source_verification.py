@@ -1,16 +1,13 @@
-"""Read-only live smoke checks for configured official scholarship sources.
+"""Read-only live smoke checks for configured official German scholarship sources.
 
 This script performs HTTP GET requests only. It does not initialize or modify
-the application's SQLite database.
+the application's database.
 """
 import asyncio
 import sys
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
-# Running this file directly sets sys.path[0] to scripts/, not the repository
-# root. Add the project root so "python scripts/live_source_verification.py"
-# can import the app package consistently in GitHub Actions and locally.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -18,13 +15,6 @@ if str(PROJECT_ROOT) not in sys.path:
 import httpx
 
 from app.discovery import _candidate_links
-from app.extraction import (
-    HEC_COMMONWEALTH_2027_URL,
-    HEC_KNOWLEDGE_CORRIDOR_BASE,
-    HEC_KNOWLEDGE_CORRIDOR_PAGES,
-    _parse_hec_commonwealth_announcement,
-    _parse_hec_knowledge_corridor,
-)
 from app.source_catalog import OFFICIAL_SOURCES
 
 
@@ -33,6 +23,10 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml",
 }
 TIMEOUT = httpx.Timeout(35.0, connect=15.0)
+CORE_SOURCE_NAMES = {
+    "DAAD Pakistan – Scholarship Programmes for Pakistan",
+    "DAAD Pakistan – Scholarship Database",
+}
 
 
 async def get_page(client: httpx.AsyncClient, url: str) -> tuple[str, str]:
@@ -47,90 +41,45 @@ async def get_page(client: httpx.AsyncClient, url: str) -> tuple[str, str]:
 async def main() -> None:
     failures: list[str] = []
     blocking_failures: list[str] = []
-    timeout = TIMEOUT
+    reachable = 0
+    core_reachable = set()
 
     async with httpx.AsyncClient(
-        timeout=timeout,
+        timeout=TIMEOUT,
         follow_redirects=True,
         headers=HEADERS,
         limits=httpx.Limits(max_connections=4, max_keepalive_connections=2),
     ) as client:
-        print("\n========== OFFICIAL SOURCE INDEX CHECK ==========")
-        reachable = 0
+        print("\n========== OFFICIAL GERMAN SOURCE INDEX CHECK ==========")
         for source in OFFICIAL_SOURCES:
             url = source["official_url"]
             try:
                 html, final_url = await get_page(client, url)
-                host = urlparse(url).hostname or ""
+                host = urlparse(final_url).hostname or ""
                 candidates = _candidate_links(html, final_url, host)
                 reachable += 1
+                if source["name"] in CORE_SOURCE_NAMES:
+                    core_reachable.add(source["name"])
                 print(
                     f"OK | {source['name']} | HTTP HTML | "
                     f"candidate_links={len(candidates)} | {final_url}"
                 )
             except Exception as exc:
-                failures.append(f"{source['name']}: {type(exc).__name__}: {exc}")
+                message = f"{source['name']}: {type(exc).__name__}: {exc}"
+                failures.append(message)
+                if source["name"] in CORE_SOURCE_NAMES:
+                    blocking_failures.append(message)
                 print(f"UNAVAILABLE | {source['name']} | {type(exc).__name__}: {exc}")
 
-        print("\n========== HEC KNOWLEDGE CORRIDOR PARSER ==========")
-        corridor_pages: dict[str, tuple[str, str]] = {}
-        for name, path in HEC_KNOWLEDGE_CORRIDOR_PAGES.items():
-            url = urljoin(HEC_KNOWLEDGE_CORRIDOR_BASE, path)
-            try:
-                html, final_url = await get_page(client, url)
-                corridor_pages[name] = (html, final_url)
-                print(f"FETCHED | {name} | {final_url}")
-            except Exception as exc:
-                failures.append(f"HEC corridor {name}: {type(exc).__name__}: {exc}")
-                print(f"UNAVAILABLE | {name} | {type(exc).__name__}: {exc}")
-
-        corridor = _parse_hec_knowledge_corridor(corridor_pages)
-        if corridor is None:
-            message = "Knowledge Corridor parser returned no complete programme extraction"
-            print("PARSER RESULT |", message)
-            blocking_failures.append(message)
-        else:
-            print("PARSER RESULT | Knowledge Corridor:", corridor.title)
-            print("Fields:", sorted(corridor.fields))
-            print("Criteria:", len(corridor.criteria))
-            print("Evidence:", len(corridor.evidence))
-            missing_criteria = [item for item in corridor.criteria if item not in corridor.criteria_sources]
-            missing_evidence = [item for item in corridor.evidence if item not in corridor.evidence_sources]
-            print("Criteria missing provenance:", len(missing_criteria))
-            print("Evidence missing provenance:", len(missing_evidence))
-            if missing_criteria or missing_evidence:
-                message = "Knowledge Corridor extraction contains facts without source URLs"
-                failures.append(message)
-                blocking_failures.append(message)
-
-        print("\n========== HEC COMMONWEALTH PARSER ==========")
-        try:
-            html, final_url = await get_page(client, HEC_COMMONWEALTH_2027_URL)
-            commonwealth = _parse_hec_commonwealth_announcement(html, final_url)
-            if commonwealth is None:
-                message = "Commonwealth parser returned no matching 2027-28 announcement"
-                print("PARSER RESULT |", message)
-                blocking_failures.append(message)
-            else:
-                print("PARSER RESULT |", commonwealth.title)
-                print("Provider:", commonwealth.provider_name)
-                print("Deadline:", commonwealth.fields.get("deadline_text", "not extracted"))
-                print("Criteria:", len(commonwealth.criteria))
-                print("Evidence:", len(commonwealth.evidence))
-                missing_criteria = [item for item in commonwealth.criteria if item not in commonwealth.criteria_sources]
-                missing_evidence = [item for item in commonwealth.evidence if item not in commonwealth.evidence_sources]
-                print("Criteria missing provenance:", len(missing_criteria))
-                print("Evidence missing provenance:", len(missing_evidence))
-                if missing_criteria or missing_evidence:
-                    message = "Commonwealth extraction contains facts without source URLs"
-                    failures.append(message)
-                    blocking_failures.append(message)
-        except Exception as exc:
-            failures.append(f"HEC Commonwealth: {type(exc).__name__}: {exc}")
-            print("UNAVAILABLE | Commonwealth |", type(exc).__name__, str(exc))
+    missing_core = CORE_SOURCE_NAMES - core_reachable
+    if missing_core:
+        blocking_failures.append(
+            "Core DAAD source pages were not reachable: " + ", ".join(sorted(missing_core))
+        )
 
     print("\n========== LIVE CHECK SUMMARY ==========")
-    print(f"Official source indexes reachable: {reachable}/{len(OFFICIAL_SOURCES)}")
+    print(f"Official German source indexes reachable: {reachable}/{len(OFFICIAL_SOURCES)}")
+    print(f"Core DAAD source indexes reachable: {len(core_reachable)}/{len(CORE_SOURCE_NAMES)}")
     if failures:
         print("Issues observed:")
         for failure in failures:
@@ -139,14 +88,10 @@ async def main() -> None:
     if blocking_failures:
         print("LIVE CHECK RESULT: FAILED")
         raise SystemExit(1)
-
     if failures:
-        # External source indexes can rate-limit or block hosted CI. Preserve
-        # those as visible diagnostics while requiring the dedicated HEC
-        # programme parsers and source-provenance checks to succeed.
-        print("LIVE CHECK RESULT: parser checks passed; some source indexes were unreachable")
+        print("LIVE CHECK RESULT: core DAAD sources passed; some secondary indexes were unreachable")
     else:
-        print("LIVE CHECK RESULT: all requests and parser provenance checks passed")
+        print("LIVE CHECK RESULT: all official source indexes were reachable")
 
 
 if __name__ == "__main__":
