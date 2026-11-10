@@ -646,7 +646,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         r"(?i)\b(?:must|must not|required|are required|is required|"
         r"should have|should hold|need to|needs to|eligible|ineligible|"
         r"not eligible|only applicants|only candidates|can apply|may apply|"
-        r"cannot apply|at least|minimum of|maximum age|no older than|"
+        r"cannot apply|preferred|preferable|desirable|recommended|at least|minimum of|maximum age|no older than|"
         r"no more than|between \d|from the following countries|"
         r"citizens? of|nationals? of|resident in|residing in|"
         r"hold a (?:bachelor|master|doctoral)|have completed)\b"
@@ -1123,7 +1123,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             item for item in criteria
             if not (
                 item[0] == "eligibility"
-                and _clean(item[2]).casefold() == "be a pakistani citizen"
+                and _clean(item[2]).casefold().startswith("be a pakistani citizen")
             )
         ]
         # The broad dual-citizenship exclusion already covers an applicant
