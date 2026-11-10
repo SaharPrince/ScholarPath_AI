@@ -1,39 +1,19 @@
 import secrets
-
-from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from app.config import settings
-from app.database import database_is_ready, get_connection, init_db
-from app.source_catalog import seed_official_sources, seed_official_discovery_targets
-from app.discovery import discover_from_active_sources
-from app.extraction import extract_candidate_details
+from app.live_discovery import discover_live_scholarships
 from app.matching import match_profile_to_scholarships
-from app.schemas import (
-    EligibilityCriterion,
-    HealthResponse,
-    ScholarshipDetail,
-    ScholarshipSummary,
-    SourceSummary,
-)
-
-
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    init_db()
-    # Idempotent one-time reset removes legacy records and activates Germany sources.
-    seed_official_sources()
-    yield
+from app.source_catalog import GERMANY_SOURCES
 
 
 app = FastAPI(
     title=settings.app_name,
-    description="Official-source scholarship discovery and eligibility matching.",
-    version="0.6.0",
-    lifespan=lifespan,
+    description="Live official-source scholarship discovery and eligibility matching.",
+    version="0.7.0",
 )
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -41,163 +21,77 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 @app.get("/", include_in_schema=False)
 def scholarship_home() -> FileResponse:
-    """Serve the responsive scholarship discovery interface."""
     return FileResponse(STATIC_DIR / "index.html")
 
 
-@app.get("/api/health", response_model=HealthResponse, tags=["system"])
+@app.get("/api/health", tags=["system"])
 def health_check() -> dict[str, str]:
-    """Basic service and database readiness check."""
-    if not database_is_ready():
-        return {"status": "degraded", "database": "unavailable"}
-    return {"status": "ok", "database": "ready"}
+    """Health check without requiring a scholarship database."""
+    return {"status": "ok", "discovery": "live", "scholarship_storage": "disabled"}
 
 
-@app.get("/api/cron/discover", tags=["discovery"])
-async def scheduled_discovery(authorization: str | None = Header(default=None)) -> dict:
-    """Vercel Cron entry point; requires CRON_SECRET and never accepts public calls."""
-    if not settings.cron_secret:
-        raise HTTPException(status_code=503, detail="Scheduled discovery is not configured")
-    expected = f"Bearer {settings.cron_secret}"
-    if not authorization or not secrets.compare_digest(authorization, expected):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    # Sync source indexes on the authenticated cron, not on every cold start.
-    source_records_added = seed_official_sources()
-    targeted_candidates_added = seed_official_discovery_targets()
-    discovery = await discover_from_active_sources()
-
-    # Vercel Hobby functions have a bounded execution window. Process a small
-    # ordered batch each day; remaining candidates stay queued for later runs.
-    with get_connection() as connection:
-        pending = connection.execute(
-            """SELECT c.id
-               FROM discovery_candidates c
-               JOIN sources s ON s.id = c.source_id
-               WHERE c.status = 'candidate'
-                 AND NOT EXISTS (
-                     SELECT 1 FROM extraction_attempts a
-                     WHERE a.candidate_id = c.id
-                       AND a.status <> 'failed'
-                 )
-               ORDER BY CASE
-                   WHEN s.source_type = 'official_database' THEN 0
-                   WHEN s.name LIKE 'DAAD%' THEN 1
-                   ELSE 2
-               END, c.id
-               LIMIT 8"""
-        ).fetchall()
-    candidate_ids = [row["id"] for row in pending]
-    extraction = await extract_candidate_details(candidate_ids=candidate_ids)
-
-    return {
-        "source_records_added": source_records_added,
-        "targeted_candidates_added": targeted_candidates_added,
-        "discovery": [item.__dict__ for item in discovery],
-        "extraction": extraction,
-        "extraction_batch_size": len(candidate_ids),
-        "remaining_candidates_are_queued": True,
-    }
-
-
-@app.get("/api/sources", response_model=list[SourceSummary], tags=["sources"])
+@app.get("/api/sources", tags=["sources"])
 def list_sources() -> list[dict]:
-    """List active configured scholarship sources."""
-    with get_connection() as connection:
-        rows = connection.execute(
-            """SELECT id, name, official_url, source_type, country, is_active
-               FROM sources WHERE is_active = 1 ORDER BY name"""
-        ).fetchall()
-    return [dict(row) for row in rows]
+    """Return the static official German source registry."""
+    return [
+        {
+            "id": index,
+            "name": source["name"],
+            "official_url": source["official_url"],
+            "source_type": source["source_type"],
+            "country": source["country"],
+            "is_active": True,
+        }
+        for index, source in enumerate(GERMANY_SOURCES, start=1)
+    ]
 
 
-@app.get(
-    "/api/scholarships",
-    response_model=list[ScholarshipSummary],
-    tags=["scholarships"],
-)
-def list_scholarships(
+async def _live_results() -> list[dict]:
+    try:
+        return await discover_live_scholarships()
+    except TimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail="Official-source discovery took too long. Please try again.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Live discovery could not reach the official sources. Please try again.",
+        ) from exc
+
+
+@app.get("/api/scholarships", tags=["scholarships"])
+async def list_scholarships(
     country: str | None = Query(default=None, min_length=2, max_length=100),
     status: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
-    """List stored scholarships with optional country/status filters."""
-    allowed_statuses = {"candidate", "unverified", "verified", "expired", "rejected"}
-    if status is not None and status not in allowed_statuses | {"all"}:
+    """Fetch and extract current opportunities on every request; never persist them."""
+    if status not in (None, "all", "unverified", "verified", "expired", "candidate", "rejected"):
         raise HTTPException(status_code=422, detail="Unsupported scholarship status")
-
-    clauses: list[str] = []
-    parameters: list[object] = []
-    if status is None:
-        clauses.extend(["s.status <> 'rejected'", "s.status <> 'candidate'"])
-    if country:
-        clauses.append("LOWER(s.country) = LOWER(?)")
-        parameters.append(country.strip())
-    if status and status != "all":
-        clauses.append("s.status = ?")
-        parameters.append(status)
-
-    where_sql = " WHERE " + " AND ".join(clauses) if clauses else ""
-    query = f"""SELECT s.id, s.title, s.provider_name, s.country,
-                      s.study_destination, s.funding_summary, s.application_url,
-                      s.deadline_text, s.deadline_date, s.status,
-                      s.application_status, s.applicant_category,
-                      src.name AS source_name, s.source_record_url AS source_url
-               FROM scholarships AS s
-               JOIN sources AS src ON src.id = s.source_id
-               {where_sql}
-               {"AND" if where_sql else "WHERE"} LOWER(COALESCE(NULLIF(s.study_destination, ''), NULLIF(s.country, ''), src.country, '')) IN ('germany', 'de')
-               ORDER BY CASE s.status
-                   WHEN 'verified' THEN 0 WHEN 'unverified' THEN 1
-                   WHEN 'candidate' THEN 2 WHEN 'expired' THEN 3 ELSE 4 END,
-                   s.deadline_date IS NULL, s.deadline_date, s.title
-               LIMIT ? OFFSET ?"""
-    parameters.extend([limit, offset])
-    with get_connection() as connection:
-        rows = connection.execute(query, parameters).fetchall()
-    return [dict(row) for row in rows]
+    rows = await _live_results()
+    if country and country.strip().casefold() not in {"germany", "de"}:
+        return []
+    if status not in (None, "all"):
+        rows = [row for row in rows if row["status"] == status]
+    return rows[offset:offset + limit]
 
 
-@app.get(
-    "/api/scholarships/{scholarship_id}",
-    response_model=ScholarshipDetail,
-    tags=["scholarships"],
-)
-def get_scholarship(scholarship_id: int) -> dict:
-    """Return one scholarship and its recorded eligibility criteria."""
-    with get_connection() as connection:
-        row = connection.execute(
-            """SELECT s.id, s.title, s.provider_name, s.country,
-                      s.study_destination, s.funding_summary, s.application_url,
-                      s.deadline_text, s.deadline_date, s.status,
-                      s.application_status, s.applicant_category,
-                      src.name AS source_name, s.source_record_url AS source_url
-               FROM scholarships AS s
-               JOIN sources AS src ON src.id = s.source_id
-               WHERE s.id = ?
-                 AND LOWER(COALESCE(NULLIF(s.study_destination, ''), NULLIF(s.country, ''), src.country, '')) IN ('germany', 'de')""",
-            (scholarship_id,),
-        ).fetchone()
-        if row is None:
-            raise HTTPException(status_code=404, detail="Scholarship not found")
-        criteria = connection.execute(
-            """SELECT id, criterion_type, criterion_label, requirement_text,
-                      is_mandatory, evidence_url
-               FROM eligibility_criteria WHERE scholarship_id = ? ORDER BY id""",
-            (scholarship_id,),
-        ).fetchall()
-
-    result = dict(row)
-    result["criteria"] = [
-        {**dict(item), "is_mandatory": bool(item["is_mandatory"])}
-        for item in criteria
-    ]
-    return result
+@app.get("/api/scholarships/{scholarship_id}", tags=["scholarships"])
+async def get_scholarship(scholarship_id: int) -> dict:
+    """Refresh official sources and return the matching live opportunity."""
+    rows = await _live_results()
+    for row in rows:
+        if row["id"] == scholarship_id:
+            return row
+    raise HTTPException(status_code=404, detail="This opportunity was not found in the current live source scan.")
 
 
 @app.post("/api/match", tags=["matching"])
-def match_profile(profile: dict) -> dict:
-    """Match an in-memory student profile against stored scholarship criteria."""
+async def match_profile(profile: dict) -> dict:
+    """Match the submitted student profile against freshly fetched source criteria."""
     allowed = {
         "nationality", "residence_country", "dual_national", "age",
         "regular_government_employee", "public_university_faculty",
@@ -224,106 +118,31 @@ def match_profile(profile: dict) -> dict:
     if missing_fields:
         raise HTTPException(
             status_code=422,
-            detail=(
-                "Please provide the required profile details: "
-                + ", ".join(missing_fields)
-            ),
+            detail="Please provide the required profile details: " + ", ".join(missing_fields),
         )
-    with get_connection() as connection:
-        rows = connection.execute(
-            """SELECT s.id, s.title, s.provider_name, s.country,
-                      s.study_destination, s.funding_summary, s.application_url,
-                      s.deadline_text, s.deadline_date, s.status,
-                      s.application_status, src.name AS source_name,
-                      s.source_record_url AS source_url
-               FROM scholarships s JOIN sources src ON src.id = s.source_id
-               WHERE s.status <> 'candidate' AND s.status <> 'rejected'
-                 AND LOWER(COALESCE(NULLIF(s.study_destination, ''), NULLIF(s.country, ''), src.country, '')) IN ('germany', 'de')"""
-        ).fetchall()
-        scholarships = [dict(row) for row in rows]
-        criteria_by_id = {}
-        for row in scholarships:
-            criteria = connection.execute(
-                """SELECT id, criterion_type, criterion_label, requirement_text,
-                          is_mandatory, evidence_url
-                   FROM eligibility_criteria WHERE scholarship_id = ? ORDER BY id""",
-                (row["id"],),
-            ).fetchall()
-            criteria_by_id[row["id"]] = [
-                {**dict(item), "is_mandatory": bool(item["is_mandatory"])}
-                for item in criteria
-            ]
+
+    scholarships = await _live_results()
+    criteria_by_id = {row["id"]: row.get("criteria", []) for row in scholarships}
     results = match_profile_to_scholarships(scholarships, criteria_by_id, profile)
     return {
         "total": len(results),
-        "likely_eligible": sum(x["match_status"] == "likely_eligible" for x in results),
-        "needs_more_information": sum(x["match_status"] == "needs_more_information" for x in results),
-        "not_eligible": sum(x["match_status"] == "not_eligible" for x in results),
+        "likely_eligible": sum(item["match_status"] == "likely_eligible" for item in results),
+        "needs_more_information": sum(item["match_status"] == "needs_more_information" for item in results),
+        "not_eligible": sum(item["match_status"] == "not_eligible" for item in results),
         "results": results,
-        "notice": "Preliminary matching only. Unknown or unsupported requirements are not assumed satisfied. Confirm all details with the official source.",
+        "notice": "Live preliminary matching only. Unknown or unsupported requirements are not assumed satisfied. Confirm current details with the official provider.",
     }
 
 
-@app.get("/api/discovery/candidates", tags=["discovery"])
-def list_discovery_candidates(
-    status: str = Query(default="candidate"),
-    limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-) -> list[dict]:
-    """List candidate links found on configured sources; candidates are not scholarships."""
-    allowed_statuses = {"candidate", "reviewed", "rejected", "promoted", "all"}
-    if status not in allowed_statuses:
-        raise HTTPException(status_code=422, detail="Unsupported candidate status")
-
-    where_sql = "" if status == "all" else "WHERE c.status = ?"
-    parameters: list[object] = [] if status == "all" else [status]
-    parameters.extend([limit, offset])
-    query = f"""SELECT c.id, c.title, c.candidate_url, c.status,
-                       c.first_seen_at, c.last_seen_at,
-                       s.name AS source_name, s.official_url AS source_homepage
-                FROM discovery_candidates AS c
-                JOIN sources AS s ON s.id = c.source_id
-                {where_sql}
-                ORDER BY c.first_seen_at DESC, c.id DESC
-                LIMIT ? OFFSET ?"""
-    with get_connection() as connection:
-        rows = connection.execute(query, parameters).fetchall()
-    return [dict(row) for row in rows]
-
-
-@app.get("/api/scholarships/{scholarship_id}/evidence", tags=["scholarships"])
-def get_scholarship_evidence(scholarship_id: int) -> list[dict]:
-    """Return captured source snippets supporting extracted scholarship details."""
-    with get_connection() as connection:
-        exists = connection.execute(
-            "SELECT 1 FROM scholarships WHERE id = ?", (scholarship_id,)
-        ).fetchone()
-        if exists is None:
-            raise HTTPException(status_code=404, detail="Scholarship not found")
-        rows = connection.execute(
-            """SELECT field_name, evidence_text, evidence_url, captured_at
-               FROM scholarship_evidence
-               WHERE scholarship_id = ?
-               ORDER BY id""",
-            (scholarship_id,),
-        ).fetchall()
-    return [dict(row) for row in rows]
-
-
-@app.get("/api/discovery/extraction-attempts", tags=["discovery"])
-def list_extraction_attempts(
-    limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-) -> list[dict]:
-    """Show extraction outcomes, including pages needing manual review."""
-    with get_connection() as connection:
-        rows = connection.execute(
-            """SELECT a.id, a.candidate_id, c.title AS candidate_title,
-                      c.candidate_url, a.status, a.message, a.attempted_at
-               FROM extraction_attempts a
-               JOIN discovery_candidates c ON c.id = a.candidate_id
-               ORDER BY a.attempted_at DESC, a.id DESC
-               LIMIT ? OFFSET ?""",
-            (limit, offset),
-        ).fetchall()
-    return [dict(row) for row in rows]
+@app.get("/api/cron/discover", tags=["discovery"])
+async def scheduled_discovery(authorization: str | None = Header(default=None)) -> dict:
+    """Legacy endpoint disabled: scheduled jobs must not create stored scholarships."""
+    if not settings.cron_secret:
+        raise HTTPException(status_code=410, detail="Scheduled database discovery has been retired.")
+    expected = f"Bearer {settings.cron_secret}"
+    if not authorization or not secrets.compare_digest(authorization, expected):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    raise HTTPException(
+        status_code=410,
+        detail="Scholarships are discovered live when students search; no records are stored.",
+    )
