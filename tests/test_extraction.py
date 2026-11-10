@@ -1325,6 +1325,32 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
             "Pakistan national university; USD 2,000/- or actual, whichever is lower",
         )
 
+    def test_scrapes_eligibility_from_unlabelled_official_page_paragraphs_and_lists(self) -> None:
+        from bs4 import BeautifulSoup
+        from app.extraction import _extract_unlabelled_criteria
+
+        html = """
+        <main>
+          <h1>International Scholarship Programme</h1>
+          <p>Applicants must hold a bachelor's degree in a relevant subject.</p>
+          <ul>
+            <li>Applicants must be citizens of an eligible country.</li>
+            <li>Applicants should have English language proficiency at B2 level.</li>
+            <li>Relevant professional experience is preferred.</li>
+          </ul>
+          <p>Applications close on 30 September 2027.</p>
+        </main>
+        """
+        criteria = _extract_unlabelled_criteria(BeautifulSoup(html, "html.parser"))
+        texts = [item[2] for item in criteria]
+
+        self.assertTrue(any("bachelor's degree" in text for text in texts))
+        self.assertTrue(any("citizens of an eligible country" in text for text in texts))
+        self.assertTrue(any("English language proficiency" in text for text in texts))
+        preference = next(item for item in criteria if "professional experience" in item[2])
+        self.assertEqual(preference[0], "selection_criteria")
+        self.assertFalse(any("30 September 2027" in text for text in texts))
+
     def test_no_upper_age_limit_is_informational_not_mandatory(self) -> None:
         from app.extraction import _is_mandatory_criterion
 
