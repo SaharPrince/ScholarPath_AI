@@ -1,222 +1,78 @@
-"""Curated official scholarship information sources.
+"""Curated official German scholarship and funding source indexes.
 
-These are source homepages/indexes, not scholarship records. They must be
-rechecked periodically and their contents are treated as unverified evidence.
+Source pages are not scholarship records. The evidence-based extractor must
+identify a specific opportunity before it is added to the catalogue.
 """
 
 from app.database import get_connection
 
 
-LEGACY_HEC_URL = "https://www.hec.gov.pk/Site/Scholarship/default.aspx"
+GERMANY_SOURCES = (
+    {"name": "DAAD Pakistan – Scholarship Programmes for Pakistan", "official_url": "https://www.daad.pk/en/find-funding/daad-scholarship-programmes-for-pakistan/", "source_type": "official_programme", "country": "Germany"},
+    {"name": "DAAD Pakistan – Scholarship Database", "official_url": "https://www.daad.pk/en/find-funding/scholarship-database/?intention=&onlydaad=0&origin=194&pg=1&q=&status=0&subject=0&tab=&target=194&type=a", "source_type": "official_database", "country": "Germany"},
+    {"name": "DAAD – Funding Opportunities from Other Organisations", "official_url": "https://www.daad.de/en/studying-in-germany/scholarships/funding-options/", "source_type": "official_index", "country": "Germany"},
+    {"name": "German Federal Foreign Office – Scholarship Providers", "official_url": "https://www.auswaertiges-amt.de/en/visa-service/buergerservice/faq/01-stipendien/606688", "source_type": "government", "country": "Germany"},
+    {"name": "Deutschlandstipendium – Federal Scholarship Programme", "official_url": "https://www.deutschlandstipendium.de/deutschlandstipendium/de/home/home_node.html", "source_type": "government", "country": "Germany"},
+    {"name": "Heinrich Böll Foundation – Scholarships", "official_url": "https://www.boell.de/en/scholarships", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Friedrich Ebert Foundation – Study Funding", "official_url": "https://www.fes.de/studienfoerderung", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Konrad Adenauer Foundation – International Scholarships", "official_url": "https://www.kas.de/en/web/begabtenfoerderung", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Rosa Luxemburg Foundation – Scholarship Department", "official_url": "https://www.rosalux.de/stiftung/studienwerk", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Friedrich Naumann Foundation – Scholarships", "official_url": "https://www.freiheit.org/scholarships", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Hanns Seidel Foundation – Scholarships", "official_url": "https://www.hss.de/stipendium/", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Catholic Academic Exchange Service (KAAD)", "official_url": "https://www.kaad.de/en/scholarships", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Avicenna Studienwerk – Scholarships", "official_url": "https://www.avicenna-studienwerk.de/stipendium/", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Evangelisches Studienwerk – Scholarships", "official_url": "https://www.evstudienwerk.de/english/scholarships.html", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Alexander von Humboldt Foundation – Funding", "official_url": "https://www.humboldt-foundation.de/en/apply/sponsorship-programmes", "source_type": "official_programme", "country": "Germany"},
+    {"name": "German Research Foundation (DFG) – Funding", "official_url": "https://www.dfg.de/en/research-funding", "source_type": "official_programme", "country": "Germany"},
+    {"name": "TU Berlin – Scholarships and Funding for International Students", "official_url": "https://www.tu.berlin/en/international/students-1/international-students/international-degree-seeking-students/scholarships-and-other-funding-for-international-students", "source_type": "university", "country": "Germany"},
+    {"name": "University of Würzburg – Scholarships by Target Group", "official_url": "https://www.uni-wuerzburg.de/en/scholarships/by-target-group/", "source_type": "university", "country": "Germany"},
+    {"name": "University of Kiel – Scholarships", "official_url": "https://www.uni-kiel.de/en/tf/study/scholarships", "source_type": "university", "country": "Germany"},
+)
 
-OFFICIAL_SOURCES = (
-    {
-        "name": "HEC International Scholarships",
-        "official_url": "https://www.hec.gov.pk/english/scholarshipsgrants/Pages/internationalScholarships.aspx",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "HEC National Scholarships",
-        "official_url": "https://www.hec.gov.pk/english/scholarshipsgrants/Pages/NationalScholarships.aspx",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "HEC Learning Opportunities Abroad",
-        "official_url": "https://www.hec.gov.pk/english/scholarshipsgrants/lao/pages/default.aspx",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Ministry of Federal Education and Professional Training",
-        "official_url": "https://www.mofept.gov.pk/Detail/ZjBhMDA4MGItNmE2MC00NTE5LThiYTAtOWUyODk0Yzc5OWQ1",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "United States Educational Foundation in Pakistan",
-        "official_url": "https://usefp.org/",
-        "source_type": "official_programme",
-        "country": "Pakistan",
-    },
-    {
-        "name": "DAAD Pakistan Funding Opportunities",
-        "official_url": "https://www.daad.pk/en/find-funding/",
-        "source_type": "official_programme",
-        "country": "Germany",
-    },
-    {
-        "name": "British Council Pakistan Scholarships",
-        "official_url": "https://www.britishcouncil.pk/programmes/education/scholarships",
-        "source_type": "official_programme",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Commonwealth Scholarship Commission",
-        "official_url": "https://cscuk.fcdo.gov.uk/scholarships-filter-search/",
-        "source_type": "official_programme",
-        "country": "United Kingdom",
-    },
-    {
-        "name": "Türkiye Scholarships",
-        "official_url": "https://www.turkiyeburslari.gov.tr/scholarshipsprograms",
-        "source_type": "official_programme",
-        "country": "Türkiye",
-    },
-    {
-        "name": "Erasmus+ Opportunities for Individuals",
-        "official_url": "https://erasmus-plus.ec.europa.eu/opportunities/individuals",
-        "source_type": "government",
-        "country": "European Union",
-    },
-    {
-        "name": "Stipendium Hungaricum",
-        "official_url": "https://stipendiumhungaricum.hu/apply/",
-        "source_type": "official_programme",
-        "country": "Hungary",
-    },
 
-    {
-        "name": "Punjab Educational Endowment Fund (PEEF) Student Scholarships",
-        "official_url": "https://student.peef.org.pk/",
-        "source_type": "official_programme",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Punjab Higher Education Department – PEEF",
-        "official_url": "https://hed.punjab.gov.pk/peef",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Punjab Rahmatul-lil-Alameen Scholarship",
-        "official_url": "https://hed.punjab.gov.pk/rehmatul-lil-alameen_scholarship",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Punjab Educational Scholarships for Religious Minorities",
-        "official_url": "https://scholarships-hrma.punjab.gov.pk/",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Punjab Zakat Education Stipends",
-        "official_url": "https://zakat.punjab.gov.pk/node/138",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Sindh Education Foundation – School Education Scholarship Programme",
-        "official_url": "https://www.sef.org.pk/scholarship",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Sindh Educational Endowment Fund",
-        "official_url": "https://seef.sindh.gov.pk/about-us",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Khyber Pakhtunkhwa Education Foundation Scholarships",
-        "official_url": "https://ef.kp.gov.pk/eligibility-criteria",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Khyber Pakhtunkhwa Zakat Education Stipends",
-        "official_url": "https://swkpk.gov.pk/edu%20stipends.php",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Balochistan Education Endowment Fund (BEEF) Scholarships",
-        "official_url": "https://beef.org.pk/policyguideline/",
-        "source_type": "official_programme",
-        "country": "Pakistan",
-    },
-    {
-        "name": "Balochistan Provincial Minorities Scholarship Scheme",
-        "official_url": "https://minorities.balochistan.gov.pk/",
-        "source_type": "government",
-        "country": "Pakistan",
-    },
+OFFICIAL_DISCOVERY_TARGETS = (
+    ("https://www.daad.pk/en/find-funding/daad-scholarship-programmes-for-pakistan/",
+     "https://www.daad.pk/en/find-funding/daad-scholarship-programmes-for-pakistan/",
+     "DAAD scholarships for Pakistani Master's, PhD and postdoctoral applicants"),
 )
 
 
 def seed_official_sources() -> int:
-    """Idempotently add curated source indexes and retire the obsolete HEC index."""
+    """Run a one-time legacy catalogue reset, then sync Germany-only sources."""
     inserted = 0
     with get_connection() as connection:
-        # Preserve old scholarship/candidate records, but stop repeatedly
-        # crawling the legacy URL that returns an empty anti-bot response.
-        connection.execute(
-            "UPDATE sources SET is_active = 0 WHERE official_url = ?",
-            (LEGACY_HEC_URL,),
-        )
-        for source in OFFICIAL_SOURCES:
-            cursor = connection.execute(
-                """INSERT OR IGNORE INTO sources
-                   (name, official_url, source_type, country)
-                   VALUES (?, ?, ?, ?)""",
-                (
-                    source["name"],
-                    source["official_url"],
-                    source["source_type"],
-                    source["country"],
-                ),
+        migration = connection.execute(
+            "SELECT 1 FROM app_migrations WHERE name = ?",
+            ("germany_catalog_reset_v1",),
+        ).fetchone()
+        if migration is None:
+            connection.execute("DELETE FROM extraction_attempts")
+            connection.execute("DELETE FROM discovery_candidates")
+            connection.execute("DELETE FROM scholarships")
+            connection.execute("UPDATE sources SET is_active = 0")
+            connection.execute(
+                "INSERT INTO app_migrations (name) VALUES (?)",
+                ("germany_catalog_reset_v1",),
             )
-            inserted += cursor.rowcount
+
+        for source in GERMANY_SOURCES:
+            cursor = connection.execute(
+                """INSERT INTO sources
+                   (name, official_url, source_type, country, is_active)
+                   VALUES (?, ?, ?, ?, 1)
+                   ON CONFLICT(official_url) DO UPDATE SET
+                     name = excluded.name,
+                     source_type = excluded.source_type,
+                     country = excluded.country,
+                     is_active = 1""",
+                (source["name"], source["official_url"], source["source_type"], source["country"]),
+            )
+            inserted += max(cursor.rowcount, 0)
     return inserted
 
 
-# Curated opportunity pages are separate from source indexes. These URLs were
-# confirmed on the corresponding official government/programme websites.
-# Keeping them here ensures important school/college-level schemes are queued
-# even when a site's navigation hides the detail page from a generic crawler.
-OFFICIAL_DISCOVERY_TARGETS = (
-    (
-        "https://hed.punjab.gov.pk/rehmatul-lil-alameen_scholarship",
-        "https://hed.punjab.gov.pk/rehmatul-lil-alameen_scholarship",
-        "Punjab Rahmatul-lil-Alameen Scholarship",
-    ),
-    (
-        "https://www.sef.org.pk/scholarship",
-        "https://www.sef.org.pk/news_and_updates/55",
-        "Sindh School Education Scholarship Programme AY 2026-27",
-    ),
-    (
-        "https://ef.kp.gov.pk/eligibility-criteria",
-        "https://ef.kp.gov.pk/eligibility-criteria",
-        "KP Education Foundation Merit-cum-Inaffordability Scholarship Scheme 2026-27",
-    ),
-    (
-        "https://beef.org.pk/policyguideline/",
-        "https://beef.org.pk/shaheed-benazir-bhutto-fully-funded-scholarships-for-district-toppers-of-matric-students-of-balochistan/",
-        "Shaheed Benazir Bhutto Fully Funded Scholarships for Balochistan Matric District Toppers",
-    ),
-    (
-        "https://beef.org.pk/policyguideline/",
-        "https://beef.org.pk/peef-scholarship-for-balochistan/",
-        "PEEF Scholarship for Balochistan (Intermediate and Higher Education)",
-    ),
-    (
-        "https://beef.org.pk/policyguideline/",
-        "https://beef.org.pk/cep/",
-        "BEEF Cadet Excellence Scholarship Program",
-    ),
-)
-
-
 def seed_official_discovery_targets() -> int:
-    """Queue curated official opportunity pages for normal evidence-based extraction.
-
-    This only creates discovery candidates. The regular extractor still decides
-    whether a page contains enough facts to create a scholarship record, and
-    extracted records remain unverified until independently reviewed.
-    """
+    """Queue curated German programme pages for normal evidence extraction."""
     inserted = 0
     with get_connection() as connection:
         for source_url, candidate_url, title in OFFICIAL_DISCOVERY_TARGETS:
