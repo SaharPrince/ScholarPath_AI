@@ -643,18 +643,18 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
     extracted: list[tuple[str, str, str]] = []
     seen: set[str] = set()
     requirement_signal = re.compile(
-        r"(?i)\\b(?:must|must not|required|are required|is required|"
+        r"(?i)\b(?:must|must not|required|are required|is required|"
         r"should have|should hold|need to|needs to|eligible|ineligible|"
         r"not eligible|only applicants|only candidates|can apply|may apply|"
         r"cannot apply|at least|minimum of|maximum age|no older than|"
-        r"no more than|between \\d|from the following countries|"
+        r"no more than|between \d|from the following countries|"
         r"citizens? of|nationals? of|resident in|residing in|"
-        r"hold a (?:bachelor|master|doctoral)|have completed)\\b"
+        r"hold a (?:bachelor|master|doctoral)|have completed)\b"
     )
     applicant_signal = re.compile(
-        r"(?i)\\b(?:applicants?|candidates?|students?|graduates?|"
+        r"(?i)\b(?:applicants?|candidates?|students?|graduates?|"
         r"doctoral candidates?|postdocs?|researchers?|scholars?|"
-        r"international students?|citizens?|nationals?|residents?)\\b"
+        r"international students?|citizens?|nationals?|residents?)\b"
     )
     for node in content_root.find_all(["p", "li", "dd", "dt"]):
         raw = _clean(node.get_text(" ", strip=True))
@@ -673,28 +673,28 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
             # qualification fragment such as "at least two years of experience".
             has_actor = bool(applicant_signal.search(statement))
             has_qualification = bool(re.search(
-                r"(?i)\\b(?:degree|bachelor|master|doctorate|phd|gpa|grade|"
+                r"(?i)\b(?:degree|bachelor|master|doctorate|phd|gpa|grade|"
                 r"academic|language|ielts|toefl|experience|age|nationality|"
-                r"citizenship|residence|enrol(?:led|ment)|study level)\\b",
+                r"citizenship|residence|enrol(?:led|ment)|study level)\b",
                 statement,
             ))
             if not (has_actor or has_qualification):
                 continue
             lowered = statement.casefold()
-            if re.search(r"(?i)\\b(preferred|preferable|desirable|recommended|"
-                         r"an advantage|priority will be given)\\b", statement):
+            if re.search(r"(?i)\b(preferred|preferable|desirable|recommended|"
+                         r"an advantage|priority will be given)\b", statement):
                 kind, label = "selection_criteria", "Selection preference"
-            elif re.search(r"(?i)\\b(ineligible|not eligible|cannot apply|must not)\\b", statement):
+            elif re.search(r"(?i)\b(ineligible|not eligible|cannot apply|must not)\b", statement):
                 kind, label = "ineligibility", "Ineligibility"
-            elif re.search(r"(?i)\\b(language|ielts|toefl|german|english proficiency)\\b", statement):
+            elif re.search(r"(?i)\b(language|ielts|toefl|german|english proficiency)\b", statement):
                 kind, label = "language_requirements", "Language requirements"
-            elif re.search(r"(?i)\\b(age|years old|younger than|older than)\\b", statement):
+            elif re.search(r"(?i)\b(age|years old|younger than|older than)\b", statement):
                 kind, label = "age_limit", "Age requirements"
-            elif re.search(r"(?i)\\b(nationality|citizenship|citizen|national|resident|residing)\\b", statement):
+            elif re.search(r"(?i)\b(nationality|citizenship|citizen|national|resident|residing)\b", statement):
                 kind, label = "nationality", "Nationality and residence"
-            elif re.search(r"(?i)\\b(bachelor|master|doctorate|phd|degree|enrolled|graduate)\\b", statement):
+            elif re.search(r"(?i)\b(bachelor|master|doctorate|phd|degree|enrolled|graduate)\b", statement):
                 kind, label = "study_level", "Academic qualification"
-            elif re.search(r"(?i)\\b(experience|professional|employment|employed|work)\\b", statement):
+            elif re.search(r"(?i)\b(experience|professional|employment|employed|work)\b", statement):
                 kind, label = "work_experience", "Work experience"
             else:
                 kind, label = "eligibility", "Eligibility"
