@@ -32,11 +32,7 @@ GERMANY_SOURCES = (
 )
 
 
-OFFICIAL_DISCOVERY_TARGETS = (
-    ("https://www.daad.pk/en/find-funding/daad-scholarship-programmes-for-pakistan/",
-     "https://www.daad.pk/en/find-funding/daad-scholarship-programmes-for-pakistan/",
-     "DAAD scholarships for Pakistani Master's, PhD and postdoctoral applicants"),
-)
+OFFICIAL_DISCOVERY_TARGETS: tuple[tuple[str, str, str], ...] = ()
 
 
 def seed_official_sources() -> int:
