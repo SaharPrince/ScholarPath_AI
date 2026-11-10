@@ -41,6 +41,7 @@ async def get_page(client: httpx.AsyncClient, url: str) -> tuple[str, str]:
 async def main() -> None:
     failures: list[str] = []
     blocking_failures: list[str] = []
+    access_restricted: list[str] = []
     reachable = 0
     core_reachable = set()
 
@@ -67,23 +68,42 @@ async def main() -> None:
             except Exception as exc:
                 message = f"{source['name']}: {type(exc).__name__}: {exc}"
                 failures.append(message)
-                if source["name"] in CORE_SOURCE_NAMES:
-                    blocking_failures.append(message)
-                print(f"UNAVAILABLE | {source['name']} | {type(exc).__name__}: {exc}")
+                status_code = getattr(getattr(exc, "response", None), "status_code", None)
+                if status_code in {403, 429}:
+                    # Some official providers block cloud CI traffic. This is
+                    # not evidence that the source URL is invalid; report it
+                    # distinctly rather than failing the whole PR.
+                    access_restricted.append(message)
+                    print(f"ACCESS RESTRICTED | {source['name']} | HTTP {status_code}")
+                else:
+                    if source["name"] in CORE_SOURCE_NAMES:
+                        blocking_failures.append(message)
+                    print(f"UNAVAILABLE | {source['name']} | {type(exc).__name__}: {exc}")
 
     missing_core = CORE_SOURCE_NAMES - core_reachable
-    if missing_core:
+    restricted_core = {
+        name for name in CORE_SOURCE_NAMES
+        if any(name in item for item in access_restricted)
+    }
+    unaccounted_core = missing_core - restricted_core
+    if unaccounted_core:
         blocking_failures.append(
-            "Core DAAD source pages were not reachable: " + ", ".join(sorted(missing_core))
+            "Core DAAD source pages failed for reasons other than access restrictions: "
+            + ", ".join(sorted(unaccounted_core))
         )
 
     print("\n========== LIVE CHECK SUMMARY ==========")
     print(f"Official German source indexes reachable: {reachable}/{len(OFFICIAL_SOURCES)}")
     print(f"Core DAAD source indexes reachable: {len(core_reachable)}/{len(CORE_SOURCE_NAMES)}")
+    print(f"Source indexes blocked by CI access controls: {len(access_restricted)}")
     if failures:
         print("Issues observed:")
         for failure in failures:
             print("-", failure)
+    if access_restricted:
+        print("Access-restricted sources (not treated as broken URLs):")
+        for item in access_restricted:
+            print("-", item)
 
     if blocking_failures:
         print("LIVE CHECK RESULT: FAILED")
