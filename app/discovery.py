@@ -32,6 +32,20 @@ class SourceResult:
     message: str | None = None
 
 
+def _daad_database_page_urls(source_url: str) -> list[str]:
+    """Return the 17 result pages exposed by the DAAD Pakistan database."""
+    parsed = urlparse(source_url)
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    if "scholarship-database" not in parsed.path:
+        return [source_url]
+    pages = []
+    for page_number in range(1, 18):
+        page_query = dict(query)
+        page_query["pg"] = [str(page_number)]
+        pages.append(urlunparse(parsed._replace(query=urlencode(page_query, doseq=True))))
+    return pages
+
+
 def _normalized_host(url: str) -> str | None:
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname:
@@ -132,17 +146,10 @@ async def _fetch_source(client: httpx.AsyncClient, source: dict) -> SourceResult
     is_daad_database = "scholarship-database" in source_url
     max_pages = 18 if is_daad_database else 8
     max_depth = 2
-    queue: list[tuple[str, int]] = [(source_url, 0)]
-    if is_daad_database:
-        # The DAAD Pakistan database paginates its results with pg=1..17.
-        # Fetch each official result page so every programme's detail link is indexed.
-        parsed_source = urlparse(source_url)
-        query = parse_qs(parsed_source.query, keep_blank_values=True)
-        for page_number in range(2, 18):
-            page_query = dict(query)
-            page_query["pg"] = [str(page_number)]
-            page_url = urlunparse(parsed_source._replace(query=urlencode(page_query, doseq=True)))
-            queue.append((page_url, 0))
+    queue: list[tuple[str, int]] = (
+        [(url, 0) for url in _daad_database_page_urls(source_url)]
+        if is_daad_database else [(source_url, 0)]
+    )
     visited: set[str] = set()
     discovered: dict[str, str] = {}
     first_page_error: str | None = None
