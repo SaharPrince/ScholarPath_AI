@@ -1825,7 +1825,7 @@ async def extract_candidate_details(
     if candidate_ids is not None:
         if reprocess:
             raise ValueError("Use either global reprocess or targeted candidate_ids, not both.")
-        candidate_ids = sorted({int(value) for value in candidate_ids})
+        candidate_ids = list(dict.fromkeys(int(value) for value in candidate_ids))
         if not candidate_ids:
             return []
     with get_connection() as connection:
@@ -1843,12 +1843,17 @@ async def extract_candidate_details(
         candidates = [dict(row) for row in connection.execute(
             """SELECT c.id, c.source_id, c.title AS candidate_title, c.candidate_url
                FROM discovery_candidates c
+               JOIN sources s ON s.id = c.source_id
                WHERE c.status = 'candidate'
                  AND NOT EXISTS (
                      SELECT 1 FROM extraction_attempts a
                      WHERE a.candidate_id = c.id
                        AND a.status <> 'failed'
-                 )""" + candidate_filter + " ORDER BY c.id",
+                 )""" + candidate_filter + """ ORDER BY CASE
+                   WHEN s.source_type = 'official_database' THEN 0
+                   WHEN s.name LIKE 'DAAD%' THEN 1
+                   ELSE 2
+               END, c.id""",
             candidate_params,
         ).fetchall()]
 
