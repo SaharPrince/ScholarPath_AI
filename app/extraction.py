@@ -790,6 +790,15 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
         value,
     ):
         return False
+    # Calls to action and promotional prompts are page navigation, not
+    # applicant conditions. Keep genuine requirements even when they sit near
+    # these snippets in the same section.
+    if re.match(
+        r"(?i)^(?:jetzt über stipendien|du suchst ein stipendium|"
+        r"dann kannst du bei der seite|mehr erfahren|jetzt online bewerben)\\b",
+        value,
+    ):
+        return False
     if re.match(r"(?i)^speak german at an adequate level\b", value):
         return False
     return True
