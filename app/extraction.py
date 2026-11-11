@@ -53,6 +53,10 @@ GERMAN_MONTHS = {
     "mai": 5, "juni": 6, "juli": 7, "august": 8, "september": 9,
     "oktober": 10, "november": 11, "dezember": 12,
 }
+GERMAN_NUMERIC_DATE_RANGE_PATTERN = re.compile(
+    r"(?i)\\b(?P<start_day>\\d{1,2})\\.(?P<start_month>\\d{1,2})\\.?\\s*[-–]\\s*"
+    r"(?P<end_day>\\d{1,2})\\.(?P<end_month>\\d{1,2})\\.?(?P<year>\\d{4})\\b"
+)
 ROLLING_PATTERN = re.compile(r"(?i)\b(rolling basis|no fixed deadline|applications? accepted throughout the year|open year[- ]round)\b")
 OPEN_PATTERN = re.compile(r"(?i)\b(applications? (?:(?:are )?(?:now )?)open|now accepting applications|currently accepting applications|apply now)\b")
 UPCOMING_PATTERN = re.compile(r"(?i)\b(applications? (?:will|are expected to) open|opens? for applications)\b")
@@ -367,6 +371,13 @@ def _parse_deadline_date(value: str | None) -> str | None:
     """Normalize an explicitly extracted English or German deadline date to ISO format."""
     if not value:
         return None
+    numeric_window = GERMAN_NUMERIC_DATE_RANGE_PATTERN.search(value)
+    if numeric_window:
+        return (
+            f"{int(numeric_window.group('year')):04d}-"
+            f"{int(numeric_window.group('end_month')):02d}-"
+            f"{int(numeric_window.group('end_day')):02d}"
+        )
     matches = sorted(
         [*DATE_PATTERN.finditer(value), *GERMAN_DATE_PATTERN.finditer(value)],
         key=lambda item: item.start(),
@@ -483,7 +494,7 @@ def _find_labeled_text(content_root: BeautifulSoup, labels: tuple[str, ...], fie
                 )
                 if len(value.split()) < 3 and not any(term in value.lower() for term in meaningful_terms):
                     continue
-            if field_name == "deadline_text" and not (DATE_PATTERN.search(value) or GERMAN_DATE_PATTERN.search(value) or ROLLING_PATTERN.search(value)):
+            if field_name == "deadline_text" and not (DATE_PATTERN.search(value) or GERMAN_DATE_PATTERN.search(value) or GERMAN_NUMERIC_DATE_RANGE_PATTERN.search(value) or ROLLING_PATTERN.search(value)):
                 continue
             return value
     return None
@@ -650,7 +661,11 @@ def _find_funding_statement(content_root: BeautifulSoup) -> str | None:
     for paragraph in content_root.find_all("p"):
         value = _clean(paragraph.get_text(" ", strip=True))
         lowered = value.lower()
-        if len(value) >= 45 and any(term in lowered for term in indicators):
+        has_monthly_amount = (
+            re.search(r"(?i)\\b\\d[\\d.,]*\\s*(?:€|euro)\\b", value)
+            and re.search(r"(?i)\\b(?:monatlich|pro monat|im monat|monthly|per month)\\b", value)
+        )
+        if len(value) >= 30 and (any(term in lowered for term in indicators) or has_monthly_amount):
             return value[:1200]
     return None
 
@@ -1047,10 +1062,10 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         application_windows = []
         for node in content_root.find_all(["p", "li", "td", "dd"]):
             value = _clean(node.get_text(" ", strip=True))
-            has_date = DATE_PATTERN.search(value) or GERMAN_DATE_PATTERN.search(value)
+            has_date = DATE_PATTERN.search(value) or GERMAN_DATE_PATTERN.search(value) or GERMAN_NUMERIC_DATE_RANGE_PATTERN.search(value)
             has_window_marker = re.search(
                 r"(?i)\b(?:bis(?: einschließlich)?|application (?:period|window|deadline)|"
-                r"bewerbungs(?:frist|schluss|zeitraum)|closing date|applications? close)\b",
+                r"bewerbungs(?:frist|schluss|zeitraum|portal)|closing date|applications? close|zwischen dem)\b",
                 value,
             )
             if has_date and has_window_marker:
@@ -1067,7 +1082,8 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     section_specs = {
         "eligibility": (
             "Eligibility Criteria", "Eligibility", "Who can apply", "Eligible applicants",
-            "Technical Eligibility Requirements",
+            "Technical Eligibility Requirements", "Wer kann sich bewerben",
+            "Voraussetzungen", "Fördervoraussetzungen",
         ),
         "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
         "study_level": ("Degree Level", "Study Level", "Level of Study", "Eligible Degree Levels"),
