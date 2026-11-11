@@ -783,6 +783,12 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         r"international students?|citizens?|nationals?|residents?)\b"
     )
     raw_values: list[str] = []
+    implied_applicant_condition = re.compile(
+        r"(?i)^(?:come from\b|have not been\b|hold (?:a|an)\b|"
+        r"are already studying\b|wish to pursue\b|would like to pursue\b|"
+        r"belong to\b|have sufficient knowledge\b|have a university degree\b|"
+        r"are of\b|currently reside\b)"
+    )
     for node in content_root.find_all(["p", "li", "dd", "dt"]):
         raw = _clean(node.get_text(" ", strip=True))
         if not raw or len(raw) < 4 or len(raw) > 1400:
@@ -799,15 +805,52 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         else:
             raw_values.append(raw)
 
+    # Some foundations phrase eligibility as "we support [group] who ...".
+    # Preserve the exact supported applicant group and study condition.
+    for node in content_root.find_all("p"):
+        paragraph = _clean(node.get_text(" ", strip=True))
+        match = re.search(
+            r"(?i)\b(?:we support|the foundation supports|foundation supports)\s+"
+            r"(.+?)\s+who\s+(.+?)(?:[.!?]|$)",
+            paragraph,
+        )
+        if match:
+            statement = _clean(f"{match.group(1)} who {match.group(2)}")
+            if applicant_signal.search(statement) and len(statement) >= 24:
+                key = statement.casefold()
+                if key not in seen and _is_applicant_eligibility_statement(statement):
+                    extracted.append(("eligibility", "Eligible applicant group", statement))
+                    seen.add(key)
+
+    # Keep source-framed preferences separate from mandatory conditions.
+    for node in content_root.find_all("p"):
+        paragraph = _clean(node.get_text(" ", strip=True))
+        match = re.search(r"(?i)\bdo you have (.+?\?)\s*then\b", paragraph)
+        if match:
+            statement = _clean(match.group(1))
+            key = statement.casefold()
+            if len(statement) >= 24 and key not in seen:
+                extracted.append(("selection_criteria", "Selection preferences", statement))
+                seen.add(key)
+
     for raw in raw_values:
-        if len(raw) < 24 or not requirement_signal.search(raw):
+        raw_is_implied_list_condition = bool(implied_applicant_condition.match(raw))
+        if len(raw) < 24 or (
+            not requirement_signal.search(raw) and not raw_is_implied_list_condition
+        ):
             continue
         for statement in _split_criteria_statements(raw):
             statement = _clean(statement)
             key = statement.casefold()
+            statement_is_implied_list_condition = bool(
+                implied_applicant_condition.match(statement)
+            )
             if not statement or key in seen or len(statement) < 24 or len(statement) > 1000:
                 continue
-            if not requirement_signal.search(statement):
+            if (
+                not requirement_signal.search(statement)
+                and not statement_is_implied_list_condition
+            ):
                 continue
             if not _is_applicant_eligibility_statement(statement):
                 continue
@@ -820,7 +863,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
                 r"citizenship|residence|enrol(?:led|ment)|study level)\b",
                 statement,
             ))
-            if not (has_actor or has_qualification):
+            if not (has_actor or has_qualification or statement_is_implied_list_condition):
                 continue
             lowered = statement.casefold()
             if re.search(r"(?i)\b(preferred|preferable|desirable|recommended|"
@@ -851,7 +894,11 @@ def extract_criteria_from_html(html: str) -> list[tuple[str, str, str]]:
     content_root = _remove_site_chrome(soup)
     section_specs = {
         "eligibility": ("Eligibility", "Eligibility Criteria", "Who can apply", "Eligible applicants", "Scholarship for Studies", "Requirements"),
-        "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
+        "ineligibility": (
+            "Ineligibility", "Who cannot apply", "Who is not eligible",
+            "Unfortunately, we cannot support the following",
+            "Unfortunately, we cannot fund the following",
+        ),
         "study_level": ("Degree Level", "Study Level", "Level of Study", "Academic qualification"),
         "nationality": ("Nationality Requirements", "Citizenship Requirements", "Eligible Nationalities", "Eligible Countries"),
         "academic_requirements": ("Academic Requirements", "Academic Eligibility", "Minimum Academic Requirements", "Minimum Grades", "Minimum GPA"),
@@ -1116,7 +1163,15 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
 
     # Some official pages place exclusion rules inside a broader technical
     # eligibility section. Split at the explicit exclusion-introduction sentence.
-    embedded_ineligibility_context = False
+    embedded_ineligibility_context = bool(
+        _find_heading_section(
+            content_root,
+            (
+                "Unfortunately, we cannot support the following",
+                "Unfortunately, we cannot fund the following",
+            ),
+        )
+    )
     eligibility_section = fields.get("eligibility")
     if eligibility_section:
         statements = _split_criteria_statements(eligibility_section)
