@@ -414,8 +414,22 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
     criteria_text = " ".join(
         f"{item.get('criterion_label') or ''} {item.get('requirement_text') or ''}"
         for item in criteria
+        if item.get("is_mandatory", True)
     ).lower()
     text = re.sub(r"[^a-z0-9]+", " ", f"{title} {criteria_text}").strip()
+    if target_key in {"matric", "intermediate", "bachelors"} and re.search(
+        r"\\b(?:graduate|postgraduate)\\s+(?:students?|applicants?|degree|scholarships?)\\b|"
+        r"\\b(?:graduates?|postgraduates?)\\s+and\\s+(?:phd|doctoral)\\b",
+        text,
+    ):
+        target_names = {
+            "matric": "Matric", "intermediate": "Intermediate",
+            "bachelors": "Bachelor's / undergraduate",
+        }
+        return (
+            "This opportunity is for graduate/postgraduate applicants, not "
+            f"{target_names[target_key]} study."
+        )
 
     # Require explicit programme/applicant wording; a mention of a degree as
     # a prerequisite (e.g. 16 years of education) is not enough to classify.
