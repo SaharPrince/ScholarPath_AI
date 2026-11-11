@@ -429,6 +429,9 @@ async def discover_live_scholarships() -> list[dict]:
                         task.cancel()
                 if not eligibility_task.done():
                     eligibility_task.cancel()
+                for task in programme_enrichment_tasks:
+                    if not task.done():
+                        task.cancel()
 
         async def run_source_group(sources: list[dict], timeout: float) -> None:
             if not sources or timeout <= 0:
