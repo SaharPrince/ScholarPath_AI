@@ -19,7 +19,7 @@ MAX_RESPONSE_BYTES = 2_000_000
 USER_AGENT = "ScholarPathAI/0.4 (+official scholarship detail extractor)"
 FIELD_LABELS = {
     "provider_name": ("scholarship provider", "offered by", "administered by", "sponsor"),
-    "deadline_text": ("application deadline", "application closes", "deadline", "apply by", "closing date"),
+    "deadline_text": ("our next application deadlines", "application deadline", "application closes", "deadline", "apply by", "closing date"),
     "application_status": ("current status",),
     "funding_summary": ("funding", "scholarship value", "financial support", "tuition fee", "stipend"),
     "eligibility": ("eligibility", "who can apply", "eligible applicants"),
@@ -357,9 +357,19 @@ def _parse_deadline_date(value: str | None) -> str | None:
     """Normalize an explicitly extracted English deadline date to ISO format."""
     if not value:
         return None
-    match = DATE_PATTERN.search(value)
-    if not match:
+    matches = list(DATE_PATTERN.finditer(value))
+    if not matches:
         return None
+    # For application windows, prefer the first closing date (for example,
+    # "15 January until 1 March") rather than the opening date.
+    closing_matches = [
+        match for match in matches
+        if re.search(
+            r"(?i)(?:until|through|deadline(?:\\s+is)?|closes?(?:\\s+on)?|closing date|apply by|no later than)\\s*$",
+            value[max(0, match.start() - 48):match.start()],
+        )
+    ]
+    match = closing_matches[0] if closing_matches else matches[0]
     candidate = match.group(0).strip()
     for date_format in (
         "%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y",
@@ -999,6 +1009,17 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         if value:
             fields[field_name] = value[:1200]
             evidence.append((field_name, value[:1200]))
+
+    # Some official providers publish several application windows beneath a
+    # dedicated deadlines heading instead of a labelled field.
+    if "deadline_text" not in fields:
+        deadline_section = _find_heading_section(
+            content_root,
+            ("Application Deadlines", "Our Next Application Deadlines", "Deadlines"),
+        )
+        if deadline_section and DATE_PATTERN.search(deadline_section):
+            fields["deadline_text"] = deadline_section[:1200]
+            evidence.append(("deadline_text", fields["deadline_text"]))
 
     if not _is_opportunity(candidate_title or title, page_title or title, page_url, body_text):
         return None
