@@ -11,6 +11,20 @@ class ProfileMatchingTests(unittest.TestCase):
             "evidence_url": "https://official.example/eligibility",
         }
 
+    def test_bachelors_profile_excludes_completed_masters_requirement(self):
+        result = evaluate_criterion(
+            self.criterion("study_level", "Study level", "Applicants should have completed their Master degree within the last 2 years."),
+            {"target_study_level": "bachelors"},
+        )
+        self.assertEqual(result["status"], "fail")
+
+    def test_bachelors_profile_excludes_phd_program_requirement(self):
+        result = evaluate_criterion(
+            self.criterion("study_level", "Study level", "International PhD students may apply for a PhD program in Germany."),
+            {"target_study_level": "bachelors"},
+        )
+        self.assertEqual(result["status"], "fail")
+
     def test_bachelors_profile_excludes_masters_and_phd_only_awards(self):
         from app.matching import match_profile_to_scholarships
         rows = [
