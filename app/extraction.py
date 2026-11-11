@@ -287,6 +287,8 @@ def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
         return "language_requirements", "Language requirements"
     if re.search(r"\b(above-average|academic performance|grades|gpa|school performance)\b", text):
         return "academic_requirements", "Academic requirements"
+    if re.search(r"\b(master(?:'s)?|phd|doctoral|bachelor|undergraduate)\b", text):
+        return "study_level", "Study level"
     if re.search(r"\b(full-time|part-time|university|higher education institution|enrolled|admitted)\b", text):
         return "study_level", "Study requirements"
     return "eligibility", "Eligibility"
@@ -735,10 +737,10 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         if (
             raw_values
             and re.search(
-                r"(?i)\\b(?:command|knowledge|proficiency|fluency|understanding|ability|mastery)\\s*$",
+                r"(?i)\b(?:command|knowledge|proficiency|fluency|understanding|ability|mastery)\s*$",
                 raw_values[-1],
             )
-            and re.match(r"(?i)^(?:of|in|for|with|at)\\b", raw)
+            and re.match(r"(?i)^(?:of|in|for|with|at)\b", raw)
         ):
             raw_values[-1] = f"{raw_values[-1]} {raw}"
         else:
