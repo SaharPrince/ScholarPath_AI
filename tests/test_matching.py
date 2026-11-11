@@ -37,7 +37,7 @@ class ProfileMatchingTests(unittest.TestCase):
             2: [self.criterion("study_level", "Study level", "Graduate degree completed abroad")],
         }
         results = match_profile_to_scholarships(
-            rows, criteria, {"target_study_level": "bachelors"}
+            rows, criteria, {"target_study_level": "Bachelor's / Undergraduate"}
         )
         self.assertEqual(results, [])
 
