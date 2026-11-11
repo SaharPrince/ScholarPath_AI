@@ -950,7 +950,11 @@ def extract_criteria_from_html(html: str) -> list[tuple[str, str, str]]:
     soup = BeautifulSoup(html, "html.parser")
     content_root = _remove_site_chrome(soup)
     section_specs = {
-        "eligibility": ("Eligibility", "Eligibility Criteria", "Who can apply", "Eligible applicants", "Scholarship for Studies", "Requirements"),
+        "eligibility": (
+            "Eligibility", "Eligibility Criteria", "Who can apply", "Eligible applicants",
+            "Scholarship for Studies", "Requirements", "Wer kann sich bewerben?",
+            "Voraussetzungen", "Fördervoraussetzungen",
+        ),
         "ineligibility": (
             "Ineligibility", "Who cannot apply", "Who is not eligible",
             "Unfortunately, we cannot support the following",
