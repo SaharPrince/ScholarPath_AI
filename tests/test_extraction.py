@@ -109,6 +109,30 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         value = "Spring 2027: 15 January 2027 until 1 March 2027 Fall 2027: 15 July 2027 until 1 September 2027"
         self.assertEqual(_parse_deadline_date(value), "2027-03-01")
 
+    def test_normalizes_german_application_window_closing_date(self) -> None:
+        value = "15. November 2026 bis einschließlich 15. Januar 2027"
+        self.assertEqual(_parse_deadline_date(value), "2027-01-15")
+
+    def test_extracts_german_application_windows_from_list_items(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Hanns Seidel Scholarship Programme</h1>
+          <p>Unser Bewerbungsportal ist geöffnet:</p>
+          <ul>
+            <li>15. November 2026 bis einschließlich 15. Januar 2027: Promotionsstipendien.</li>
+            <li>15. Mai 2027 bis einschließlich 15. Juli 2027: Journalistisches Förderprogramm.</li>
+          </ul>
+          <h2>Who can apply?</h2>
+          <p>Applicants must hold a recognised degree and study full-time in Germany.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/hss-scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("15. November 2026", page.fields["deadline_text"])
+        self.assertIn("15. Mai 2027", page.fields["deadline_text"])
+        self.assertEqual(_parse_deadline_date(page.fields["deadline_text"]), "2027-01-15")
+
     def test_deadline_heading_section_is_extracted(self) -> None:
         html = """
         <html><body><main>
