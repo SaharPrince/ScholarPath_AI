@@ -1538,6 +1538,7 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
           <tr><td>am politically interested</td></tr>
           <tr><td>support democracy, rule of law, and human rights</td></tr>
           <tr><td>complete a full-time course of study at a state or state-recognized university in Germany.</td></tr></table>
+          <ul><li>Richtlinien Studienförderung</li></ul>
         </main></body></html>
         """
         criteria = extract_criteria_from_html(html)
