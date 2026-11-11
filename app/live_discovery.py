@@ -93,6 +93,20 @@ def _opportunity_id(url: str) -> int:
 
 
 
+def _source_page_urls(source: dict) -> list[str]:
+    """Return root/index pages plus explicitly curated same-host programmes."""
+    source_url = source["official_url"]
+    source_host = _normalized_host(source_url)
+    base_urls = _daad_database_page_urls(source_url)
+    if "scholarship-database" in source_url:
+        base_urls = base_urls[:MAX_DAAD_INDEX_PAGES]
+    programme_urls = [
+        url for url in source.get("programme_urls", ())
+        if source_host and _normalized_host(url) == source_host
+    ]
+    return list(dict.fromkeys([*base_urls, *programme_urls]))
+
+
 def _eligibility_links(html: str, page_url: str, limit: int = 3) -> list[str]:
     """Find same-site official pages likely to contain programme requirements."""
     soup = BeautifulSoup(html, "html.parser")
@@ -225,11 +239,7 @@ async def discover_live_scholarships() -> list[dict]:
 
         async def inspect_source(source: dict):
             source_url = source["official_url"]
-            index_urls = _daad_database_page_urls(source_url)
-            # Check only the first few DAAD result pages per student request.
-            # Crawling all 17 pages on every request caused avoidable timeouts;
-            # subsequent searches will fetch fresh data again.
-            index_urls = index_urls[:MAX_DAAD_INDEX_PAGES]
+            index_urls = _source_page_urls(source)
             eligibility_urls = list(source.get("eligibility_urls", ()))
             # Fetch explicitly curated eligibility pages alongside their
             # programme landing page so a slow secondary request cannot make
