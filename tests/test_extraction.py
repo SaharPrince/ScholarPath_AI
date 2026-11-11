@@ -105,6 +105,26 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertEqual(_parse_deadline_date("August 1, 2020"), "2020-08-01")
         self.assertEqual(_parse_deadline_date("30 September 2027"), "2027-09-30")
 
+    def test_application_windows_extract_closing_date_not_opening_date(self) -> None:
+        value = "Spring 2027: 15 January 2027 until 1 March 2027 Fall 2027: 15 July 2027 until 1 September 2027"
+        self.assertEqual(_parse_deadline_date(value), "2027-03-01")
+
+    def test_deadline_heading_section_is_extracted(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Tailwind for Talents Scholarship Programme</h1>
+          <h2>Our next application deadlines:</h2>
+          <p>Spring 2027: 15 January 2027 until 1 March 2027 Fall 2027: 15 July 2027 until 1 September 2027</p>
+          <h2>Who can apply?</h2>
+          <p>International students who completed their first degree abroad may apply before starting a Master's degree in Germany.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarships")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("1 March 2027", page.fields["deadline_text"])
+        self.assertEqual(_parse_deadline_date(page.fields["deadline_text"]), "2027-03-01")
+
 
     def test_ignores_navigation_and_footer_text(self) -> None:
         html = """
