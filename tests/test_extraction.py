@@ -174,6 +174,33 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("residence permit" in item[2] for item in page.criteria))
         self.assertTrue(any("Christian denomination" in item[2] for item in page.criteria))
 
+    def test_filters_promotional_cta_copy_from_german_eligibility(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Stipendium für Auszubildende – Lux Like Ausbildung</h1>
+          <p>Das Stipendium unterstützt Auszubildende mit finanzieller Förderung während ihrer beruflichen Ausbildung und begleitet sie bei gesellschaftlichem Engagement.</p>
+          <h2>Wer kann sich bewerben?</h2>
+          <ul>
+            <li>Personen unter 45 Jahre, die kein berufsqualifizierendes Studium abgeschlossen haben.</li>
+            <li>Jetzt über Stipendien für die berufliche Ausbildung informieren und online bewerben!</li>
+            <li>Du suchst ein Stipendium für deine Ausbildung?</li>
+            <li>Dann kannst du bei der Seite des BMFTR mehr erfahren!</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.rosalux.de/berufliche-bildung",
+            "Lux Like Ausbildung – Apprenticeship Scholarship",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("unter 45 jahre" in value for value in texts))
+        self.assertFalse(any("jetzt über stipendien" in value for value in texts))
+        self.assertFalse(any("du suchst ein stipendium" in value for value in texts))
+        self.assertFalse(any("bmftr mehr erfahren" in value for value in texts))
+
     def test_extracts_german_fes_international_student_requirements(self) -> None:
         html = """
         <html><body><main>
