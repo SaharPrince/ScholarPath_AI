@@ -1972,5 +1972,28 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertIsNotNone(DATE_PATTERN.search("Deadline: 15/04/2027."))
 
 
+    def test_funding_amount_under_deadline_heading_does_not_create_deadline(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>International Student Scholarship</h1>
+          <p>The programme supports eligible students studying in Germany.</p>
+          <h2>Our Next Application Deadlines</h2>
+          <p>Monthly funding is 1.500 Euro for up to 3.5 years.</p>
+          <h2>Funding</h2>
+          <p>Recipients receive 1.500 Euro per month.</p>
+          <h2>Eligibility</h2>
+          <ul><li>Applicants must be enrolled at a German university.</li></ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://provider.example/international-student-scholarship",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertNotIn("deadline_text", page.fields)
+        self.assertIn("1.500 Euro", page.fields.get("funding_summary", ""))
+
+
 if __name__ == "__main__":
     unittest.main()
