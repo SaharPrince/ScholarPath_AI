@@ -201,7 +201,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("hochschule" in value for value in texts))
         self.assertTrue(any("noten im studium" in value for value in texts), repr(texts))
         self.assertTrue(any("gesellschaftspolitisch engagiert" in value for value in texts))
-        self.assertTrue(any("soziale demokratie" in value for value in texts))
+        self.assertTrue(any("soziale demokratie" in value for value in texts), repr(texts))
 
     def test_extracts_german_fes_apprentice_requirements(self) -> None:
         html = """
@@ -226,7 +226,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertIsNotNone(page)
         assert page is not None
         texts = [item[2].casefold() for item in page.criteria]
-        self.assertTrue(any("ausbildungsjahr" in value for value in texts))
+        self.assertTrue(any("ausbildungsjahr" in value for value in texts), repr(texts))
         self.assertTrue(any("ausbildungsberuf" in value for value in texts))
         self.assertTrue(any("ausbildungsvertrag" in value for value in texts))
         self.assertTrue(any("staatsangehörige" in value for value in texts))
