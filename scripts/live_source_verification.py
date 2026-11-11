@@ -106,7 +106,7 @@ async def main() -> None:
         for item in access_restricted:
             print("-", item)
 
-    print("\\n========== LIVE SCHOLARSHIP DISCOVERY CHECK ==========")
+    print("\n========== LIVE SCHOLARSHIP DISCOVERY CHECK ==========")
     records = await discover_live_scholarships()
     print(f"Fresh live scholarship records extracted: {len(records)}")
     for record in records:
