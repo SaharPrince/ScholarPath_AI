@@ -432,11 +432,11 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
     """Collect visible paragraph/list content beneath a matching section heading."""
     wanted = {name.casefold() for name in heading_names}
     for heading in content_root.find_all(["h2", "h3", "h4", "h5"]):
-        heading_text = _clean(heading.get_text(" ", strip=True)).rstrip(":").casefold()
+        heading_text = _clean(heading.get_text(" ", strip=True)).rstrip(":?! .").casefold()
         if heading_text not in wanted:
             continue
         chunks: list[str] = []
-        nodes = heading.find_all_next(["h1", "h2", "h3", "h4", "h5", "p", "li"])
+        nodes = heading.find_all_next(["h1", "h2", "h3", "h4", "h5", "p", "li", "td", "th"])
         section_nodes = []
         for node in nodes:
             if node.name in {"h1", "h2", "h3", "h4", "h5"}:
@@ -462,7 +462,7 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
                 )
             ]
         else:
-            selected_nodes = [node for node in section_nodes if node.name == "p"]
+            selected_nodes = [node for node in section_nodes if node.name in {"p", "td", "th"}]
         for node in selected_nodes:
             # Skip nested list items when their parent item already captures
             # the complete requirement.
@@ -747,7 +747,7 @@ def extract_criteria_from_html(html: str) -> list[tuple[str, str, str]]:
     soup = BeautifulSoup(html, "html.parser")
     content_root = _remove_site_chrome(soup)
     section_specs = {
-        "eligibility": ("Eligibility", "Eligibility Criteria", "Who can apply", "Eligible applicants", "Requirements"),
+        "eligibility": ("Eligibility", "Eligibility Criteria", "Who can apply", "Eligible applicants", "Scholarship for Studies", "Requirements"),
         "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
         "study_level": ("Degree Level", "Study Level", "Level of Study", "Academic qualification"),
         "nationality": ("Nationality Requirements", "Citizenship Requirements", "Eligible Nationalities", "Eligible Countries"),
