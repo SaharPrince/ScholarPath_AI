@@ -262,7 +262,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         html = """
         <html><body><main>
           <h1>Förderung für Auszubildende</h1>
-          <p>Das Stipendium unterstützt Auszubildende während ihrer anerkannten beruflichen Ausbildung.</p>
+          <p>Das Stipendium für Auszubildende unterstützt Auszubildende während ihrer anerkannten beruflichen Ausbildung und stärkt ihre gesellschaftliche Teilhabe durch zusätzliche fachliche und persönliche Begleitung.</p>
           <ul>
             <li>am Anfang des ersten und spätestens am Anfang des zweiten Ausbildungsjahres stehen</li>
             <li>einen staatlich anerkannten Ausbildungsberuf erlernen</li>
