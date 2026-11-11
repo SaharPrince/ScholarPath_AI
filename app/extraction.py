@@ -795,7 +795,7 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
     # these snippets in the same section.
     if re.match(
         r"(?i)^(?:jetzt über stipendien|du suchst ein stipendium|"
-        r"dann kannst du bei der seite|mehr erfahren|jetzt online bewerben)\\b",
+        r"dann kannst du bei der seite|mehr erfahren|jetzt online bewerben)\b",
         value,
     ):
         return False
