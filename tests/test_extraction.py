@@ -258,6 +258,40 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("ausbildungsvertrag" in value for value in texts))
         self.assertTrue(any("staatsangehörige" in value for value in texts))
 
+    def test_fes_related_programme_teasers_do_not_leak_into_apprentice_criteria(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Förderung für Auszubildende</h1>
+          <p>Das Stipendium unterstützt Auszubildende während ihrer anerkannten beruflichen Ausbildung.</p>
+          <ul>
+            <li>am Anfang des ersten und spätestens am Anfang des zweiten Ausbildungsjahres stehen</li>
+            <li>einen staatlich anerkannten Ausbildungsberuf erlernen</li>
+          </ul>
+          <h2>Finden Sie jetzt Ihr passendes Stipendienprogramm</h2>
+          <div class="ce-defaults ce-teaser">
+            <h3>Grundförderung für Ausländer:innen</h3>
+            <p>Die Förderung richtet sich an Studierende, die bereits an einer deutschen Hochschule studieren.</p>
+          </div>
+          <div class="ce-defaults ce-teaser">
+            <h3>Promotionsförderung für Ausländer:innen</h3>
+            <p>Die Förderung richtet sich an ausländische Doktorand:innen, die zur Promotion zugelassen sind.</p>
+          </div>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.fes.de/studienfoerderung/stipendium/stipendien-auszubildende",
+            "FES Scholarship for Apprentices",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("ausbildungsjahr" in value for value in texts), repr(texts))
+        self.assertTrue(any("ausbildungsberuf" in value for value in texts), repr(texts))
+        self.assertFalse(any("doktorand" in value for value in texts), repr(texts))
+        self.assertFalse(any("hochschule studieren" in value for value in texts), repr(texts))
+
+
     def test_classifies_german_rosa_luxemburg_apprentice_age_and_residence_rules(self) -> None:
         html = """
         <html><body><main>
