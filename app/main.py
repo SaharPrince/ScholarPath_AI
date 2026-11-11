@@ -124,12 +124,13 @@ async def match_profile(profile: dict) -> dict:
     scholarships = await _live_results()
     criteria_by_id = {row["id"]: row.get("criteria", []) for row in scholarships}
     results = match_profile_to_scholarships(scholarships, criteria_by_id, profile)
+    visible_results = [item for item in results if item["match_status"] != "not_eligible"]
     return {
         "total": len(results),
         "likely_eligible": sum(item["match_status"] == "likely_eligible" for item in results),
         "needs_more_information": sum(item["match_status"] == "needs_more_information" for item in results),
         "not_eligible": sum(item["match_status"] == "not_eligible" for item in results),
-        "results": results,
+        "results": visible_results,
         "notice": "Live preliminary matching only. Unknown or unsupported requirements are not assumed satisfied. Confirm current details with the official provider.",
     }
 
