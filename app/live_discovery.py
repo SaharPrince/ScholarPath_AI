@@ -469,13 +469,13 @@ async def discover_live_scholarships() -> list[dict]:
             if source not in priority_sources
         ]
         loop = asyncio.get_running_loop()
-        discovery_started = loop.time()
-        priority_budget = min(6.0, DISCOVERY_BUDGET_SECONDS)
-        await run_source_group(priority_sources, priority_budget)
-        remaining_budget = max(
-            0.0, DISCOVERY_BUDGET_SECONDS - (loop.time() - discovery_started)
+        # Scan both groups inside the same bounded request window. Running
+        # the secondary group only after the priority budget expired left it
+        # almost no time on slow providers and made results depend on ordering.
+        await asyncio.gather(
+            run_source_group(priority_sources, DISCOVERY_BUDGET_SECONDS),
+            run_source_group(secondary_sources, DISCOVERY_BUDGET_SECONDS),
         )
-        await run_source_group(secondary_sources, remaining_budget)
         if successful_pages == 0:
             raise RuntimeError("No official scholarship source pages responded")
 
