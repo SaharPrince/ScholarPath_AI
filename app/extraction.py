@@ -952,7 +952,7 @@ def extract_criteria_from_html(html: str) -> list[tuple[str, str, str]]:
     section_specs = {
         "eligibility": (
             "Eligibility", "Eligibility Criteria", "Who can apply", "Eligible applicants",
-            "Scholarship for Studies", "Requirements", "Wer kann sich bewerben?",
+            "Scholarship for Studies", "Requirements", "Wer kann sich bewerben",
             "Voraussetzungen", "Fördervoraussetzungen",
         ),
         "ineligibility": (
