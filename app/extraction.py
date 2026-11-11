@@ -819,7 +819,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         r"international students?|citizens?|nationals?|residents?|"
         r"bewerber(?:innen|:innen)?|studierende|promovierende|"
         r"auszubildende|azubis|ausländer(?:innen|:innen)?|"
-        r"geflüchtete|staatsangehörige|personen)\b"
+        r"geflüchtete|staatsangehörige|personen|menschen)\b"
     )
     raw_values: list[str] = []
     implied_applicant_condition = re.compile(
@@ -902,7 +902,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
                 r"citizenship|residence|enrol(?:led|ment)|study level|"
                 r"studium|ausbildung|ausbildungsberuf|ausbildungsjahr|"
                 r"hochschule|fachhochschule|deutschkenntnisse|sprachkenntnisse|"
-                r"noten|leistungen|engagement|identifikation|staatsangehörigkeit|"
+                r"noten|leistungen|engagement|engagiert|identifikation|identifizieren|staatsangehörigkeit|"
                 r"aufenthaltstitel|berufserfahrung|ausbildungsvertrag|abschluss|semester)\b",
                 statement,
             ))
