@@ -259,6 +259,31 @@ async def discover_live_scholarships() -> list[dict]:
                     return_exceptions=True,
                 )
 
+            async def enrich_records(records_with_html):
+                # Batch secondary requirements fetches. Awaiting them inside the
+                # index-page completion loop let one slow provider delay every
+                # other completed programme in a serverless request.
+                requests = []
+                for record, page_html in records_with_html:
+                    if page_html and not record["criteria"]:
+                        requests.extend(
+                            (record, url)
+                            for url in _eligibility_links(page_html, record["source_url"])
+                        )
+                if not requests:
+                    return
+                pages = await asyncio.gather(
+                    *(fetch(url) for _record, url in requests),
+                    return_exceptions=True,
+                )
+                for (record, requirements_url), page_result in zip(requests, pages):
+                    if isinstance(page_result, Exception):
+                        continue
+                    requirements_html, _error = page_result
+                    if requirements_html:
+                        extracted = extract_criteria_from_html(requirements_html)
+                        _merge_linked_criteria(record, extracted, requirements_url)
+
             eligibility_task = asyncio.create_task(fetch_eligibility_pages())
             index_tasks = [
                 asyncio.create_task(
@@ -268,6 +293,7 @@ async def discover_live_scholarships() -> list[dict]:
             ]
             candidate_urls: dict[str, str] = {}
             root_records: list[tuple[dict, str | None]] = []
+            programme_records: list[tuple[dict, str | None]] = []
             try:
                 # Consume index pages as soon as each one completes. A slow root
                 # page must not hide faster curated programme pages when the
@@ -285,29 +311,18 @@ async def discover_live_scholarships() -> list[dict]:
                             # without blocking direct programme records.
                             root_records.append((record, page_html))
                         else:
-                            if page_html and not record["criteria"]:
-                                requirements_urls = _eligibility_links(
-                                    page_html, record["source_url"]
-                                )
-                                pages = await asyncio.gather(
-                                    *(fetch(url) for url in requirements_urls),
-                                    return_exceptions=True,
-                                )
-                                for requirements_url, page_result in zip(requirements_urls, pages):
-                                    if isinstance(page_result, Exception):
-                                        continue
-                                    requirements_html, _error = page_result
-                                    if requirements_html:
-                                        extracted = extract_criteria_from_html(requirements_html)
-                                        _merge_linked_criteria(
-                                            record, extracted, requirements_url
-                                        )
+                            programme_records.append((record, page_html))
                             if _has_actionable_eligibility(record):
                                 results[record["source_url"]] = record
                     for url, title in links:
                         candidate_urls.setdefault(url, title)
 
-                eligibility_results = await eligibility_task
+                # Direct programme records are kept immediately, then enriched
+                # concurrently so one secondary page cannot starve other results.
+                eligibility_results, _ = await asyncio.gather(
+                    eligibility_task,
+                    enrich_records(programme_records),
+                )
                 eligibility_pages: dict[str, str] = {}
                 for url, page_result in zip(eligibility_urls, eligibility_results):
                     if isinstance(page_result, Exception):
@@ -316,26 +331,17 @@ async def discover_live_scholarships() -> list[dict]:
                     if requirements_html:
                         eligibility_pages[url] = requirements_html
 
+                root_followups = []
                 for record, page_html in root_records:
                     for requirements_url, requirements_html in eligibility_pages.items():
                         extracted = extract_criteria_from_html(requirements_html)
                         _merge_linked_criteria(record, extracted, requirements_url)
                     if page_html and not record["criteria"]:
-                        requirements_urls = [
-                            url for url in _eligibility_links(page_html, record["source_url"])
-                            if url not in eligibility_pages
-                        ]
-                        pages = await asyncio.gather(
-                            *(fetch(url) for url in requirements_urls),
-                            return_exceptions=True,
-                        )
-                        for requirements_url, page_result in zip(requirements_urls, pages):
-                            if isinstance(page_result, Exception):
-                                continue
-                            requirements_html, _error = page_result
-                            if requirements_html:
-                                extracted = extract_criteria_from_html(requirements_html)
-                                _merge_linked_criteria(record, extracted, requirements_url)
+                        root_followups.append((record, page_html))
+                    if _has_actionable_eligibility(record):
+                        results[record["source_url"]] = record
+                await enrich_records(root_followups)
+                for record, _page_html in root_followups:
                     if _has_actionable_eligibility(record):
                         results[record["source_url"]] = record
 
@@ -348,30 +354,19 @@ async def discover_live_scholarships() -> list[dict]:
                         *(inspect_page(source, url, title) for url, title in detail_items),
                         return_exceptions=True,
                     )
+                    detail_records = []
                     for item in details:
                         if isinstance(item, Exception):
                             continue
                         record, _links, detail_html = item
                         if record and not _is_generic_source_title(record):
-                            if detail_html and not record["criteria"]:
-                                requirements_urls = _eligibility_links(
-                                    detail_html, record["source_url"]
-                                )
-                                pages = await asyncio.gather(
-                                    *(fetch(url) for url in requirements_urls),
-                                    return_exceptions=True,
-                                )
-                                for requirements_url, page_result in zip(requirements_urls, pages):
-                                    if isinstance(page_result, Exception):
-                                        continue
-                                    requirements_html, _error = page_result
-                                    if requirements_html:
-                                        extracted = extract_criteria_from_html(requirements_html)
-                                        _merge_linked_criteria(
-                                            record, extracted, requirements_url
-                                        )
+                            detail_records.append((record, detail_html))
                             if _has_actionable_eligibility(record):
                                 results[record["source_url"]] = record
+                    await enrich_records(detail_records)
+                    for record, _detail_html in detail_records:
+                        if _has_actionable_eligibility(record):
+                            results[record["source_url"]] = record
             finally:
                 for task in index_tasks:
                     if not task.done():
