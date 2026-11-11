@@ -51,5 +51,43 @@ class LiveDiscoveryRecordTests(unittest.TestCase):
         self.assertIsInstance(_opportunity_id(url), int)
 
 
+class SourcePagePromotionTests(unittest.TestCase):
+    def test_directory_sources_are_never_promoted_as_individual_scholarships(self):
+        from app.live_discovery import _is_promotable_source_page
+
+        record = {"title": "Funding Opportunities from other Organisations"}
+        for source_type in ("official_index", "official_database", "government", "university"):
+            with self.subTest(source_type=source_type):
+                self.assertFalse(
+                    _is_promotable_source_page(record, {"source_type": source_type})
+                )
+
+    def test_generic_provider_landing_titles_are_rejected(self):
+        from app.live_discovery import _is_promotable_source_page
+
+        for title in (
+            "Welcome",
+            "Scholarship Providers",
+            "Scholarships by Target Group and Stage of University Education",
+            "Scholarship Programmes for Pakistan",
+        ):
+            with self.subTest(title=title):
+                self.assertFalse(
+                    _is_promotable_source_page(
+                        {"title": title}, {"source_type": "official_programme"}
+                    )
+                )
+
+    def test_named_programme_page_can_be_promoted(self):
+        from app.live_discovery import _is_promotable_source_page
+
+        self.assertTrue(
+            _is_promotable_source_page(
+                {"title": "Tailwind for Talents: Scholarships for Graduates and PhD students"},
+                {"source_type": "official_programme"},
+            )
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
