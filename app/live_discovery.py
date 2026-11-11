@@ -179,7 +179,7 @@ def _as_record(parsed, source: dict, url: str) -> dict:
     return {
         "id": _opportunity_id(url),
         "title": parsed.title,
-        "provider_name": parsed.provider_name,
+        "provider_name": parsed.provider_name or source.get("provider_name") or source["name"],
         "country": "Germany",
         "study_destination": fields.get("study_destination") or "Germany",
         "funding_summary": fields.get("funding_summary"),
