@@ -458,6 +458,17 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
     def test_explicit_open_and_upcoming_language(self) -> None:
         self.assertEqual(_classify_application_status("Applications are now open", None), "open")
         self.assertEqual(_classify_application_status("Applications will open in October", None), "upcoming")
+        self.assertEqual(
+            _classify_application_status(
+                "The online application portal opens on January 15, 2027, and closes on March 1, 2027.",
+                "2027-03-01",
+            ),
+            "upcoming",
+        )
+        self.assertEqual(
+            _classify_application_status("Applications are open until March 1, 2027.", "2027-03-01"),
+            "open",
+        )
 
     def test_rolling_and_discontinued_statuses(self) -> None:
         self.assertEqual(_classify_application_status("Applications accepted throughout the year", None), "open")
