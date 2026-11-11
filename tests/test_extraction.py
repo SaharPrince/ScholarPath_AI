@@ -1823,6 +1823,40 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertFalse(any("submit your application directly" in text.lower() for text in texts))
 
 
+    def test_filters_rosa_lux_apprentice_promotion_and_repairs_age_rule(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Lux Like Ausbildung</h1>
+          <p>Das neue Förderprogramm „Lux Like Ausbildung“ unterstützt Azubis finanziell und mit einem umfangreichen Begleitprogramm.</p>
+          <p>Stipendium für die berufliche Ausbildung – das bietet dir „Lux Like Ausbildung“:</p>
+          <p>Individuelle Betreuung durch Mentor*innen – egal ob in der Ausbildung oder deinem Aktivismus.</p>
+          <h2>Wer kann sich bewerben?</h2>
+          <ul>
+            <li>Azubis in einer anerkannten Ausbildung (BBiG/HwO, Gesundheitsberufe oder landesrechtlich geregelt).</li>
+            <li>Personen unter 45 Jahre (mit Ausnahmen, z.</li>
+            <li>B. für Zweitausbildung oder mit Kindern), die kein berufsqualifizierendes Studium abgeschlossen haben.</li>
+            <li>Bewerber*innen mit ständigem Wohnsitz in Deutschland oder Aufenthaltstitel (§ 8 BAföG-Gesetz) oder deutscher Staatsangehörigkeit.</li>
+            <li>Ausbildungsvertrag / Schulbescheinigung oder Zusage des Betriebes / der Schule.</li>
+          </ul>
+          <p>Hier kannst du prüfen, ob deine Ausbildung anerkannt ist: https://www.bibb.de/de/65925.php</p>
+          <p>Die restlichen, unpersönlicheren Felder füllst du mit deinen Personaldaten.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/lux-like-ausbildung")
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2] for item in page.criteria]
+        age = next(item for item in texts if "unter 45 Jahre" in item)
+        self.assertIn("z. B. für Zweitausbildung", age)
+        self.assertIn("kein berufsqualifizierendes Studium abgeschlossen", age)
+        self.assertTrue(any("anerkannten Ausbildung" in item for item in texts))
+        self.assertTrue(any("ständigem Wohnsitz" in item for item in texts))
+        self.assertFalse(any("umfangreichen Begleitprogramm" in item for item in texts))
+        self.assertFalse(any("Mentor*innen" in item for item in texts))
+        self.assertFalse(any("Hier kannst du prüfen" in item for item in texts))
+        self.assertFalse(any("unpersönlicheren Felder" in item for item in texts))
+
+
     def test_funding_amount_is_not_misclassified_as_eligibility(self) -> None:
         html = """
         <html><body><main>
