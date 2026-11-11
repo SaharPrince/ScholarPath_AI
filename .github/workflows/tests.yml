@@ -3,11 +3,10 @@ name: ScholarPath tests
 on:
   push:
     branches:
-      - main
-      - fix/eligibility-criteria-normalization
+      - "**"
   pull_request:
     branches:
-      - main
+      - "**"
   workflow_dispatch:
 
 permissions:
