@@ -803,9 +803,9 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
         return False
     # Funding amounts describe the award, not a condition the applicant must meet.
     if (
-        re.search(r"(?i)\\b(?:stipendium|scholarship|funding|förderung)\\b", value)
-        and re.search(r"(?i)\\b\\d[\\d.,]*\\s*(?:€|euro)\\b", value)
-        and re.search(r"(?i)\\b(?:im monat|monatlich|pro monat|per month|monthly)\\b", value)
+        re.search(r"(?i)\b(?:stipendium|scholarship|funding|förderung)\b", value)
+        and re.search(r"(?i)\b\d[\d.,]*\s*(?:€|euro)\b", value)
+        and re.search(r"(?i)\b(?:im monat|monatlich|pro monat|per month|monthly)\b", value)
     ):
         return False
     return True
