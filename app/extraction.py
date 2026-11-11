@@ -434,6 +434,9 @@ def _is_opportunity(candidate_title: str, page_title: str, page_url: str, body_t
         "application period", "applications open", "voraussetzungen",
         "bewerbungsfrist", "bewerbungsportal", "stipendium",
         "studienförderung", "förderung", "finanzielle unterstützung",
+        "we support", "applicants must", "must be submitted",
+        "residence permit", "come from a country", "belong to the catholic church",
+        "have sufficient knowledge",
     ))
     return has_opportunity_identity and has_specific_fact
 
