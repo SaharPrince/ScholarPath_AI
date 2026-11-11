@@ -23,7 +23,7 @@ from app.extraction import (
 from app.source_catalog import GERMANY_SOURCES
 
 
-MAX_CANDIDATES_PER_SOURCE = 1
+MAX_CANDIDATES_PER_SOURCE = 3
 MAX_LIVE_RESULTS = 100
 # Keep each source request short enough to return partial results within
 # common serverless execution limits. Slow sources must not block all others.
@@ -31,6 +31,34 @@ REQUEST_TIMEOUT = httpx.Timeout(2.5, connect=1.5)
 DISCOVERY_BUDGET_SECONDS = 6.5
 MAX_DAAD_INDEX_PAGES = 4
 REQUEST_LIMITS = httpx.Limits(max_connections=40, max_keepalive_connections=20)
+
+
+
+_GENERIC_SOURCE_TITLE_MARKERS = (
+    "welcome",
+    "funding opportunities from other organisations",
+    "scholarships by target group",
+    "scholarship providers",
+    "scholarship database",
+    "scholarship programmes for pakistan",
+    "scholarships and other funding for international students",
+    "study funding",
+    "funding opportunities",
+)
+
+
+def _is_promotable_source_page(record: dict, source: dict) -> bool:
+    """Prevent broad indexes and provider directories from becoming scholarships."""
+    if source.get("source_type") in {
+        "official_index", "official_database", "government", "university"
+    }:
+        return False
+    title = " ".join(str(record.get("title") or "").casefold().split())
+    if not title or title in {"scholarship", "scholarships", "funding", "welcome"}:
+        return False
+    if any(marker in title for marker in _GENERIC_SOURCE_TITLE_MARKERS):
+        return False
+    return True
 
 
 def _opportunity_id(url: str) -> int:
@@ -182,7 +210,7 @@ async def discover_live_scholarships() -> list[dict]:
                 if isinstance(item, Exception):
                     continue
                 record, links, _html = item
-                if record:
+                if record and _is_promotable_source_page(record, source):
                     results[record["source_url"]] = record
                 for url, title in links:
                     candidate_urls.setdefault(url, title)
