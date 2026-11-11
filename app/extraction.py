@@ -290,8 +290,8 @@ def _split_criteria_statements(value: str) -> list[str]:
         cleaned = _clean(part)
         if (
             restored
-            and re.match(r"(?i)^B\\.\\s+für Zweitausbildung\\b", cleaned)
-            and re.search(r"(?i)\\bz\\.$", restored[-1])
+            and re.match(r"(?i)^B\.\s+für Zweitausbildung\b", cleaned)
+            and re.search(r"(?i)\bz\.$", restored[-1])
         ):
             # Some German provider pages split the abbreviation "z. B."
             # across separate list items or DOM text blocks. Rejoin the
