@@ -36,6 +36,11 @@ REQUEST_LIMITS = httpx.Limits(max_connections=40, max_keepalive_connections=20)
 
 _GENERIC_SOURCE_TITLE_MARKERS = (
     "welcome",
+    "studienwerk",
+    "scholarship department",
+    "stipendium",
+    "stipendien",
+    "studienförderung",
     "funding opportunities from other organisations",
     "scholarships by target group",
     "scholarship providers",
