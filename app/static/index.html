@@ -461,7 +461,7 @@ function summarizeRequirement(text,label){
   .replace(/\bplease note that\b/ig,"")
   .replace(/\bfor consideration\b/ig,"")
   .replace(/\s+/g," ").trim();
- if(compact.length>112)compact=compact.slice(0,109).replace(/\s+\\S*$/,"")+"…";
+ if(compact.length>112)compact=compact.slice(0,109).replace(/\s+\S*$/,"")+"…";
  return compact;
 }
 function requirementKey(type,label,text){
