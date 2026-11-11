@@ -118,17 +118,43 @@ async def main() -> None:
             f"{record.get('source_url')}"
         )
 
-    # The two KAAD programmes are directly curated official detail pages and
-    # provide a stable minimum smoke-test for real record extraction. This
-    # checks discovery output only; no scholarship data is persisted.
-    kaad_urls = {
-        record.get("source_url")
-        for record in records
-        if "kaad.de/en/stipendien/stipendienprogramm-" in str(record.get("source_url", ""))
+    # Validate the curated foundation programme pages that were added to
+    # increase real opportunity coverage. A single provider can be temporarily
+    # slow, so do not make an unrelated provider's response a hard dependency.
+    expected_programme_urls = {
+        "https://www.hss.de/stipendium/foerderung/foerderung-auszubildender/",
+        "https://www.fes.de/studienfoerderung/stipendium/stipendien-auszubildende",
+        "https://www.fes.de/studienfoerderung/stipendium/grundfoerderung-fuer-auslaender-innen",
+        "https://www.fes.de/studienfoerderung/stipendium/promotionsfoerderung-fuer-auslaender-innen",
+        "https://www.rosalux.de/stiftung/studienwerk/stipendien/studienstipendium",
+        "https://www.rosalux.de/stiftung/studienwerk/stipendien/promotionsstipendium",
+        "https://www.rosalux.de/berufliche-bildung",
     }
-    if len(kaad_urls) < 2:
+    found_programme_urls = {record.get("source_url") for record in records}
+    missing_programmes = expected_programme_urls - found_programme_urls
+    if len(records) < 5:
         blocking_failures.append(
-            "Live discovery did not return both directly configured KAAD programme pages."
+            f"Live discovery returned only {len(records)} records; expected at least 5."
+        )
+    if missing_programmes:
+        blocking_failures.append(
+            "Curated official programme pages were not extracted: "
+            + ", ".join(sorted(missing_programmes))
+        )
+
+    missing_evidence = []
+    for record in records:
+        source_host = urlparse(str(record.get("source_url", ""))).hostname
+        for criterion in record.get("criteria", []):
+            evidence_url = criterion.get("evidence_url")
+            if not evidence_url or urlparse(str(evidence_url)).hostname != source_host:
+                missing_evidence.append(
+                    f"{record.get('title')}: {criterion.get('requirement_text')}"
+                )
+    if missing_evidence:
+        blocking_failures.append(
+            "Some criteria lack same-host official evidence URLs: "
+            + "; ".join(missing_evidence[:10])
         )
 
     if blocking_failures:
