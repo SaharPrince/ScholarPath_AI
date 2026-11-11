@@ -363,7 +363,9 @@ def _is_opportunity(candidate_title: str, page_title: str, page_url: str, body_t
     has_specific_fact = any(term in body_text.lower() for term in (
         "eligibility", "who can apply", "application deadline", "apply by",
         "funding", "stipend", "tuition", "minimum gpa", "academic requirement",
-        "application period", "applications open",
+        "application period", "applications open", "voraussetzungen",
+        "bewerbungsfrist", "bewerbungsportal", "stipendium",
+        "studienförderung", "förderung", "finanzielle unterstützung",
     ))
     return has_opportunity_identity and has_specific_fact
 
@@ -1033,7 +1035,10 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             continue
         if "provides opportunities and scholarships" in lowered or "welcome to" in lowered:
             continue
-        if any(term in lowered for term in ("scholarship", "fellowship", "grant", "programme", "program")):
+        if any(term in lowered for term in (
+            "scholarship", "fellowship", "grant", "programme", "program",
+            "stipendium", "förderung", "studierende", "promovierende",
+        )):
             description = candidate[:1200]
             break
 
