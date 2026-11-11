@@ -778,6 +778,13 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
         value,
     ):
         return False
+    # These clarify interpretation of the conditions but are not applicant rules.
+    lowered_value = value.casefold()
+    if lowered_value.startswith((
+        "zur auslegung der fördervoraussetzungen",
+        "ein vor der aufnahme in die förderung erfolgter studien- oder ausbildungsabbruch",
+    )):
+        return False
     if re.match(
         r"(?i)^bewerber(?:innen|:innen)? sollten folgende kriterien erfüllen\b",
         value,
