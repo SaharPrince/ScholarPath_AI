@@ -1059,7 +1059,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             statements = _split_criteria_statements(fields[field_name])
             for statement in statements:
                 statement = _clean(statement)
-                if not statement:
+                if not statement or not _is_applicant_eligibility_statement(statement):
                     continue
                 if re.search(
                     r"(?i)^(?:all program activities will be in english|"
