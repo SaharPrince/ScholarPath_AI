@@ -753,6 +753,16 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
         value,
     ):
         return False
+    # Explanations about how the provider consults the national training
+    # register are administrative guidance, not conditions an applicant must
+    # satisfy. Keep the actual recognised-occupation condition itself.
+    if re.match(
+        r"(?i)^(?:für die entscheidung über den zugang zur förderung|"
+        r"im bereich der bundesrechtlich geregelten ausbildungsberufe ist "
+        r"dieses verzeichnis)\\b",
+        value,
+    ):
+        return False
     if re.match(r"(?i)^speak german at an adequate level\b", value):
         return False
     return True
