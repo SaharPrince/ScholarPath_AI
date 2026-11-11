@@ -3,7 +3,7 @@ import unittest
 
 from app.extraction import (
     _clean, _classify_application_status, _classify_applicant_category,
-    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, parse_scholarship_page, _save_evidence, _parse_hec_knowledge_corridor, _remove_site_chrome,
+    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, extract_criteria_from_html, parse_scholarship_page, _save_evidence, _parse_hec_knowledge_corridor, _remove_site_chrome,
 )
 
 
@@ -51,6 +51,23 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "academic, training, or research programs "
             "be a full-time education administrator; permanent residency in the past three years; "
             "U.S. Department of State; i.e. spouses",
+        )
+
+    def test_filters_provider_directory_descriptions_from_applicant_criteria(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Scholarship Directory</h1>
+          <h2>Eligibility</h2>
+          <p>International students can apply to various funding options listed here.</p>
+          <p>Denominational organisations: Students wishing to study theology may apply for support.</p>
+          <p>Applicants must hold a bachelor's degree from a recognised university.</p>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        texts = [text for _kind, _label, text in criteria]
+        self.assertEqual(
+            texts,
+            ["Applicants must hold a bachelor's degree from a recognised university."],
         )
 
     def test_extracts_visible_facts_and_keeps_evidence(self) -> None:
