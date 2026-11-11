@@ -201,7 +201,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("hochschule" in value for value in texts))
         self.assertTrue(any("noten im studium" in value for value in texts), repr(texts))
         self.assertTrue(any("gesellschaftspolitisch engagiert" in value for value in texts))
-        self.assertTrue(any("soziale demokratie" in value for value in texts), repr(texts))
+        self.assertTrue(any("sozialen demokratie" in value for value in texts), repr(texts))
 
     def test_extracts_german_fes_apprentice_requirements(self) -> None:
         html = """
