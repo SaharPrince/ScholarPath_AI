@@ -1000,7 +1000,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     section_specs = {
         "eligibility": (
             "Eligibility Criteria", "Eligibility", "Who can apply", "Eligible applicants",
-            "Technical Eligibility Requirements", "Requirements",
+            "Technical Eligibility Requirements",
         ),
         "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
         "study_level": ("Degree Level", "Study Level", "Level of Study", "Eligible Degree Levels"),
@@ -1011,6 +1011,9 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         "language_requirements": ("Language Requirements", "Language Proficiency", "English Language Requirements"),
         "work_experience": ("Work Experience", "Professional Experience", "Relevant Experience"),
     }
+    if "irgac" in page_url.casefold() or "irgac" in title.casefold():
+        section_specs["eligibility"] = (*section_specs["eligibility"], "Requirements")
+
     for field_name, headings in section_specs.items():
         section = _find_heading_section(content_root, headings)
         if not section:
