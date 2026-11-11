@@ -293,7 +293,11 @@ def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
         return "academic_requirements", "Academic requirements"
     if re.search(r"\b(master(?:'s)?|phd|doctoral)\b", text):
         return "study_level", "Study level"
-    if re.search(r"\b(full-time|part-time|university|higher education institution|enrolled|admitted)\b", text):
+    if re.search(
+        r"\\b(?:full-time|part-time)\\s+(?:course|study|student|degree|programme|program)\\b|"
+        r"\\b(university|higher education institution|enrolled|admitted)\\b",
+        text,
+    ):
         return "study_level", "Study requirements"
     return "eligibility", "Eligibility"
 
