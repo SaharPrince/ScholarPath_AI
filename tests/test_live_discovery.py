@@ -139,6 +139,23 @@ class SourcePagePromotionTests(unittest.TestCase):
             "source_url": "https://www.hss.de/stipendium/foerderung/foerderung-auszubildender/"
         }, source_url))
 
+    def test_source_candidate_title_uses_curated_programme_title(self):
+        from app.live_discovery import _source_candidate_title
+
+        url = "https://provider.example/student-scholarship"
+        source = {
+            "name": "Provider Scholarship Directory",
+            "programme_titles": {url: "Provider International Student Scholarship"},
+        }
+        self.assertEqual(
+            _source_candidate_title(source, url),
+            "Provider International Student Scholarship",
+        )
+        self.assertEqual(
+            _source_candidate_title(source, "https://provider.example/other"),
+            "Provider Scholarship Directory",
+        )
+
     def test_source_page_urls_include_curated_same_host_programmes_only(self):
         from app.live_discovery import _source_page_urls
 
