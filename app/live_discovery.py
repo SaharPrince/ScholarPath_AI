@@ -82,9 +82,11 @@ def _has_actionable_eligibility(record: dict) -> bool:
 
 def _is_promotable_source_page(record: dict, source: dict) -> bool:
     """Prevent broad indexes and provider directories from becoming scholarships."""
-    if source.get("source_type") in {
-        "official_index", "official_database", "government", "university"
-    }:
+    # Indexes and databases are discovery entry points, never individual
+    # opportunities. Government and university sources may also publish a
+    # specific named scholarship on their own programme pages, so assess the
+    # extracted page title instead of rejecting those source types wholesale.
+    if source.get("source_type") in {"official_index", "official_database"}:
         return False
     return not _is_generic_source_title(record)
 
