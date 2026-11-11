@@ -38,6 +38,8 @@ _GENERIC_SOURCE_TITLE_MARKERS = (
     "welcome",
     "studienwerk",
     "scholarship department",
+    "scholarships & funding",
+    "scholarships and funding",
     "stipendium",
     "stipendien",
     "studienförderung",
@@ -52,18 +54,21 @@ _GENERIC_SOURCE_TITLE_MARKERS = (
 )
 
 
+def _is_generic_source_title(record: dict) -> bool:
+    """Identify broad provider/index titles, regardless of how the page was discovered."""
+    title = " ".join(str(record.get("title") or "").casefold().split())
+    if not title or title in {"scholarship", "scholarships", "funding", "welcome"}:
+        return True
+    return any(marker in title for marker in _GENERIC_SOURCE_TITLE_MARKERS)
+
+
 def _is_promotable_source_page(record: dict, source: dict) -> bool:
     """Prevent broad indexes and provider directories from becoming scholarships."""
     if source.get("source_type") in {
         "official_index", "official_database", "government", "university"
     }:
         return False
-    title = " ".join(str(record.get("title") or "").casefold().split())
-    if not title or title in {"scholarship", "scholarships", "funding", "welcome"}:
-        return False
-    if any(marker in title for marker in _GENERIC_SOURCE_TITLE_MARKERS):
-        return False
-    return True
+    return not _is_generic_source_title(record)
 
 
 def _opportunity_id(url: str) -> int:
@@ -90,9 +95,10 @@ def _eligibility_links(html: str, page_url: str, limit: int = 3) -> list[str]:
         href = link.get("href", "").strip()
         if not href or href.startswith(("#", "mailto:", "javascript:")):
             continue
-        if not any(word in label for word in keywords):
-            continue
         target = urljoin(page_url, href)
+        searchable_link = f"{label} {href}".casefold()
+        if not any(word in searchable_link for word in keywords):
+            continue
         parsed = urlparse(target)
         if parsed.scheme != "https" or parsed.hostname != base.hostname:
             continue
@@ -248,7 +254,7 @@ async def discover_live_scholarships() -> list[dict]:
                     if isinstance(item, Exception):
                         continue
                     record, _links, detail_html = item
-                    if record:
+                    if record and not _is_generic_source_title(record):
                         # Follow a few clearly labelled same-domain requirements
                         # pages when the programme page contains no eligibility.
                         if detail_html and not record["criteria"]:
