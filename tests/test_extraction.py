@@ -133,6 +133,14 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
           </ul>
         </main></body></html>
         """
+        from bs4 import BeautifulSoup
+        from app.extraction import _find_heading_section, _has_explicit_not_supported_heading
+        root = BeautifulSoup(html, "html.parser")
+        exclusion_section = _find_heading_section(
+            root, ("Unfortunately, we cannot support the following",)
+        )
+        self.assertTrue(_has_explicit_not_supported_heading(root))
+        self.assertIn("Second degrees", exclusion_section or "")
         page = parse_scholarship_page(html, "https://example.org/student-scholarships")
         self.assertIsNotNone(page)
         assert page is not None
