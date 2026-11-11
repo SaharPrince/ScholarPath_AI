@@ -171,9 +171,9 @@ class SourcePagePromotionTests(unittest.TestCase):
         self.assertEqual(
             _source_page_urls(source),
             [
-                "https://provider.example/scholarships",
                 "https://provider.example/student-scholarship",
                 "https://provider.example/doctoral-scholarship",
+                "https://provider.example/scholarships",
             ],
         )
 
