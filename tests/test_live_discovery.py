@@ -96,7 +96,7 @@ class SourcePagePromotionTests(unittest.TestCase):
 
         html = """
         <html><body><main>
-          <a href="/stipendium/wen-suchen-wir/">Wen suchen wir ...</a>
+          <a href="/stipendium/wen-suchen-wir/">Weitere Informationen</a>
           <a href="/contact/">Contact</a>
         </main></body></html>
         """
