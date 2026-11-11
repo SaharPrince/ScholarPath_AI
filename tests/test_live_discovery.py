@@ -93,6 +93,8 @@ class SourcePagePromotionTests(unittest.TestCase):
             "Scholarships by Target Group and Stage of University Education",
             "Scholarship Programmes for Pakistan",
             "Studienwerk",
+            "Stipendium",
+            "Stipendien",
             "Scholarship Department",
             "Scholarships & Funding",
             "The Most Important Domestic Scholarship Programmes:",
