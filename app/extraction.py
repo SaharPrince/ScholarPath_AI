@@ -363,8 +363,13 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         text,
     ):
         return False
-    if criterion_type in {"eligibility", "language_requirements", "academic_requirements", "study_level"}:
+    if criterion_type in {
+        "eligibility", "nationality", "language_requirements",
+        "academic_requirements", "study_level", "work_experience",
+    }:
         # These statements came from an explicit applicant-requirements section.
+        # Nationality/residence and experience conditions are mandatory unless
+        # the preference language above explicitly marks them informational.
         return True
     if re.search(
         r"\b(must|required|mandatory|minimum|at least|no more than|maximum|"
