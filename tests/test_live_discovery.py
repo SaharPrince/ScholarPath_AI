@@ -130,6 +130,27 @@ class SourcePagePromotionTests(unittest.TestCase):
                 )
 
 
+    def test_source_page_urls_include_curated_same_host_programmes_only(self):
+        from app.live_discovery import _source_page_urls
+
+        source = {
+            "official_url": "https://provider.example/scholarships",
+            "programme_urls": (
+                "https://provider.example/student-scholarship",
+                "https://provider.example/doctoral-scholarship",
+                "http://provider.example/insecure",
+                "https://untrusted.example/foreign",
+            ),
+        }
+        self.assertEqual(
+            _source_page_urls(source),
+            [
+                "https://provider.example/scholarships",
+                "https://provider.example/student-scholarship",
+                "https://provider.example/doctoral-scholarship",
+            ],
+        )
+
     def test_eligibility_links_include_german_provider_requirements_pages(self):
         from app.live_discovery import _eligibility_links
 
