@@ -1511,5 +1511,41 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(any("nomination process" in value for _kind, _label, value in page.criteria))
 
 
+    def test_extracts_eligibility_under_question_mark_heading(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Tailwind for Talents: Scholarships for Graduates and PhD students</h1>
+          <h2>Who can apply?</h2>
+          <p>International students who have completed their first degree abroad can apply prior to starting a Master's degree program in Germany.</p>
+          <p>Priority is given to applicants from DAC countries who have not yet taken up residence in Germany at the time of their application.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://www.boell.de/en/scholarships")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertTrue(any("completed their first degree abroad" in item[2] for item in page.criteria))
+        self.assertTrue(any("DAC countries" in item[2] for item in page.criteria))
+
+    def test_extracts_tabular_requirements_under_scholarship_for_studies(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Hanns Seidel Foundation Requirements</h1>
+          <h4>Scholarship for Studies</h4>
+          <table><tr><td>am less than 45 years old</td></tr>
+          <tr><td>have proof of German language skills of at least B2 or comparable level</td></tr>
+          <tr><td>show above-average performance at school or in my studies</td></tr>
+          <tr><td>am actively involved in voluntary work</td></tr>
+          <tr><td>am politically interested</td></tr>
+          <tr><td>support democracy, rule of law, and human rights</td></tr>
+          <tr><td>complete a full-time course of study at a state or state-recognized university in Germany.</td></tr></table>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        texts = [item[2] for item in criteria]
+        self.assertTrue(any("less than 45 years old" in text for text in texts))
+        self.assertTrue(any("German language skills" in text for text in texts))
+        self.assertTrue(any("full-time course of study" in text for text in texts))
+
+
 if __name__ == "__main__":
     unittest.main()
