@@ -174,6 +174,89 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("residence permit" in item[2] for item in page.criteria))
         self.assertTrue(any("Christian denomination" in item[2] for item in page.criteria))
 
+    def test_extracts_german_fes_international_student_requirements(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Grundförderung</h1>
+          <p>Die Grundförderung für Ausländer:innen richtet sich an passende internationale Studierende an einer deutschen Hochschule.</p>
+          <p>Voraussetzung für eine Bewerbung sind erste benotete Leistungsnachweise und gute deutsche Sprachkenntnisse.</p>
+          <ul>
+            <li>bereits an einer deutschen, staatlichen oder staatlich anerkannten Hochschule oder Fachhochschule studieren</li>
+            <li>sehr gute deutsche Sprachkenntnisse haben</li>
+            <li>überdurchschnittliche Noten im Studium haben</li>
+            <li>gesellschaftspolitisch engagiert sind</li>
+            <li>sich mit den Werten der Sozialen Demokratie identifizieren</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.fes.de/studienfoerderung/stipendium/grundfoerderung-fuer-auslaender-innen",
+            "FES Scholarship for International Students",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("deutsche sprachkenntnisse" in value for value in texts))
+        self.assertTrue(any("hochschule" in value for value in texts))
+        self.assertTrue(any("noten im studium" in value for value in texts))
+        self.assertTrue(any("gesellschaftspolitisch engagiert" in value for value in texts))
+        self.assertTrue(any("soziale demokratie" in value for value in texts))
+
+    def test_extracts_german_fes_apprentice_requirements(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Förderung für Auszubildende</h1>
+          <p>Wir suchen Auszubildende, die die Werte der Sozialen Demokratie teilen.</p>
+          <ul>
+            <li>am Anfang des ersten und spätestens am Anfang des zweiten Ausbildungsjahres stehen</li>
+            <li>einen staatlich anerkannten Ausbildungsberuf erlernen</li>
+            <li>einen Ausbildungsvertrag oder die schriftliche Zusage für einen Ausbildungsplatz haben</li>
+            <li>deutsche Staatsangehörige oder Bürger:innen eines EU- oder EWR-Staates oder Geflüchtete oder geduldete Ausländer:innen sind</li>
+            <li>keine anderen Stipendienleistungen aus öffentlichen Mitteln erhalten</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.fes.de/studienfoerderung/stipendium/stipendien-auszubildende",
+            "FES Scholarship for Apprentices",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("ausbildungsjahr" in value for value in texts))
+        self.assertTrue(any("ausbildungsberuf" in value for value in texts))
+        self.assertTrue(any("ausbildungsvertrag" in value for value in texts))
+        self.assertTrue(any("staatsangehörige" in value for value in texts))
+
+    def test_classifies_german_rosa_luxemburg_apprentice_age_and_residence_rules(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Stipendium für Auszubildende – Lux Like Ausbildung</h1>
+          <h2>Wer kann sich für ein Azubi-Stipendium bewerben?</h2>
+          <ul>
+            <li>Azubis in einer anerkannten Ausbildung nach BBiG/HwO oder in Gesundheitsberufen</li>
+            <li>Engagierte junge Menschen in Schule, Verein, Initiative oder Ähnlichem</li>
+            <li>Personen unter 45 Jahre, die kein berufsqualifizierendes Studium abgeschlossen haben</li>
+            <li>Bewerber:innen mit ständigem Wohnsitz in Deutschland oder Aufenthaltstitel oder deutscher Staatsangehörigkeit</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.rosalux.de/berufliche-bildung",
+            "Lux Like Ausbildung – Apprenticeship Scholarship",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("anerkannten ausbildung" in value for value in texts))
+        self.assertTrue(any("unter 45 jahre" in value for value in texts))
+        self.assertTrue(any("wohnsitz in deutschland" in value for value in texts))
+        self.assertIn("age_limit", [item[0] for item in page.criteria])
+        self.assertIn("nationality", [item[0] for item in page.criteria])
+
     def test_extracts_german_apprentice_scholarship_funding_deadline_and_criteria(self) -> None:
         html = """
         <html><body><main>
