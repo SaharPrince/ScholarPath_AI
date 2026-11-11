@@ -411,7 +411,7 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         (
             key for key, aliases in target_aliases.items()
             if any(
-                re.search(rf"\\b{re.escape(re.sub(r'[^a-z0-9]+', ' ', alias).strip())}\\b", target)
+                re.search(rf"\b{re.escape(re.sub(r'[^a-z0-9]+', ' ', alias).strip())}\b", target)
                 for alias in aliases
             )
         ),
