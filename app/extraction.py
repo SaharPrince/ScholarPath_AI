@@ -454,7 +454,7 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
         if list_items:
             selected_nodes = [
                 node for node in section_nodes
-                if node.name == "li"
+                if node.name in {"li", "td", "th"}
                 or (
                     node.name == "p"
                     and re.search(
@@ -651,6 +651,12 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
     if re.match(
         r"(?i)^(?:organisations?|organizations?|institutions?|foundations?|"
         r"associations?)\s*:\s*(?:students?|applicants?|candidates?)\b",
+        value,
+    ):
+        return False
+    if re.match(
+        r"(?i)^(?:your answer to all of the above|sie konnten alle punkte mit ja|"
+        r"please make sure you have reviewed)\b",
         value,
     ):
         return False
