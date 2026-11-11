@@ -281,13 +281,13 @@ def _split_criteria_statements(value: str) -> list[str]:
 def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
     """Assign a more useful criterion type to explicit applicant conditions."""
     text = statement.casefold()
-    if re.search(r"\\b(?:under|less than|below)\\s+\\d{1,2}\\s+years?\\s+old\\b|\\b\\d{1,2}\\s+years?\\s+old\\b", text):
+    if re.search(r"\b(?:under|less than|below)\s+\d{1,2}\s+years?\s+old\b|\b\d{1,2}\s+years?\s+old\b", text):
         return "age_limit", "Age limit"
-    if re.search(r"\\b(language|german|english|sprachkenntnisse|deutschkenntnisse)\\b", text):
+    if re.search(r"\b(language|german|english|sprachkenntnisse|deutschkenntnisse)\b", text):
         return "language_requirements", "Language requirements"
-    if re.search(r"\\b(above-average|academic performance|grades|gpa|school performance)\\b", text):
+    if re.search(r"\b(above-average|academic performance|grades|gpa|school performance)\b", text):
         return "academic_requirements", "Academic requirements"
-    if re.search(r"\\b(full-time|part-time|university|higher education institution|enrolled|admitted)\\b", text):
+    if re.search(r"\b(full-time|part-time|university|higher education institution|enrolled|admitted)\b", text):
         return "study_level", "Study requirements"
     return "eligibility", "Eligibility"
 
@@ -324,7 +324,7 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         return True
     if re.search(
         r"\b(preferred|preferable|encouraged|recommended|desirable|an advantage|"
-        r"priority will be given|particularly welcome|should be poised|poised to assume)\b",
+        r"priority (?:will be|is) given|particularly welcome|should be poised|poised to assume)\b",
         text,
     ):
         return False
@@ -694,11 +694,11 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
     if re.match(
         r"(?i)^(?:then please contact|if the hsf is not represented|"
         r"please submit your application|dann nehmen sie bitte kontakt|"
-        r"reichen sie ihre bewerbung)\\b",
+        r"reichen sie ihre bewerbung)\b",
         value,
     ):
         return False
-    if re.match(r"(?i)^speak german at an adequate level\\b", value):
+    if re.match(r"(?i)^speak german at an adequate level\b", value):
         return False
     return True
 
