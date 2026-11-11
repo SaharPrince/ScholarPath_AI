@@ -718,6 +718,16 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
 
         self.assertTrue(_is_mandatory_criterion("eligibility", "am actively involved in voluntary work"))
         self.assertTrue(_is_mandatory_criterion("language_requirements", "German language skills of at least B2"))
+        self.assertTrue(_is_mandatory_criterion(
+            "nationality",
+            "deutsche Staatsangehörige oder Bürger:innen eines EU- oder EWR-Staates oder Geflüchtete oder geduldete Ausländer:innen sind",
+        ))
+        self.assertTrue(_is_mandatory_criterion(
+            "work_experience",
+            "einen Ausbildungsvertrag oder die schriftliche Zusage für einen Ausbildungsplatz haben",
+        ))
+        self.assertFalse(_is_mandatory_criterion("nationality", "Priority is given to applicants from DAC countries"))
+        self.assertFalse(_is_mandatory_criterion("work_experience", "Relevant experience is preferred"))
         self.assertFalse(_is_mandatory_criterion("eligibility", "Priority is given to applicants from DAC countries"))
 
     def test_mandatory_criteria_classification_is_conservative(self) -> None:
