@@ -54,8 +54,8 @@ GERMAN_MONTHS = {
     "oktober": 10, "november": 11, "dezember": 12,
 }
 GERMAN_NUMERIC_DATE_RANGE_PATTERN = re.compile(
-    r"(?i)\\b(?P<start_day>\\d{1,2})\\.(?P<start_month>\\d{1,2})\\.?\\s*[-–]\\s*"
-    r"(?P<end_day>\\d{1,2})\\.(?P<end_month>\\d{1,2})\\.?(?P<year>\\d{4})\\b"
+    r"(?i)\b(?P<start_day>\d{1,2})\.(?P<start_month>\d{1,2})\.?\s*[-–]\s*"
+    r"(?P<end_day>\d{1,2})\.(?P<end_month>\d{1,2})\.?(?P<year>\d{4})\b"
 )
 ROLLING_PATTERN = re.compile(r"(?i)\b(rolling basis|no fixed deadline|applications? accepted throughout the year|open year[- ]round)\b")
 OPEN_PATTERN = re.compile(r"(?i)\b(applications? (?:(?:are )?(?:now )?)open|now accepting applications|currently accepting applications|apply now)\b")
@@ -662,8 +662,8 @@ def _find_funding_statement(content_root: BeautifulSoup) -> str | None:
         value = _clean(paragraph.get_text(" ", strip=True))
         lowered = value.lower()
         has_monthly_amount = (
-            re.search(r"(?i)\\b\\d[\\d.,]*\\s*(?:€|euro)\\b", value)
-            and re.search(r"(?i)\\b(?:monatlich|pro monat|im monat|monthly|per month)\\b", value)
+            re.search(r"(?i)\b\d[\d.,]*\s*(?:€|euro)\b", value)
+            and re.search(r"(?i)\b(?:monatlich|pro monat|im monat|monthly|per month)\b", value)
         )
         if len(value) >= 30 and (any(term in lowered for term in indicators) or has_monthly_amount):
             return value[:1200]
