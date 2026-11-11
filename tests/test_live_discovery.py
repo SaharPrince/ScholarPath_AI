@@ -73,6 +73,31 @@ class SourcePagePromotionTests(unittest.TestCase):
                     _is_promotable_source_page(record, {"source_type": source_type})
                 )
 
+    def test_records_are_promoted_after_linked_eligibility_is_attached(self):
+        from app.live_discovery import (
+            _merge_linked_criteria,
+            _promote_actionable_records,
+        )
+
+        record = {
+            "id": 123,
+            "source_url": "https://provider.example/programme",
+            "criteria": [],
+            "evidence": [],
+        }
+        results = {}
+        _merge_linked_criteria(
+            record,
+            [("nationality", "Nationality", "International applicants may apply.")],
+            "https://provider.example/eligibility",
+        )
+        _promote_actionable_records(results, [(record, "<main></main>")])
+        self.assertIn(record["source_url"], results)
+        self.assertEqual(
+            results[record["source_url"]]["criteria"][0]["evidence_url"],
+            "https://provider.example/eligibility",
+        )
+
     def test_record_requires_actionable_eligibility_criteria(self):
         from app.live_discovery import _has_actionable_eligibility
 
