@@ -418,8 +418,8 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
     ).lower()
     text = re.sub(r"[^a-z0-9]+", " ", f"{title} {criteria_text}").strip()
     if target_key in {"matric", "intermediate", "bachelors"} and re.search(
-        r"\\b(?:graduate|postgraduate)\\s+(?:students?|applicants?|degree|scholarships?)\\b|"
-        r"\\b(?:graduates?|postgraduates?)\\s+and\\s+(?:phd|doctoral)\\b",
+        r"\b(?:graduate|postgraduate)\s+(?:students?|applicants?|degree|scholarships?)\b|"
+        r"\b(?:graduates?|postgraduates?)\s+and\s+(?:phd|doctoral)\b",
         text,
     ):
         target_names = {
