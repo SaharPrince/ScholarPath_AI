@@ -40,8 +40,6 @@ _GENERIC_SOURCE_TITLE_MARKERS = (
     "scholarship department",
     "scholarships & funding",
     "scholarships and funding",
-    "stipendium",
-    "stipendien",
     "studienförderung",
     "funding opportunities from other organisations",
     "scholarships by target group",
@@ -65,7 +63,7 @@ _GENERIC_SOURCE_TITLE_MARKERS = (
 def _is_generic_source_title(record: dict) -> bool:
     """Identify broad provider/index titles, regardless of how the page was discovered."""
     title = " ".join(str(record.get("title") or "").casefold().split())
-    if not title or title in {"scholarship", "scholarships", "funding", "welcome"}:
+    if not title or title in {"scholarship", "scholarships", "funding", "welcome", "stipendium", "stipendien"}:
         return True
     return any(marker in title for marker in _GENERIC_SOURCE_TITLE_MARKERS)
 
