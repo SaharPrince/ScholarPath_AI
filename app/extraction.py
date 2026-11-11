@@ -778,6 +778,11 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
         value,
     ):
         return False
+    if re.match(
+        r"(?i)^bewerber(?:innen|:innen)? sollten folgende kriterien erfüllen\b",
+        value,
+    ):
+        return False
     if re.match(r"(?i)^speak german at an adequate level\b", value):
         return False
     return True
@@ -800,12 +805,19 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         r"cannot apply|preferred|preferable|desirable|recommended|at least|minimum of|maximum age|no older than|"
         r"no more than|between \d|professional experience|from the following countries|"
         r"citizens? of|nationals? of|resident in|residing in|"
-        r"hold a (?:bachelor|master|doctoral)|have completed)\b"
+        r"hold a (?:bachelor|master|doctoral)|have completed|"
+        r"müssen|muss|sollten|soll|voraussetzung(?:en)?|erforderlich|"
+        r"mindestens|höchstens|nicht förderfähig|förderfähig|"
+        r"studieren|erlernen|engagiert sein|engagieren|identifizieren|"
+        r"ausbildungsjahr|ausbildungsvertrag|sprachkenntnisse|deutschkenntnisse)\b"
     )
     applicant_signal = re.compile(
         r"(?i)\b(?:applicants?|candidates?|students?|graduates?|"
         r"doctoral candidates?|postdocs?|researchers?|scholars?|"
-        r"international students?|citizens?|nationals?|residents?)\b"
+        r"international students?|citizens?|nationals?|residents?|"
+        r"bewerber(?:innen|:innen)?|studierende|promovierende|"
+        r"auszubildende|azubis|ausländer(?:innen|:innen)?|"
+        r"geflüchtete|staatsangehörige|personen)\b"
     )
     raw_values: list[str] = []
     implied_applicant_condition = re.compile(
@@ -885,26 +897,37 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
             has_qualification = bool(re.search(
                 r"(?i)\b(?:degree|bachelor|master|doctorate|phd|gpa|grade|"
                 r"academic|language|ielts|toefl|experience|age|nationality|"
-                r"citizenship|residence|enrol(?:led|ment)|study level)\b",
+                r"citizenship|residence|enrol(?:led|ment)|study level|"
+                r"studium|ausbildung|ausbildungsberuf|ausbildungsjahr|"
+                r"hochschule|fachhochschule|deutschkenntnisse|sprachkenntnisse|"
+                r"noten|leistungen|engagement|identifikation|staatsangehörigkeit|"
+                r"aufenthaltstitel|berufserfahrung|ausbildungsvertrag|abschluss|semester)\b",
                 statement,
             ))
             if not (has_actor or has_qualification or statement_is_implied_list_condition):
                 continue
             lowered = statement.casefold()
             if re.search(r"(?i)\b(preferred|preferable|desirable|recommended|"
-                         r"an advantage|priority will be given)\b", statement):
+                         r"an advantage|priority will be given|besonders willkommen|"
+                         r"ausdrücklich zu einer bewerbung ermutigt|bevorzugt berücksichtigt)\b", statement):
                 kind, label = "selection_criteria", "Selection preference"
             elif re.search(r"(?i)\b(ineligible|not eligible|cannot apply|must not)\b", statement):
                 kind, label = "ineligibility", "Ineligibility"
-            elif re.search(r"(?i)\b(language|ielts|toefl|german|english proficiency)\b", statement):
+            elif re.search(r"(?i)\b(language|ielts|toefl|german|english proficiency|"
+                            r"deutschkenntnisse|sprachkenntnisse)\b", statement):
                 kind, label = "language_requirements", "Language requirements"
-            elif re.search(r"(?i)\b(age|years old|younger than|older than)\b", statement):
+            elif re.search(r"(?i)\b(age|years old|younger than|older than|"
+                            r"unter \d{1,2} jahre|über \d{1,2} jahre)\b", statement):
                 kind, label = "age_limit", "Age requirements"
-            elif re.search(r"(?i)\b(nationality|citizenship|citizen|national|resident|residing)\b", statement):
+            elif re.search(r"(?i)\b(nationality|citizenship|citizen|national|resident|residing|"
+                            r"staatsangehörigkeit|staatsangehörige|aufenthaltstitel|wohnsitz|"
+                            r"ausländer|geflüchtete)\b", statement):
                 kind, label = "nationality", "Nationality and residence"
-            elif re.search(r"(?i)\b(bachelor|master|doctorate|phd|degree|enrolled|graduate)\b", statement):
+            elif re.search(r"(?i)\b(bachelor|master|doctorate|phd|degree|enrolled|graduate|"
+                            r"studium|ausbildung|ausbildungsberuf|hochschule|semester|promotion)\b", statement):
                 kind, label = "study_level", "Academic qualification"
-            elif re.search(r"(?i)\b(experience|professional|employment|employed|work)\b", statement):
+            elif re.search(r"(?i)\b(experience|professional|employment|employed|work|"
+                            r"berufserfahrung|ausbildungsvertrag)\b", statement):
                 kind, label = "work_experience", "Work experience"
             else:
                 kind, label = "eligibility", "Eligibility"
