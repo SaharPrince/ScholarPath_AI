@@ -1796,6 +1796,34 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertFalse(any("submit your application directly" in text.lower() for text in texts))
 
 
+    def test_hss_apprentice_criteria_exclude_administrative_and_informational_notes(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Stipendien für Auszubildende</h1>
+          <h2>Wer kann sich bewerben?</h2>
+          <ol>
+            <li>eine Ausbildung in einem anerkannten Ausbildungsberuf auf der Grundlage des Berufsbildungsgesetzes (BBiG) absolvieren.</li>
+            <li>zu dem in § 8 des Berufsausbildungsgesetzes (BAföG) genannten Personenkreis gehören.</li>
+            <li>die Voraussetzungen nach § 10 BAföG entsprechend erfüllen.</li>
+            <li>Für die Entscheidung über den Zugang zur Förderung ist das Verzeichnis der anerkannten Ausbildungsberufe des Bundesinstituts für Berufsbildung (BIBB) in der jeweils geltenden Fassung zugrunde zu legen.</li>
+            <li>Im Bereich der bundesrechtlich geregelten Ausbildungsberufe ist dieses Verzeichnis abschließend.</li>
+            <li>Zur Auslegung der Fördervoraussetzungen nach Ziffer 1 bis 3 gilt Folgendes: Die Förderfähigkeit beschränkt sich nicht auf das Absolvieren einer Erstausbildung.</li>
+            <li>Ein vor der Aufnahme in die Förderung erfolgter Studien- oder Ausbildungsabbruch steht einer Aufnahme in die Förderung nicht entgegen.</li>
+          </ol>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        texts = [item[2] for item in criteria]
+        self.assertEqual(len(texts), 3)
+        self.assertTrue(any("anerkannten Ausbildungsberuf" in item for item in texts))
+        self.assertTrue(any("§ 8 des Berufsausbildungsgesetzes" in item for item in texts))
+        self.assertTrue(any("§ 10 BAföG" in item for item in texts))
+        self.assertFalse(any("BIBB" in item for item in texts))
+        self.assertFalse(any("abschließend" in item for item in texts))
+        self.assertFalse(any("Erstausbildung" in item for item in texts))
+        self.assertFalse(any("Ausbildungsabbruch" in item for item in texts))
+
+
     def test_accepts_german_hss_scholarship_landing_page(self) -> None:
         html = """
         <html><body><main>
