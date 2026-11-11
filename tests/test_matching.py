@@ -33,8 +33,8 @@ class ProfileMatchingTests(unittest.TestCase):
             {"id": 2, "title": "Applying for a scholarship"},
         ]
         criteria = {
-            1: [self.criterion("study_level", "Study level", "Graduate degree completed abroad")],
-            2: [self.criterion("study_level", "Study level", "Graduate degree completed abroad")],
+            1: [{**self.criterion("study_level", "Study level", "Graduate degree completed abroad"), "is_mandatory": True}],
+            2: [{**self.criterion("study_level", "Study level", "Graduate degree completed abroad"), "is_mandatory": True}],
         }
         results = match_profile_to_scholarships(
             rows, criteria, {"target_study_level": "Bachelor's / Undergraduate"}
