@@ -1842,10 +1842,8 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
           <p>Die restlichen, unpersönlicheren Felder füllst du mit deinen Personaldaten.</p>
         </main></body></html>
         """
-        page = parse_scholarship_page(html, "https://example.org/lux-like-ausbildung")
-        self.assertIsNotNone(page)
-        assert page is not None
-        texts = [item[2] for item in page.criteria]
+        criteria = extract_criteria_from_html(html)
+        texts = [item[2] for item in criteria]
         age = next(item for item in texts if "unter 45 Jahre" in item)
         self.assertIn("z. B. für Zweitausbildung", age)
         self.assertIn("kein berufsqualifizierendes Studium abgeschlossen", age)
