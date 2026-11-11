@@ -13,6 +13,14 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
                 self.assertEqual(urlparse(source["official_url"]).scheme, "https")
                 self.assertTrue(source["name"].strip())
 
+    def test_hss_declares_its_official_eligibility_page(self) -> None:
+        hss = next(source for source in GERMANY_SOURCES if source["name"].startswith("Hanns Seidel"))
+        self.assertEqual(
+            hss["eligibility_urls"],
+            ("https://www.hss.de/stipendium/wen-suchen-wir/",),
+        )
+        self.assertEqual(urlparse(hss["eligibility_urls"][0]).hostname, "www.hss.de")
+
     def test_discovery_targets_belong_to_configured_sources(self) -> None:
         source_urls = {source["official_url"] for source in GERMANY_SOURCES}
         for source_url, candidate_url, title in OFFICIAL_DISCOVERY_TARGETS:
