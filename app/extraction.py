@@ -900,7 +900,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
                 r"(?i)\b(?:degree|bachelor|master|doctorate|phd|gpa|grade|"
                 r"academic|language|ielts|toefl|experience|age|nationality|"
                 r"citizenship|residence|enrol(?:led|ment)|study level|"
-                r"studium|ausbildung|ausbildungsberuf|ausbildungsjahr|"
+                r"studium|ausbildung|ausbildungsberuf|ausbildungsjahr\w*|"
                 r"hochschule|fachhochschule|deutschkenntnisse|sprachkenntnisse|"
                 r"noten|leistungen|engagement|engagiert|identifikation|identifizieren|staatsangehörigkeit|"
                 r"aufenthaltstitel|berufserfahrung|ausbildungsvertrag|abschluss|semester)\b",
