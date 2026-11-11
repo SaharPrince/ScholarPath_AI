@@ -268,6 +268,7 @@ def _split_criteria_statements(value: str) -> list[str]:
     """Split list items and sentences without breaking common academic abbreviations."""
     protected = value
     abbreviations = {
+        "z. B.": "ZB_ABBREVIATION",
         "U.S.": "US_ABBREVIATION",
         "Ph.D.": "PHD_ABBREVIATION",
         "M.Phil.": "MPHIL_ABBREVIATION",
