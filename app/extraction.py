@@ -808,8 +808,10 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         r"hold a (?:bachelor|master|doctoral)|have completed|"
         r"müssen|muss|sollten|soll|voraussetzung(?:en)?|erforderlich|"
         r"mindestens|höchstens|nicht förderfähig|förderfähig|"
-        r"studieren|erlernen|engagiert sein|engagieren|identifizieren|"
-        r"ausbildungsjahr|ausbildungsvertrag|sprachkenntnisse|deutschkenntnisse)\b"
+        r"studieren|erlernen|engagiert|engagieren|identifizieren|"
+        r"haben|sind|stehen|erhalten|ausbildung|ausbildungsberuf|"
+        r"ausbildungsjahr|ausbildungsvertrag|sprachkenntnisse|deutschkenntnisse|"
+        r"unter \d{1,2}\s+jahre|wohnsitz|anerkannt(?:e|en|er))\b"
     )
     applicant_signal = re.compile(
         r"(?i)\b(?:applicants?|candidates?|students?|graduates?|"
