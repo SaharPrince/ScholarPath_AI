@@ -36,13 +36,21 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         )
         self.assertNotIn("eligibility_urls", sources["Hanns Seidel Foundation – Scholarships"])
 
-    def test_hss_declares_its_official_eligibility_page(self) -> None:
+    def test_hss_declares_specific_programmes_without_merging_broad_eligibility(self) -> None:
         hss = next(source for source in GERMANY_SOURCES if source["name"].startswith("Hanns Seidel"))
+        self.assertNotIn("eligibility_urls", hss)
         self.assertEqual(
-            hss["eligibility_urls"],
-            ("https://www.hss.de/stipendium/wen-suchen-wir/",),
+            hss["programme_urls"],
+            (
+                "https://www.hss.de/stipendium/foerderung/foerderung-auszubildender/",
+                "https://www.hss.de/stipendium/foerderung/journalistisches-foerderprogramm/",
+            ),
         )
-        self.assertEqual(urlparse(hss["eligibility_urls"][0]).hostname, "www.hss.de")
+        self.assertEqual(
+            hss["programme_titles"]["https://www.hss.de/stipendium/foerderung/foerderung-auszubildender/"],
+            "Hanns Seidel Scholarship for Apprentices",
+        )
+        self.assertEqual(hss["source_type"], "official_index")
 
     def test_discovery_targets_belong_to_configured_sources(self) -> None:
         source_urls = {source["official_url"] for source in GERMANY_SOURCES}
