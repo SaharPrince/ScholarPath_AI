@@ -641,28 +641,28 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
     # A student mentioned after an organisation category is not an applicant rule.
     if re.match(
         r"(?i)^(?:denominational|religious|faith[- ]based|private|public|"
-        r"corporate|government(?:al)?|non[- ]?profit)\\s+"
-        r"(?:organisations?|organizations?|institutions?|foundations?|associations?)\\s*:",
+        r"corporate|government(?:al)?|non[- ]?profit)\s+"
+        r"(?:organisations?|organizations?|institutions?|foundations?|associations?)\s*:",
         value,
     ):
         return False
     if re.match(
         r"(?i)^(?:organisations?|organizations?|institutions?|foundations?|"
-        r"associations?)\\s*:\\s*(?:students?|applicants?|candidates?)\\b",
+        r"associations?)\s*:\s*(?:students?|applicants?|candidates?)\b",
         value,
     ):
         return False
     # General directory invitations are not eligibility conditions for a
     # particular scholarship opportunity.
     if re.search(
-        r"(?i)\\b(?:students?|applicants?)\\s+(?:can|may)\\s+apply\\s+"
-        r"(?:to|for)\\s+(?:various|different|a range of|many)\\b",
+        r"(?i)\b(?:students?|applicants?)\s+(?:can|may)\s+apply\s+"
+        r"(?:to|for)\s+(?:various|different|a range of|many)\b",
         value,
     ):
         return False
     if re.search(
-        r"(?i)\\b(?:various|different|a range of)\\s+"
-        r"(?:scholarships?|funding options?|funding opportunities)\\b",
+        r"(?i)\b(?:various|different|a range of)\s+"
+        r"(?:scholarships?|funding options?|funding opportunities)\b",
         value,
     ):
         return False
