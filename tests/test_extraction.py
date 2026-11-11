@@ -424,6 +424,13 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(_is_mandatory_criterion(eligibility[0][0], eligibility[0][2]))
         self.assertFalse(_is_mandatory_criterion(eligibility[2][0], eligibility[2][2]))
 
+    def test_explicit_eligibility_heading_marks_conditions_mandatory_but_priority_informational(self) -> None:
+        from app.extraction import _is_mandatory_criterion
+
+        self.assertTrue(_is_mandatory_criterion("eligibility", "am actively involved in voluntary work"))
+        self.assertTrue(_is_mandatory_criterion("language_requirements", "German language skills of at least B2"))
+        self.assertFalse(_is_mandatory_criterion("eligibility", "Priority is given to applicants from DAC countries"))
+
     def test_mandatory_criteria_classification_is_conservative(self) -> None:
         self.assertTrue(_is_mandatory_criterion("eligibility", "Applicants must hold a bachelor's degree."))
         self.assertTrue(_is_mandatory_criterion("ineligibility", "Applicants with dual nationality are not eligible."))
@@ -1546,6 +1553,10 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(any("less than 45 years old" in text for text in texts))
         self.assertTrue(any("German language skills" in text for text in texts))
         self.assertTrue(any("full-time course of study" in text for text in texts))
+        self.assertIn("age_limit", [item[0] for item in criteria])
+        self.assertIn("language_requirements", [item[0] for item in criteria])
+        self.assertFalse(any("please contact" in text.lower() for text in texts))
+        self.assertFalse(any("submit your application directly" in text.lower() for text in texts))
 
 
     def test_accepts_german_hss_scholarship_landing_page(self) -> None:
