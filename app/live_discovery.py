@@ -47,6 +47,11 @@ _GENERIC_SOURCE_TITLE_MARKERS = (
     "scholarships by target group",
     "scholarship providers",
     "scholarship database",
+    "daad scholarships - an overview",
+    "scholarships – an overview",
+    "scholarships - an overview",
+    "overview of scholarships",
+    "overview of funding opportunities",
     "most important domestic scholarship programmes",
     "domestic scholarship programmes",
     "scholarship programmes by target group",
@@ -63,6 +68,16 @@ def _is_generic_source_title(record: dict) -> bool:
     if not title or title in {"scholarship", "scholarships", "funding", "welcome"}:
         return True
     return any(marker in title for marker in _GENERIC_SOURCE_TITLE_MARKERS)
+
+
+def _has_actionable_eligibility(record: dict) -> bool:
+    """Only promote pages that publish at least one real applicant condition."""
+    return any(
+        isinstance(item, dict)
+        and str(item.get("requirement_text") or "").strip()
+        and item.get("criterion_type") not in {"selection_process", "target_audience"}
+        for item in record.get("criteria", [])
+    )
 
 
 def _is_promotable_source_page(record: dict, source: dict) -> bool:
@@ -267,7 +282,8 @@ async def discover_live_scholarships() -> list[dict]:
                             if requirements_html:
                                 extracted = extract_criteria_from_html(requirements_html)
                                 _merge_linked_criteria(record, extracted, requirements_url)
-                    results[record["source_url"]] = record
+                    if _has_actionable_eligibility(record):
+                        results[record["source_url"]] = record
                 for url, title in links:
                     candidate_urls.setdefault(url, title)
             detail_items = list(candidate_urls.items())[:MAX_CANDIDATES_PER_SOURCE]
@@ -296,7 +312,8 @@ async def discover_live_scholarships() -> list[dict]:
                                 if requirements_html:
                                     extracted = extract_criteria_from_html(requirements_html)
                                     _merge_linked_criteria(record, extracted, requirements_url)
-                        results[record["source_url"]] = record
+                        if _has_actionable_eligibility(record):
+                            results[record["source_url"]] = record
 
         # Return opportunities from sources that respond within the request
         # budget. One slow provider must never discard results from every other
