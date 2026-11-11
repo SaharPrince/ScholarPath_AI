@@ -128,11 +128,135 @@ button,input,select{max-width:100%}
 }
 
 
+
+/* ScholarPath visual refresh — calm editorial layout, clearer hierarchy, accessible controls. */
+:root{
+ --ink:#172c29;--muted:#63756e;--line:#dfe8e2;--paper:#f3f6f2;--white:#fff;
+ --green:#176b50;--green2:#e1f1e7;--gold:#e8bb67;--shadow:0 20px 55px rgba(20,49,38,.09);
+}
+body{background:var(--paper);color:var(--ink);letter-spacing:-.008em}
+.topbar{background:#102b27;border-bottom:1px solid rgba(255,255,255,.09)}
+.nav{height:78px}
+.brand{font-size:20px;letter-spacing:-.045em}
+.brandmark{width:38px;height:38px;border-radius:13px;background:#d9f0e2;box-shadow:inset 0 0 0 1px rgba(23,107,80,.08)}
+.navnote{display:flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.02em}
+.navnote:before{content:"";width:7px;height:7px;border-radius:50%;background:#8bd5a9;box-shadow:0 0 0 4px rgba(139,213,169,.13)}
+.hero{
+ position:relative;isolation:isolate;overflow:hidden;
+ padding:76px 0 98px;
+ background:
+  radial-gradient(ellipse at 82% 12%,rgba(118,190,145,.22),transparent 32%),
+  radial-gradient(ellipse at 100% 100%,rgba(232,187,103,.12),transparent 34%),
+  linear-gradient(118deg,#102b27 0%,#16483a 57%,#1c5944 100%);
+}
+.hero:after{
+ content:"";position:absolute;z-index:-1;right:max(3vw,calc((100vw - 1180px)/2));top:30px;
+ width:290px;height:290px;border:1px solid rgba(222,244,230,.13);border-radius:50%;
+ box-shadow:0 0 0 32px rgba(222,244,230,.025),0 0 0 66px rgba(222,244,230,.02);
+}
+.hero .shell{position:relative}
+.eyebrow{font-size:10px;letter-spacing:.19em}
+.hero h1{font-size:clamp(40px,5.6vw,64px);line-height:1.02;letter-spacing:-.065em;max-width:720px;margin:18px 0 17px}
+.hero p{max-width:610px;color:#d5e4db;font-size:16px;line-height:1.75}
+.hero-tags{gap:9px;margin-top:28px}
+.tag{border-color:rgba(213,237,222,.27);background:rgba(255,255,255,.045);padding:7px 12px;font-size:11px;backdrop-filter:blur(8px)}
+.hero-cta{display:inline-flex;align-items:center;gap:12px;margin-top:28px;color:#f5fff8;text-decoration:none;font-size:13px;font-weight:750}
+.hero-cta span{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#d9f0e2;color:#14533f;transition:transform .18s}
+.hero-cta:hover span{transform:translateY(3px)}
+main.shell{padding-bottom:78px}
+.stats{gap:15px;margin-top:-36px}
+.stat{position:relative;overflow:hidden;border:1px solid #e4ebe5;border-radius:17px;padding:19px 22px;box-shadow:0 12px 32px rgba(20,49,38,.075)}
+.stat:after{content:"";position:absolute;right:-22px;top:-32px;width:92px;height:92px;border-radius:50%;background:#edf5ef}
+.stat strong,.stat span{position:relative;z-index:1}
+.stat strong{font-size:29px;color:#183b30}
+.stat span{font-size:11px;font-weight:650;letter-spacing:.025em}
+.profile-panel{position:relative;overflow:hidden;margin:38px 0 14px;padding:29px 31px;border:1px solid #e1e9e3;border-radius:22px;box-shadow:0 18px 46px rgba(20,49,38,.065)}
+.profile-panel:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(#8bc9a2,#277653)}
+.profile-panel h2{font-size:27px;letter-spacing:-.045em;margin:7px 0}
+.profile-panel>p{max-width:740px;line-height:1.7}
+.profile-grid{gap:15px;margin:22px 0 16px}
+.profile-field label{font-size:11px;letter-spacing:.015em;color:#40574e}
+.profile-field input,.profile-field select,.field input,.field select{
+ border-color:#dce6df;background:#fbfcfa;border-radius:11px;transition:border-color .16s,box-shadow .16s,background .16s
+}
+.profile-field input:focus,.profile-field select:focus,.field input:focus,.field select:focus{
+ border-color:#68a783;background:#fff;box-shadow:0 0 0 4px rgba(104,167,131,.13)
+}
+.match-button{min-height:45px;margin-top:17px;padding:12px 20px;border-radius:11px;background:#176b50;box-shadow:0 7px 18px rgba(23,107,80,.16);transition:transform .16s,background .16s,box-shadow .16s}
+.match-button:hover{background:#10583f;transform:translateY(-1px);box-shadow:0 10px 22px rgba(23,107,80,.2)}
+.match-button:disabled{opacity:.65;cursor:wait;transform:none}
+.privacy-note{font-size:11px}
+.section-head{margin:52px 0 19px}
+.section-head h2{font-size:28px;letter-spacing:-.05em}
+.section-head p{font-size:13px;line-height:1.6}
+.filters{gap:11px;padding:12px;border-radius:16px;border-color:#e1e9e3;box-shadow:0 8px 24px rgba(20,49,38,.035)}
+.resultsline{font-size:11px;font-weight:600;letter-spacing:.015em;margin:15px 2px}
+.grid{gap:17px}
+.card{position:relative;padding:22px;border-radius:19px;border-color:#e2eae4;box-shadow:0 7px 24px rgba(20,49,38,.045);transition:transform .2s,border-color .2s,box-shadow .2s}
+.card:hover{transform:translateY(-3px);border-color:#b8d4c2;box-shadow:0 15px 34px rgba(20,49,38,.09)}
+.cardtop{min-height:26px}
+.pill{font-size:10px;letter-spacing:.035em;padding:6px 10px}
+.trust{font-size:10px;letter-spacing:.02em}
+.card h3{font-size:20px;line-height:1.28;letter-spacing:-.04em;margin:17px 0 7px}
+.provider{font-size:12px}
+.meta{gap:9px 16px;margin:17px 0;color:#52665d}
+.meta span{font-size:11px}
+.funding{min-height:58px;border-top-color:#edf1ed;padding-top:14px;font-size:12px;line-height:1.65;color:#40564b}
+.cardfoot{gap:12px;margin-top:18px}
+.source{font-size:10px;line-height:1.5}
+.detailbtn{border-radius:10px;padding:10px 13px;background:#e5f2e9;color:#145d43;transition:background .15s,transform .15s;white-space:nowrap}
+.detailbtn:hover{background:#cfe8d8;transform:translateY(-1px)}
+.empty,.loading{border:1px dashed #bfd2c5;border-radius:17px;padding:54px 28px;background:rgba(255,255,255,.8);line-height:1.7}
+.empty strong{font-size:18px;letter-spacing:-.025em}
+.footer{background:#eef3ee;border-top-color:#e0e8e1;padding:27px 0;color:#6e7d75}
+.drawer{background:#f8faf7;padding:34px}
+.drawer h2{font-size:30px;letter-spacing:-.05em}
+.fact,.criterion{border-color:#e2eae4;border-radius:13px;box-shadow:0 3px 12px rgba(20,49,38,.025)}
+.criterion{padding:16px}
+.criteriontop h4{letter-spacing:.01em}
+.notice{border:1px solid #e3ebe5;line-height:1.65}
+.match-results{margin-top:24px}
+.match-results>h3{font-size:20px;letter-spacing:-.035em}
+.match-stat{border:1px solid #e4ece6;background:#f4f8f4;border-radius:13px}
+.select-trigger{border-color:#dce6df;border-radius:11px;background:#fbfcfa}
+.select-trigger:hover{border-color:#b4d2bf;background:#fff}
+.select-menu{border-color:#dce7e0;box-shadow:0 18px 48px rgba(18,45,35,.18)}
+:focus-visible{outline:3px solid rgba(72,145,102,.38);outline-offset:2px}
+@media(max-width:720px){
+ .hero{padding:54px 0 76px}
+ .hero:after{right:-170px;top:8px;width:240px;height:240px}
+ .hero h1{font-size:clamp(36px,9vw,48px)}
+ .profile-panel{padding:23px 19px;margin-top:30px}
+ .profile-panel h2{font-size:23px}
+ .section-head{margin-top:39px}
+ .section-head h2{font-size:24px}
+ .card{padding:18px}
+ .drawer{padding:23px 18px}
+}
+@media(max-width:600px){
+ .nav{min-height:68px}
+ .navnote{font-size:10px}
+ .hero{padding:43px 0 66px}
+ .hero p{font-size:14px;line-height:1.7}
+ .hero-tags{max-width:390px}
+ .hero-cta{margin-top:22px}
+ .stats{margin-top:-25px}
+ .stat{border-radius:14px}
+ .profile-panel{margin-top:27px}
+ .section-head{margin-top:34px}
+ .card h3{font-size:19px}
+ .funding{min-height:0}
+ .detailbtn{min-height:41px}
+ .footer{padding:21px 0}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
 </style>
 </head>
 <body>
-<header class="topbar"><div class="shell nav"><div class="brand"><span class="brandmark">✦</span> ScholarPath <span style="color:#9bcdb2">AI</span></div><div class="navnote">Official-source scholarship discovery</div></div></header>
-<section class="hero"><div class="shell"><div class="eyebrow">A clearer path to your future</div><h1>Find scholarships.<br>Know where you stand.</h1><p>Search current scholarship opportunities directly on official German provider and university websites. Check the requirements before you apply. No stored scholarship catalogue, no guesswork.</p><div class="hero-tags"><span class="tag">✓ Live official German sources</span><span class="tag">✓ Eligibility requirements</span><span class="tag">✓ No stored scholarship records</span></div></div></section>
+<header class="topbar"><div class="shell nav"><div class="brand"><span class="brandmark">✦</span> ScholarPath <span style="color:#9bcdb2">AI</span></div><div class="navnote">Live discovery <span aria-hidden="true">·</span> Official German sources</div></div></header>
+<section class="hero"><div class="shell"><div class="eyebrow">A clearer path to your future</div><h1>Find scholarships.<br>Know where you stand.</h1><p>Search current scholarship opportunities directly on official German provider and university websites. Check the requirements before you apply. No stored scholarship catalogue, no guesswork.</p><div class="hero-tags"><span class="tag">✓ Live official German sources</span><span class="tag">✓ Eligibility requirements</span><span class="tag">✓ No stored scholarship records</span></div><a class="hero-cta" href="#explore-section">Explore live opportunities <span aria-hidden="true">↓</span></a></div></section>
 <main class="shell">
 <div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Live opportunities found</span></div><div class="stat"><strong id="openCount">—</strong><span>Open according to source</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
 
