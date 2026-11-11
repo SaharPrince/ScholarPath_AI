@@ -98,6 +98,12 @@ def _should_merge_source_eligibility(record: dict, source_url: str) -> bool:
     return record.get("source_url") == source_url
 
 
+def _source_candidate_title(source: dict, url: str) -> str:
+    """Use a specific, source-authored title for a curated programme URL."""
+    title = source.get("programme_titles", {}).get(url)
+    return str(title or source["name"])
+
+
 def _source_page_urls(source: dict) -> list[str]:
     """Return root/index pages plus explicitly curated same-host programmes."""
     source_url = source["official_url"]
@@ -251,7 +257,10 @@ async def discover_live_scholarships() -> list[dict]:
             # the scholarship lose its actual requirements.
             index_results, eligibility_results = await asyncio.gather(
                 asyncio.gather(
-                    *(inspect_page(source, url, source["name"]) for url in index_urls),
+                    *(
+                        inspect_page(source, url, _source_candidate_title(source, url))
+                        for url in index_urls
+                    ),
                     return_exceptions=True,
                 ),
                 asyncio.gather(
@@ -300,7 +309,11 @@ async def discover_live_scholarships() -> list[dict]:
                         results[record["source_url"]] = record
                 for url, title in links:
                     candidate_urls.setdefault(url, title)
-            detail_items = list(candidate_urls.items())[:MAX_CANDIDATES_PER_SOURCE]
+            # Curated programme URLs already cover these providers' key awards.
+            # Follow at most one extra link per such source to stay inside the
+            # serverless budget without starving the curated programme pages.
+            detail_limit = 1 if source.get("programme_urls") else MAX_CANDIDATES_PER_SOURCE
+            detail_items = list(candidate_urls.items())[:detail_limit]
             if detail_items:
                 details = await asyncio.gather(
                     *(inspect_page(source, url, title) for url, title in detail_items),
