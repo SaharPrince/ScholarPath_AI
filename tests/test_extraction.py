@@ -145,6 +145,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         html = """
         <html><body><main>
           <h1>KAAD Scholarship Programme 2</h1>
+          <p>KAAD Scholarship Programme 2 supports international students already studying in Germany.</p>
           <ul>
             <li>come from a country in Africa, Asia, the Near and Middle East, or Latin America</li>
             <li>have not been in Germany for more than 15 months</li>
