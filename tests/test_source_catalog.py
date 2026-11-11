@@ -12,7 +12,12 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
                 self.assertEqual(source["country"], "Germany")
                 self.assertEqual(urlparse(source["official_url"]).scheme, "https")
                 self.assertTrue(source["name"].strip())
-                for programme_url in source.get("programme_urls", ()):
+                programme_urls = source.get("programme_urls", ())
+                programme_titles = source.get("programme_titles", {})
+                self.assertTrue(set(programme_titles).issubset(set(programme_urls)))
+                for programme_title in programme_titles.values():
+                    self.assertTrue(programme_title.strip())
+                for programme_url in programme_urls:
                     self.assertEqual(urlparse(programme_url).scheme, "https")
                     self.assertEqual(
                         urlparse(programme_url).hostname,
