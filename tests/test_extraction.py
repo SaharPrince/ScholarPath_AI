@@ -1525,6 +1525,7 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
           <h2>Who can apply?</h2>
           <p>International students who have completed their first degree abroad can apply prior to starting a Master's degree program in Germany.</p>
           <p>Priority is given to applicants from DAC countries who have not yet taken up residence in Germany at the time of their application.</p>
+          <p>International PhD students who have completed their graduate degree abroad may apply for a PhD program in Germany.</p>
         </main></body></html>
         """
         page = parse_scholarship_page(html, "https://www.boell.de/en/scholarships")
