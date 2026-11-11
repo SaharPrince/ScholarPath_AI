@@ -113,6 +113,34 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         value = "15. November 2026 bis einschließlich 15. Januar 2027"
         self.assertEqual(_parse_deadline_date(value), "2027-01-15")
 
+    def test_normalizes_german_numeric_application_window_closing_date(self) -> None:
+        self.assertEqual(
+            _parse_deadline_date("Der Zugang zum Bewerbungsportal ist vom 15.04.-15.06.2026 geöffnet."),
+            "2026-06-15",
+        )
+
+    def test_extracts_german_apprentice_scholarship_funding_deadline_and_criteria(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Stipendien für Auszubildende</h1>
+          <p>Der Zugang zu unserem Bewerbungsportal ist zwischen dem 15.04.-15.06.2026 geöffnet.</p>
+          <p>Mit unserem Stipendium für Auszubildende erhalten Auszubildende 300 Euro im Monat.</p>
+          <h2>Wer kann sich bewerben?</h2>
+          <ol>
+            <li>eine Ausbildung in einem anerkannten Ausbildungsberuf absolvieren.</li>
+            <li>zu dem in § 8 des Berufsausbildungsgesetzes genannten Personenkreis gehören.</li>
+            <li>die Voraussetzungen nach § 10 BAföG entsprechend erfüllen.</li>
+          </ol>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/apprentice-scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("15.04.-15.06.2026", page.fields["deadline_text"])
+        self.assertEqual(_parse_deadline_date(page.fields["deadline_text"]), "2026-06-15")
+        self.assertIn("300 Euro im Monat", page.fields["funding_summary"])
+        self.assertTrue(any("anerkannten Ausbildungsberuf" in item[2] for item in page.criteria))
+
     def test_extracts_german_application_windows_from_list_items(self) -> None:
         html = """
         <html><body><main>
