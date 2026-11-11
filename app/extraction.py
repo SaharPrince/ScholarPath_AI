@@ -554,7 +554,12 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
             if node.name == "li" and node.find_parent("li"):
                 continue
             value = _clean(node.get_text(" ", strip=True))
-            if value and value not in chunks:
+            if not value or value in chunks:
+                continue
+            if chunks and re.match(r"(?i)^b\.\s+für zweitausbildung\b", value):
+                # Rejoin a wrapped German abbreviation: "z." + "B. für ...".
+                chunks[-1] = f"{chunks[-1]} {value}"
+            else:
                 chunks.append(value)
         if chunks:
             return "\n".join(chunks)[:4000]
