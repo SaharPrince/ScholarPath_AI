@@ -1157,7 +1157,11 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             "Technical Eligibility Requirements", "Wer kann sich bewerben",
             "Voraussetzungen", "Fördervoraussetzungen",
         ),
-        "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
+        "ineligibility": (
+            "Ineligibility", "Who cannot apply", "Who is not eligible",
+            "Unfortunately, we cannot support the following",
+            "Unfortunately, we cannot fund the following",
+        ),
         "study_level": ("Degree Level", "Study Level", "Level of Study", "Eligible Degree Levels"),
         "nationality": ("Nationality Requirements", "Citizenship Requirements", "Eligible Nationalities", "Eligible Countries"),
         "academic_requirements": ("Academic Requirements", "Academic Eligibility", "Minimum Academic Requirements", "Minimum Grades", "Minimum GPA"),
