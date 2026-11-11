@@ -62,7 +62,12 @@ class SourcePagePromotionTests(unittest.TestCase):
         from app.live_discovery import _is_promotable_source_page
 
         record = {"title": "Funding Opportunities from other Organisations"}
-        for source_type in ("official_index", "official_database", "government", "university"):
+        for source_type in ("official_index", "official_database"):
+            with self.subTest(source_type=source_type):
+                self.assertFalse(
+                    _is_promotable_source_page(record, {"source_type": source_type})
+                )
+        for source_type in ("government", "university"):
             with self.subTest(source_type=source_type):
                 self.assertFalse(
                     _is_promotable_source_page(record, {"source_type": source_type})
@@ -109,6 +114,18 @@ class SourcePagePromotionTests(unittest.TestCase):
                 {"source_type": "official_programme"},
             )
         )
+
+    def test_named_government_and_university_programmes_can_be_promoted(self):
+        from app.live_discovery import _is_promotable_source_page
+
+        for source_type in ("government", "university"):
+            with self.subTest(source_type=source_type):
+                self.assertTrue(
+                    _is_promotable_source_page(
+                        {"title": "Deutschlandstipendium – Federal Scholarship Programme"},
+                        {"source_type": source_type},
+                    )
+                )
 
 
     def test_eligibility_links_include_german_provider_requirements_pages(self):
