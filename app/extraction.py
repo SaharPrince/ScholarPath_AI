@@ -727,11 +727,25 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         r"doctoral candidates?|postdocs?|researchers?|scholars?|"
         r"international students?|citizens?|nationals?|residents?)\b"
     )
+    raw_values: list[str] = []
     for node in content_root.find_all(["p", "li", "dd", "dt"]):
         raw = _clean(node.get_text(" ", strip=True))
-        if not raw or len(raw) < 24 or len(raw) > 1400:
+        if not raw or len(raw) < 4 or len(raw) > 1400:
             continue
-        if not requirement_signal.search(raw):
+        if (
+            raw_values
+            and re.search(
+                r"(?i)\\b(?:command|knowledge|proficiency|fluency|understanding|ability|mastery)\\s*$",
+                raw_values[-1],
+            )
+            and re.match(r"(?i)^(?:of|in|for|with|at)\\b", raw)
+        ):
+            raw_values[-1] = f"{raw_values[-1]} {raw}"
+        else:
+            raw_values.append(raw)
+
+    for raw in raw_values:
+        if len(raw) < 24 or not requirement_signal.search(raw):
             continue
         for statement in _split_criteria_statements(raw):
             statement = _clean(statement)
