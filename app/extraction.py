@@ -1297,19 +1297,9 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                     statement,
                 ):
                     continue
-                # Ineligibility sections can include programme history or
-                # selection copy before the next heading. Keep only explicit
-                # disqualification statements.
-                if field_name == "ineligibility" and not embedded_ineligibility_context and not re.search(
-                    r"\b(ineligible|not eligible|not be accepted|will not be accepted|"
-                    r"cannot apply|cannot be nominated|not eligible to|are excluded|"
-                    r"dual .{0,30}national(?:ity|s)?|employees? of|contractors? of|"
-                    r"alumni of|already availed|already studying|applied for immigration|"
-                    r"attended graduate school|long[- ]term .{0,20}experience)\b",
-                    statement,
-                    re.I,
-                ):
-                    continue
+                # This field is populated only from an explicit ineligibility
+                # label/heading or a clearly marked exclusion list. Preserve
+                # short source bullets such as "Second degrees" verbatim.
                 exception_match = re.search(
                     r"(?i)\b(?:with the exception of|except for|except|excluding)\b\s+(.+)$",
                     statement,
