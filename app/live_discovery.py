@@ -214,10 +214,27 @@ async def discover_live_scholarships() -> list[dict]:
             # Crawling all 17 pages on every request caused avoidable timeouts;
             # subsequent searches will fetch fresh data again.
             index_urls = index_urls[:MAX_DAAD_INDEX_PAGES]
-            index_results = await asyncio.gather(
-                *(inspect_page(source, url, source["name"]) for url in index_urls),
-                return_exceptions=True,
+            eligibility_urls = list(source.get("eligibility_urls", ()))
+            # Fetch explicitly curated eligibility pages alongside their
+            # programme landing page so a slow secondary request cannot make
+            # the scholarship lose its actual requirements.
+            index_results, eligibility_results = await asyncio.gather(
+                asyncio.gather(
+                    *(inspect_page(source, url, source["name"]) for url in index_urls),
+                    return_exceptions=True,
+                ),
+                asyncio.gather(
+                    *(fetch(url) for url in eligibility_urls),
+                    return_exceptions=True,
+                ),
             )
+            eligibility_pages: dict[str, str] = {}
+            for url, page_result in zip(eligibility_urls, eligibility_results):
+                if isinstance(page_result, Exception):
+                    continue
+                requirements_html, _error = page_result
+                if requirements_html:
+                    eligibility_pages[url] = requirements_html
             candidate_urls: dict[str, str] = {}
             for item in index_results:
                 if isinstance(item, Exception):
@@ -228,8 +245,14 @@ async def discover_live_scholarships() -> list[dict]:
                     # eligibility page. Enrich root-page records too, not only
                     # discovered detail links, or providers such as HSS lose
                     # their actual applicant conditions.
+                    for requirements_url, requirements_html in eligibility_pages.items():
+                        extracted = extract_criteria_from_html(requirements_html)
+                        _merge_linked_criteria(record, extracted, requirements_url)
                     if _html and not record["criteria"]:
-                        requirements_urls = _eligibility_links(_html, record["source_url"])
+                        requirements_urls = [
+                            url for url in _eligibility_links(_html, record["source_url"])
+                            if url not in eligibility_pages
+                        ]
                         pages = await asyncio.gather(
                             *(fetch(requirements_url) for requirements_url in requirements_urls),
                             return_exceptions=True,
