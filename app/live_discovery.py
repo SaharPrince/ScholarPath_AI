@@ -5,6 +5,7 @@ Only the curated source registry is persistent (as application code).
 """
 import asyncio
 import hashlib
+import logging
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -31,6 +32,7 @@ REQUEST_TIMEOUT = httpx.Timeout(3.5, connect=1.5)
 DISCOVERY_BUDGET_SECONDS = 8.0
 MAX_DAAD_INDEX_PAGES = 4
 REQUEST_LIMITS = httpx.Limits(max_connections=40, max_keepalive_connections=20)
+logger = logging.getLogger(__name__)
 
 
 
@@ -241,6 +243,12 @@ async def discover_live_scholarships() -> list[dict]:
             nonlocal successful_pages
             html, error = await fetch(url)
             if not html:
+                logger.warning(
+                    "Official source page unavailable: source=%s url=%s error=%s",
+                    source["name"],
+                    url,
+                    error or "no response body",
+                )
                 return None, [], None
             successful_pages += 1
             parsed = parse_scholarship_page(html, url, candidate_title)
@@ -374,23 +382,6 @@ async def discover_live_scholarships() -> list[dict]:
                 if not eligibility_task.done():
                     eligibility_task.cancel()
 
-        # Prioritize providers with curated programme pages, plus the main
-        # scholarship foundations. This prevents a large set of slower index
-        # pages from consuming the entire serverless budget before direct awards
-        # are inspected.
-        priority_names = {
-            "Heinrich Böll Foundation – Scholarships",
-            "Konrad Adenauer Foundation – International Scholarships",
-        }
-        priority_sources = [
-            source for source in GERMANY_SOURCES
-            if source.get("programme_urls") or source["name"] in priority_names
-        ]
-        secondary_sources = [
-            source for source in GERMANY_SOURCES
-            if source not in priority_sources
-        ]
-
         async def run_source_group(sources: list[dict], timeout: float) -> None:
             if not sources or timeout <= 0:
                 return
@@ -411,16 +402,13 @@ async def discover_live_scholarships() -> list[dict]:
                 try:
                     task.result()
                 except Exception:
-                    continue
+                    logger.exception("Official source scan failed")
 
-        loop = asyncio.get_running_loop()
-        discovery_started = loop.time()
-        priority_budget = min(6.0, DISCOVERY_BUDGET_SECONDS)
-        await run_source_group(priority_sources, priority_budget)
-        remaining_budget = max(
-            0.0, DISCOVERY_BUDGET_SECONDS - (loop.time() - discovery_started)
-        )
-        await run_source_group(secondary_sources, remaining_budget)
+        # Give every configured provider the same request-time opportunity.
+        # A priority phase consumed most of the short serverless budget before
+        # secondary providers even started, making identical searches return
+        # radically different result counts depending on network timing.
+        await run_source_group(GERMANY_SOURCES, DISCOVERY_BUDGET_SECONDS)
         if successful_pages == 0:
             raise RuntimeError("No official scholarship source pages responded")
 
