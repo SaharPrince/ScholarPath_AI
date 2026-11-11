@@ -1823,6 +1823,27 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertFalse(any("submit your application directly" in text.lower() for text in texts))
 
 
+    def test_funding_amount_is_not_misclassified_as_eligibility(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Stipendien für Auszubildende</h1>
+          <p>Mit unserem Stipendium für Auszubildende erhalten Auszubildende 300 Euro im Monat.</p>
+          <h2>Wer kann sich bewerben?</h2>
+          <ol>
+            <li>eine Ausbildung in einem anerkannten Ausbildungsberuf absolvieren.</li>
+            <li>zu dem in § 8 des Berufsausbildungsgesetzes genannten Personenkreis gehören.</li>
+            <li>die Voraussetzungen nach § 10 BAföG entsprechend erfüllen.</li>
+          </ol>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/apprentice-scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("300 Euro im Monat", page.fields["funding_summary"])
+        self.assertEqual(len(page.criteria), 3)
+        self.assertFalse(any("300 Euro" in item[2] for item in page.criteria))
+
+
     def test_hss_apprentice_criteria_exclude_administrative_and_informational_notes(self) -> None:
         html = """
         <html><body><main>
