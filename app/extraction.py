@@ -759,7 +759,7 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
     if re.match(
         r"(?i)^(?:für die entscheidung über den zugang zur förderung|"
         r"im bereich der bundesrechtlich geregelten ausbildungsberufe ist "
-        r"dieses verzeichnis)\\b",
+        r"dieses verzeichnis)\b",
         value,
     ):
         return False
