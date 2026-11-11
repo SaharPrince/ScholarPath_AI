@@ -12,6 +12,12 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
                 self.assertEqual(source["country"], "Germany")
                 self.assertEqual(urlparse(source["official_url"]).scheme, "https")
                 self.assertTrue(source["name"].strip())
+                for programme_url in source.get("programme_urls", ()):
+                    self.assertEqual(urlparse(programme_url).scheme, "https")
+                    self.assertEqual(
+                        urlparse(programme_url).hostname,
+                        urlparse(source["official_url"]).hostname,
+                    )
 
     def test_hss_declares_its_official_eligibility_page(self) -> None:
         hss = next(source for source in GERMANY_SOURCES if source["name"].startswith("Hanns Seidel"))
