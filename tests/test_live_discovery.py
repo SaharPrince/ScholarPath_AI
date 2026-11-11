@@ -89,5 +89,20 @@ class SourcePagePromotionTests(unittest.TestCase):
         )
 
 
+    def test_eligibility_links_include_german_provider_requirements_pages(self):
+        from app.live_discovery import _eligibility_links
+
+        html = """
+        <html><body><main>
+          <a href="/stipendium/wen-suchen-wir/">Wen suchen wir ...</a>
+          <a href="/contact/">Contact</a>
+        </main></body></html>
+        """
+        self.assertEqual(
+            _eligibility_links(html, "https://www.hss.de/stipendium/"),
+            ["https://www.hss.de/stipendium/wen-suchen-wir/"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
