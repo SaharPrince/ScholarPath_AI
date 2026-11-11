@@ -286,11 +286,24 @@ async def discover_live_scholarships() -> list[dict]:
                 )
                 for (record, requirements_url), page_result in zip(requests, pages):
                     if isinstance(page_result, Exception):
+                        logger.warning(
+                            "Linked eligibility fetch failed: source=%s url=%s error=%s",
+                            record["source_name"],
+                            requirements_url,
+                            page_result,
+                        )
                         continue
-                    requirements_html, _error = page_result
+                    requirements_html, error = page_result
                     if requirements_html:
                         extracted = extract_criteria_from_html(requirements_html, requirements_url)
                         _merge_linked_criteria(record, extracted, requirements_url)
+                    else:
+                        logger.warning(
+                            "Linked eligibility page unavailable: source=%s url=%s error=%s",
+                            record["source_name"],
+                            requirements_url,
+                            error or "no response body",
+                        )
 
             eligibility_task = asyncio.create_task(fetch_eligibility_pages())
             index_tasks = [
@@ -310,6 +323,7 @@ async def discover_live_scholarships() -> list[dict]:
                     try:
                         item = await completed
                     except Exception:
+                        logger.exception("Official index page task failed: source=%s", source["name"])
                         continue
                     record, links, page_html = item
                     if record and _is_promotable_source_page(record, source):
@@ -334,10 +348,23 @@ async def discover_live_scholarships() -> list[dict]:
                 eligibility_pages: dict[str, str] = {}
                 for url, page_result in zip(eligibility_urls, eligibility_results):
                     if isinstance(page_result, Exception):
+                        logger.warning(
+                            "Curated eligibility page fetch failed: source=%s url=%s error=%s",
+                            source["name"],
+                            url,
+                            page_result,
+                        )
                         continue
-                    requirements_html, _error = page_result
+                    requirements_html, error = page_result
                     if requirements_html:
                         eligibility_pages[url] = requirements_html
+                    else:
+                        logger.warning(
+                            "Curated eligibility page unavailable: source=%s url=%s error=%s",
+                            source["name"],
+                            url,
+                            error or "no response body",
+                        )
 
                 root_followups = []
                 for record, page_html in root_records:
@@ -365,6 +392,11 @@ async def discover_live_scholarships() -> list[dict]:
                     detail_records = []
                     for item in details:
                         if isinstance(item, Exception):
+                            logger.warning(
+                                "Official programme detail fetch failed: source=%s error=%s",
+                                source["name"],
+                                item,
+                            )
                             continue
                         record, _links, detail_html = item
                         if record and not _is_generic_source_title(record):
