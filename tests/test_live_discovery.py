@@ -130,6 +130,15 @@ class SourcePagePromotionTests(unittest.TestCase):
                 )
 
 
+    def test_source_level_eligibility_is_not_inherited_by_child_programmes(self):
+        from app.live_discovery import _should_merge_source_eligibility
+
+        source_url = "https://www.hss.de/stipendium/"
+        self.assertTrue(_should_merge_source_eligibility({"source_url": source_url}, source_url))
+        self.assertFalse(_should_merge_source_eligibility({
+            "source_url": "https://www.hss.de/stipendium/foerderung/foerderung-auszubildender/"
+        }, source_url))
+
     def test_source_page_urls_include_curated_same_host_programmes_only(self):
         from app.live_discovery import _source_page_urls
 
