@@ -78,6 +78,13 @@ def _has_actionable_eligibility(record: dict) -> bool:
     )
 
 
+def _promote_actionable_records(results: dict[str, dict], records_with_html) -> None:
+    """Add records after both their main and linked eligibility pages are processed."""
+    for record, _page_html in records_with_html:
+        if _has_actionable_eligibility(record):
+            results[record["source_url"]] = record
+
+
 def _is_promotable_source_page(record: dict, source: dict) -> bool:
     """Prevent broad indexes and provider directories from becoming scholarships."""
     # Indexes and databases are discovery entry points, never individual
@@ -315,6 +322,7 @@ async def discover_live_scholarships() -> list[dict]:
             candidate_urls: dict[str, str] = {}
             root_records: list[tuple[dict, str | None]] = []
             programme_records: list[tuple[dict, str | None]] = []
+            programme_enrichment_tasks: list[asyncio.Task] = []
             try:
                 # Consume index pages as soon as each one completes. A slow root
                 # page must not hide faster curated programme pages when the
@@ -334,6 +342,13 @@ async def discover_live_scholarships() -> list[dict]:
                             root_records.append((record, page_html))
                         else:
                             programme_records.append((record, page_html))
+                            if page_html and not record["criteria"]:
+                                # Start linked eligibility fetches as soon as
+                                # each programme page arrives. This overlaps
+                                # secondary requests with slower index pages.
+                                programme_enrichment_tasks.append(
+                                    asyncio.create_task(enrich_records([(record, page_html)]))
+                                )
                             if _has_actionable_eligibility(record):
                                 results[record["source_url"]] = record
                     for url, title in links:
@@ -341,10 +356,11 @@ async def discover_live_scholarships() -> list[dict]:
 
                 # Direct programme records are kept immediately, then enriched
                 # concurrently so one secondary page cannot starve other results.
-                eligibility_results, _ = await asyncio.gather(
+                eligibility_results, *_ = await asyncio.gather(
                     eligibility_task,
-                    enrich_records(programme_records),
+                    *programme_enrichment_tasks,
                 )
+                _promote_actionable_records(results, programme_records)
                 eligibility_pages: dict[str, str] = {}
                 for url, page_result in zip(eligibility_urls, eligibility_results):
                     if isinstance(page_result, Exception):
