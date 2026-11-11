@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 
 from app.extraction import ExtractedPage
 from app.live_discovery import _as_record, _opportunity_id
@@ -44,6 +45,11 @@ class LiveDiscoveryRecordTests(unittest.TestCase):
         self.assertEqual(record["criteria"][0]["evidence_url"], "https://provider.example/eligibility")
         self.assertEqual(record["evidence"][0]["evidence_url"], "https://provider.example/funding")
         self.assertEqual(record["status"], "unverified")
+
+        # When a page does not expose a provider name, retain the curated
+        # official source name rather than returning an empty provider field.
+        fallback_record = _as_record(replace(page, provider_name=None), source, "https://provider.example/scholarship")
+        self.assertEqual(fallback_record["provider_name"], source["name"])
 
     def test_live_ids_are_stable_and_do_not_require_database_ids(self):
         url = "https://provider.example/scholarship"
