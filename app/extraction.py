@@ -1307,6 +1307,8 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                     continue
                 # Broad ineligibility sections can contain history and selection copy.
                 # Only bypass this filter under an explicit "cannot support" heading.
+                # Preserve literal regex word boundaries so explicit exclusions
+                # remain detectable in the merged pull-request build.
                 if field_name == "ineligibility" and not embedded_ineligibility_context and not re.search(
                     r"\b(ineligible|not eligible|not be accepted|will not be accepted|"
                     r"cannot apply|cannot be nominated|not eligible to|are excluded|"
