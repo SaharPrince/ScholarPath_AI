@@ -1535,17 +1535,20 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(any(item[0] == "study_level" and "Master" in item[2] for item in page.criteria))
         self.assertTrue(any(item[0] == "study_level" and "PhD" in item[2] for item in page.criteria))
 
-    def test_joins_eligibility_sentence_split_across_adjacent_paragraphs(self) -> None:
+    def test_extracts_language_requirement_split_across_paragraphs_in_requirements_section(self) -> None:
         html = """
         <html><body><main>
           <h1>Research Fellowship</h1>
+          <h2>Requirements</h2>
           <p>Applicants are required to have a very good command</p>
           <p>of the English language.</p>
         </main></body></html>
         """
         criteria = extract_criteria_from_html(html)
         self.assertTrue(any(
-            "very good command of the English language" in item[2].lower()
+            item[0] == "language_requirements"
+            and "very good command" in item[2].lower()
+            and "english language" in item[2].lower()
             for item in criteria
         ))
 
