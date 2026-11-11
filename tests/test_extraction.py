@@ -178,7 +178,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         html = """
         <html><body><main>
           <h1>Grundförderung</h1>
-          <p>Die Grundförderung für Ausländer:innen richtet sich an passende internationale Studierende an einer deutschen Hochschule.</p>
+          <p>Die Grundförderung für Ausländer:innen richtet sich an internationale Studierende, die an einer deutschen Hochschule eingeschrieben sind und gute Leistungen erbringen möchten.</p>
           <p>Voraussetzung für eine Bewerbung sind erste benotete Leistungsnachweise und gute deutsche Sprachkenntnisse.</p>
           <ul>
             <li>bereits an einer deutschen, staatlichen oder staatlich anerkannten Hochschule oder Fachhochschule studieren</li>
@@ -199,7 +199,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         texts = [item[2].casefold() for item in page.criteria]
         self.assertTrue(any("deutsche sprachkenntnisse" in value for value in texts))
         self.assertTrue(any("hochschule" in value for value in texts))
-        self.assertTrue(any("noten im studium" in value for value in texts))
+        self.assertTrue(any("noten im studium" in value for value in texts), repr(texts))
         self.assertTrue(any("gesellschaftspolitisch engagiert" in value for value in texts))
         self.assertTrue(any("soziale demokratie" in value for value in texts))
 
@@ -207,7 +207,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         html = """
         <html><body><main>
           <h1>Förderung für Auszubildende</h1>
-          <p>Mit dem Stipendium für Auszubildende unterstützen wir engagierte Nachwuchskräfte.</p>
+          <p>Mit dem Stipendium für Auszubildende unterstützen wir engagierte Nachwuchskräfte während ihrer anerkannten beruflichen Ausbildung und stärken ihre gesellschaftliche Teilhabe.</p>
           <p>Wir suchen Auszubildende, die die Werte der Sozialen Demokratie teilen.</p>
           <ul>
             <li>am Anfang des ersten und spätestens am Anfang des zweiten Ausbildungsjahres stehen</li>
@@ -235,7 +235,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         html = """
         <html><body><main>
           <h1>Stipendium für Auszubildende – Lux Like Ausbildung</h1>
-          <p>Das Stipendium unterstützt Auszubildende mit finanzieller Förderung.</p>
+          <p>Das Stipendium unterstützt Auszubildende mit finanzieller Förderung während ihrer beruflichen Ausbildung und begleitet sie bei gesellschaftlichem Engagement.</p>
           <h2>Wer kann sich für ein Azubi-Stipendium bewerben?</h2>
           <ul>
             <li>Azubis in einer anerkannten Ausbildung nach BBiG/HwO oder in Gesundheitsberufen</li>
