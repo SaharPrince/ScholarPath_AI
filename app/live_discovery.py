@@ -86,7 +86,7 @@ def _eligibility_links(html: str, page_url: str, limit: int = 3) -> list[str]:
         "application criteria", "selection criteria", "qualifications",
         "language requirements", "admission requirements",
         "voraussetzungen", "bewerbungsvoraussetzungen", "wen suchen wir",
-        "wer kann sich bewerben", "scholarship for studies",
+        "wen-suchen-wir", "wer kann sich bewerben", "scholarship for studies",
     )
     found: list[str] = []
     seen: set[str] = set()
