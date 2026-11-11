@@ -25,6 +25,22 @@ class ProfileMatchingTests(unittest.TestCase):
         )
         self.assertEqual(result["status"], "fail")
 
+    def test_bachelors_profile_excludes_generic_graduate_and_phd_awards(self):
+        from app.matching import match_profile_to_scholarships
+
+        rows = [
+            {"id": 1, "title": "Tailwind for Talents: Scholarships for Graduates and PhD students"},
+            {"id": 2, "title": "Applying for a scholarship"},
+        ]
+        criteria = {
+            1: [self.criterion("study_level", "Study level", "Graduate degree completed abroad")],
+            2: [self.criterion("study_level", "Study level", "Graduate degree completed abroad")],
+        }
+        results = match_profile_to_scholarships(
+            rows, criteria, {"target_study_level": "bachelors"}
+        )
+        self.assertEqual(results, [])
+
     def test_bachelors_profile_excludes_masters_and_phd_only_awards(self):
         from app.matching import match_profile_to_scholarships
         rows = [
