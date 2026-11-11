@@ -160,8 +160,13 @@ async def main() -> None:
     if blocking_failures:
         print("LIVE CHECK RESULT: FAILED")
         raise SystemExit(1)
-    if failures:
-        print("LIVE CHECK RESULT: core DAAD sources passed; some secondary indexes were unreachable")
+    if access_restricted:
+        print(
+            "LIVE CHECK RESULT: no unexpected source failures; "
+            "some official pages blocked automated CI access and remain configured for live discovery."
+        )
+    elif failures:
+        print("LIVE CHECK RESULT: core DAAD sources passed; some secondary indexes were unavailable")
     else:
         print("LIVE CHECK RESULT: all official source indexes were reachable")
 
