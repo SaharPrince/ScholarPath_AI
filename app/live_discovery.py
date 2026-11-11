@@ -57,6 +57,10 @@ _GENERIC_SOURCE_TITLE_MARKERS = (
     "scholarships and other funding for international students",
     "study funding",
     "funding opportunities",
+    "applying for a scholarship",
+    "how to apply",
+    "application process",
+    "application procedure",
 )
 
 
@@ -91,7 +95,10 @@ def _is_promotable_source_page(record: dict, source: dict) -> bool:
     # opportunities. Government and university sources may also publish a
     # specific named scholarship on their own programme pages, so assess the
     # extracted page title instead of rejecting those source types wholesale.
-    if source.get("source_type") in {"official_index", "official_database"}:
+    if (
+        source.get("source_type") in {"official_index", "official_database"}
+        and record.get("source_url") == source.get("official_url")
+    ):
         return False
     return not _is_generic_source_title(record)
 
