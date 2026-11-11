@@ -20,7 +20,7 @@ GERMANY_SOURCES = (
     {"name": "Konrad Adenauer Foundation – International Scholarships", "official_url": "https://www.kas.de/en/web/begabtenfoerderung-und-kultur/international-talent-development", "source_type": "official_programme", "country": "Germany"},
     {"name": "Rosa Luxemburg Foundation – Scholarship Department", "official_url": "https://www.rosalux.de/stiftung/studienwerk", "source_type": "official_programme", "country": "Germany"},
     {"name": "Friedrich Naumann Foundation – Scholarships", "official_url": "https://www.freiheit.org/scholarships", "source_type": "official_programme", "country": "Germany"},
-    {"name": "Hanns Seidel Foundation – Scholarships", "official_url": "https://www.hss.de/stipendium/", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Hanns Seidel Foundation – Scholarships", "official_url": "https://www.hss.de/stipendium/", "eligibility_urls": ("https://www.hss.de/stipendium/wen-suchen-wir/",), "source_type": "official_programme", "country": "Germany"},
     {"name": "Catholic Academic Exchange Service (KAAD)", "official_url": "https://www.kaad.de/en/stipendien/", "source_type": "official_programme", "country": "Germany"},
     {"name": "Avicenna Studienwerk – Scholarships", "official_url": "https://www.avicenna-studienwerk.de/stipendium/", "source_type": "official_programme", "country": "Germany"},
     {"name": "Evangelisches Studienwerk – Scholarships", "official_url": "https://www.evstudienwerk.de/english/scholarship-for-students/", "source_type": "official_programme", "country": "Germany"},
