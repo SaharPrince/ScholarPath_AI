@@ -1551,7 +1551,7 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         html = """
         <html><body><main>
           <h1>Studieren – Horizonte erweitern – Zukunft gestalten</h1>
-          <p>Ein Stipendium ist weit mehr als nur eine finanzielle Hilfe.</p>
+          <p>Ein Stipendium ist weit mehr als nur eine finanzielle Hilfe: Es bietet auch viele interessante Veranstaltungen, eine Gemeinschaft Gleichgesinnter und wertvolle Kontakte. Das Beste daran? Die Chancen stehen gut, dass auch Sie alle nötigen Voraussetzungen für die Bewerbung erfüllen.</p>
           <p>Sie erfüllen die Voraussetzungen und finden sich in unserem Programm wieder?
              Dann bewerben Sie sich! Unser Bewerbungsportal ist geöffnet.</p>
         </main></body></html>
