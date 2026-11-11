@@ -119,6 +119,52 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "2026-06-15",
         )
 
+    def test_extracts_foundation_supported_student_group_and_exclusions(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Student scholarships</h1>
+          <p>Do you have good to very good grades or academic achievements, are you interested in politics, are you committed and have a liberal, cosmopolitan attitude? Then apply for a scholarship.</p>
+          <p>We support German and foreign students who study full-time at state or state-recognized universities and technical colleges.</p>
+          <h2>Unfortunately, we cannot support the following:</h2>
+          <ul>
+            <li>Second degrees</li>
+            <li>Part-time degrees</li>
+            <li>Bachelor programmes for foreign, non-EU students</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/student-scholarships")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertTrue(any("German and foreign students" in item[2] for item in page.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" for item in page.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "Second degrees" in item[2] for item in page.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "non-EU students" in item[2] for item in page.criteria))
+
+    def test_extracts_implied_applicant_conditions_from_kaad_style_lists(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>KAAD Scholarship Programme 2</h1>
+          <ul>
+            <li>come from a country in Africa, Asia, the Near and Middle East, or Latin America</li>
+            <li>have not been in Germany for more than 15 months</li>
+            <li>hold a residence permit for study purposes</li>
+            <li>are already studying in Germany and have at least six months remaining in your program</li>
+            <li>wish to pursue a master’s degree or a doctoral degree at a German university</li>
+            <li>belong to the Catholic Church or another Christian denomination</li>
+            <li>belong to another religion and are nominated by Catholic partners</li>
+            <li>have sufficient knowledge of the German language</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/kaad-programme-2")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertGreaterEqual(len(page.criteria), 7)
+        self.assertTrue(any("15 months" in item[2] for item in page.criteria))
+        self.assertTrue(any("residence permit" in item[2] for item in page.criteria))
+        self.assertTrue(any("Christian denomination" in item[2] for item in page.criteria))
+
     def test_extracts_german_apprentice_scholarship_funding_deadline_and_criteria(self) -> None:
         html = """
         <html><body><main>
