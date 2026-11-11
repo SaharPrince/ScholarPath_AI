@@ -1532,6 +1532,8 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         assert page is not None
         self.assertTrue(any("completed their first degree abroad" in item[2] for item in page.criteria))
         self.assertTrue(any("DAC countries" in item[2] for item in page.criteria))
+        self.assertTrue(any(item[0] == "study_level" and "Master" in item[2] for item in page.criteria))
+        self.assertTrue(any(item[0] == "study_level" and "PhD" in item[2] for item in page.criteria))
 
     def test_joins_eligibility_sentence_split_across_adjacent_paragraphs(self) -> None:
         html = """
