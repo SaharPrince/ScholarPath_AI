@@ -27,8 +27,8 @@ MAX_CANDIDATES_PER_SOURCE = 3
 MAX_LIVE_RESULTS = 100
 # Keep each source request short enough to return partial results within
 # common serverless execution limits. Slow sources must not block all others.
-REQUEST_TIMEOUT = httpx.Timeout(2.5, connect=1.5)
-DISCOVERY_BUDGET_SECONDS = 6.5
+REQUEST_TIMEOUT = httpx.Timeout(3.5, connect=1.5)
+DISCOVERY_BUDGET_SECONDS = 8.0
 MAX_DAAD_INDEX_PAGES = 4
 REQUEST_LIMITS = httpx.Limits(max_connections=40, max_keepalive_connections=20)
 
