@@ -309,6 +309,87 @@ button:active,.detailbtn:active,.match-button:active{transform:translateY(1px) s
  .stat:hover,.card:hover,.criterion:hover,.fact:hover{transform:none}
 }
 
+
+/* Final visual pass: richer depth, clearer section rhythm, and tactile controls. */
+#explore-section{scroll-margin-top:28px}
+.section-head h2{position:relative;display:inline-block}
+.section-head h2:after{
+ content:"";display:block;width:42px;height:3px;margin-top:10px;border-radius:9px;
+ background:linear-gradient(90deg,#2c815b,#a6d1b3)
+}
+.profile-panel{isolation:isolate}
+.profile-panel:after{
+ content:"";position:absolute;z-index:-1;right:-72px;top:-92px;width:240px;height:240px;
+ border:1px solid rgba(52,125,82,.11);border-radius:50%;
+ box-shadow:0 0 0 22px rgba(52,125,82,.025),0 0 0 48px rgba(52,125,82,.018);
+ pointer-events:none
+}
+.profile-panel>*{position:relative;z-index:1}
+.profile-panel:before{z-index:1}
+.profile-field input,.profile-field select,.field input,.field select,.select-trigger{
+ transition:border-color .2s ease,box-shadow .2s ease,background-color .2s ease,transform .2s ease
+}
+.profile-field:focus-within label{color:#246c4c}
+.profile-field input:focus,.profile-field select:focus,.field input:focus,.field select:focus{
+ border-color:#65a783;box-shadow:0 0 0 4px rgba(104,167,131,.15);background:#fff
+}
+.filters:focus-within{border-color:#c7dbcd;box-shadow:0 12px 30px rgba(20,49,38,.07)}
+.card{overflow:hidden}
+.card:before{
+ content:"";position:absolute;top:0;left:0;right:0;height:3px;
+ background:linear-gradient(90deg,#246f50,#9ac9a8 58%,#e7bd72);
+ transform:scaleX(.16);transform-origin:left;opacity:.58;
+ transition:transform .32s cubic-bezier(.2,.75,.25,1),opacity .25s ease
+}
+.card:hover:before,.card:focus-within:before{transform:scaleX(1);opacity:1}
+.card:focus-within{border-color:#a9cdb6;box-shadow:0 13px 32px rgba(20,49,38,.085)}
+.cardtop{position:relative}
+.card h3{transition:color .2s ease}
+.card:hover h3{color:#1b6849}
+.detailbtn,.match-button,.hero-cta,.close{
+ transition:transform .22s cubic-bezier(.2,.75,.25,1),background-color .22s ease,
+ color .22s ease,box-shadow .22s ease,border-color .22s ease
+}
+.detailbtn:hover,.match-button:hover{box-shadow:0 8px 18px rgba(23,107,80,.14)}
+.close:hover{background:#e8f2eb;border-color:#c8ddce;color:#15583f;transform:rotate(4deg)}
+.overlay{backdrop-filter:blur(5px)}
+.drawer{border-left:1px solid rgba(255,255,255,.7)}
+.drawerhead{padding-bottom:18px;border-bottom:1px solid #e6ede7}
+.fact:hover{transform:translateY(-2px)}
+.criterion:hover{transform:translateX(2px)}
+.links a{display:inline-flex;align-items:center;gap:5px;transition:color .18s ease,transform .18s ease}
+.links a:hover{color:#0f5038;transform:translateY(-1px)}
+.match-result{padding:15px 12px;border-radius:12px;transition:background-color .2s ease,transform .2s ease}
+.match-result:hover{background:#f2f7f2;transform:translateX(3px)}
+.match-state{transition:box-shadow .2s ease}
+.empty,.loading{position:relative;overflow:hidden}
+.empty:after{
+ content:"";position:absolute;right:-38px;top:-48px;width:130px;height:130px;border:1px solid rgba(49,119,77,.1);
+ border-radius:50%;box-shadow:0 0 0 17px rgba(49,119,77,.025);pointer-events:none
+}
+.loading:before{
+ content:"";position:absolute;inset:0;transform:translateX(-100%);
+ background:linear-gradient(100deg,transparent,rgba(224,239,228,.48),transparent);
+ animation:sp-loading-sheen 1.8s ease-in-out infinite;pointer-events:none
+}
+@keyframes sp-loading-sheen{to{transform:translateX(100%)}}
+@media(hover:hover){
+ .stat:hover{border-color:#d2e3d7}
+ .profile-panel:hover{box-shadow:0 22px 54px rgba(20,49,38,.085)}
+}
+@media(max-width:600px){
+ .profile-panel:after{right:-150px;top:-120px;width:210px;height:210px}
+ .section-head h2:after{margin-top:8px}
+ .card:before{height:2px}
+ .match-result:hover,.criterion:hover,.fact:hover{transform:none}
+ .drawerhead{padding-bottom:14px}
+}
+@media(prefers-reduced-motion:reduce){
+ .loading:before{animation:none}
+ .card:before,.card h3,.links a,.match-result,.fact,.criterion,.close{transition:none!important}
+ .card:hover h3{color:inherit}
+}
+
 </style>
 </head>
 <body>
