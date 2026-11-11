@@ -632,6 +632,43 @@ def _extract_description_criteria(description: str) -> list[tuple[str, str, str]
     return extracted
 
 
+def _is_applicant_eligibility_statement(statement: str) -> bool:
+    """Reject directory taxonomy and broad discovery copy masquerading as criteria."""
+    value = _clean(statement)
+    if not value:
+        return False
+    # DAAD and foundation directories describe categories of funding providers.
+    # A student mentioned after an organisation category is not an applicant rule.
+    if re.match(
+        r"(?i)^(?:denominational|religious|faith[- ]based|private|public|"
+        r"corporate|government(?:al)?|non[- ]?profit)\\s+"
+        r"(?:organisations?|organizations?|institutions?|foundations?|associations?)\\s*:",
+        value,
+    ):
+        return False
+    if re.match(
+        r"(?i)^(?:organisations?|organizations?|institutions?|foundations?|"
+        r"associations?)\\s*:\\s*(?:students?|applicants?|candidates?)\\b",
+        value,
+    ):
+        return False
+    # General directory invitations are not eligibility conditions for a
+    # particular scholarship opportunity.
+    if re.search(
+        r"(?i)\\b(?:students?|applicants?)\\s+(?:can|may)\\s+apply\\s+"
+        r"(?:to|for)\\s+(?:various|different|a range of|many)\\b",
+        value,
+    ):
+        return False
+    if re.search(
+        r"(?i)\\b(?:various|different|a range of)\\s+"
+        r"(?:scholarships?|funding options?|funding opportunities)\\b",
+        value,
+    ):
+        return False
+    return True
+
+
 def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str, str, str]]:
     """Scrape eligibility statements from ordinary paragraphs and lists.
 
@@ -668,6 +705,8 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
             if not statement or key in seen or len(statement) < 24 or len(statement) > 1000:
                 continue
             if not requirement_signal.search(statement):
+                continue
+            if not _is_applicant_eligibility_statement(statement):
                 continue
             # A condition must identify applicants, or be an unmistakable
             # qualification fragment such as "at least two years of experience".
@@ -725,7 +764,11 @@ def extract_criteria_from_html(html: str) -> list[tuple[str, str, str]]:
             continue
         for statement in _split_criteria_statements(section):
             statement = _clean(statement)
-            if statement and len(statement) >= 18:
+            if (
+                statement
+                and len(statement) >= 18
+                and _is_applicant_eligibility_statement(statement)
+            ):
                 found.append((kind, kind.replace("_", " ").title(), statement))
     found.extend(_extract_unlabelled_criteria(content_root))
     unique = []
