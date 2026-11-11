@@ -398,7 +398,8 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
     This deliberately filters only explicit level-specific opportunities. Generic
     awards and unclear criteria remain visible as 'needs more information'.
     """
-    target = (profile.get("target_study_level") or "").strip().lower()
+    target_raw = (profile.get("target_study_level") or "").strip().lower()
+    target = re.sub(r"[^a-z0-9]+", " ", target_raw).strip()
     target_aliases = {
         "matric": {"matric", "ssc", "secondary"},
         "intermediate": {"intermediate", "hssc", "college", "fa", "f.a.", "fsc", "f.sc.", "ics", "i.com"},
@@ -406,7 +407,16 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         "master": {"master", "masters", "master's", "postgraduate", "ms", "mphil", "m.phil"},
         "phd": {"phd", "doctoral", "doctorate"},
     }
-    target_key = next((key for key, aliases in target_aliases.items() if target in aliases), target)
+    target_key = next(
+        (
+            key for key, aliases in target_aliases.items()
+            if any(
+                re.search(rf"\\b{re.escape(re.sub(r'[^a-z0-9]+', ' ', alias).strip())}\\b", target)
+                for alias in aliases
+            )
+        ),
+        target,
+    )
     if target_key not in {"matric", "intermediate", "bachelors", "master", "phd"}:
         return None
 
