@@ -364,10 +364,13 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     return False
 
 def _parse_deadline_date(value: str | None) -> str | None:
-    """Normalize an explicitly extracted English deadline date to ISO format."""
+    """Normalize an explicitly extracted English or German deadline date to ISO format."""
     if not value:
         return None
-    matches = sorted(\n        [*DATE_PATTERN.finditer(value), *GERMAN_DATE_PATTERN.finditer(value)],\n        key=lambda item: item.start(),\n    )
+    matches = sorted(
+        [*DATE_PATTERN.finditer(value), *GERMAN_DATE_PATTERN.finditer(value)],
+        key=lambda item: item.start(),
+    )
     if not matches:
         return None
     # For application windows, prefer the first closing date (for example,
@@ -375,7 +378,7 @@ def _parse_deadline_date(value: str | None) -> str | None:
     closing_matches = [
         match for match in matches
         if re.search(
-            r"(?i)(?:until|through|deadline(?:\s+is)?|closes?(?:\s+on)?|closing date|apply by|no later than)\s*$",
+            r"(?i)(?:until|through|bis(?: einschließlich)?|deadline(?:\s+is)?|closes?(?:\s+on)?|closing date|apply by|no later than)\s*$",
             value[max(0, match.start() - 48):match.start()],
         )
     ]
@@ -1046,8 +1049,8 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             value = _clean(node.get_text(" ", strip=True))
             has_date = DATE_PATTERN.search(value) or GERMAN_DATE_PATTERN.search(value)
             has_window_marker = re.search(
-                r"(?i)\\b(?:bis(?: einschließlich)?|application (?:period|window|deadline)|"
-                r"bewerbungs(?:frist|schluss|zeitraum)|closing date|applications? close)\\b",
+                r"(?i)\b(?:bis(?: einschließlich)?|application (?:period|window|deadline)|"
+                r"bewerbungs(?:frist|schluss|zeitraum)|closing date|applications? close)\b",
                 value,
             )
             if has_date and has_window_marker:
