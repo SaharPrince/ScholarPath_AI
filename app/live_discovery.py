@@ -213,6 +213,23 @@ async def discover_live_scholarships() -> list[dict]:
                     continue
                 record, links, _html = item
                 if record and _is_promotable_source_page(record, source):
+                    # Programme landing pages frequently link to a separate
+                    # eligibility page. Enrich root-page records too, not only
+                    # discovered detail links, or providers such as HSS lose
+                    # their actual applicant conditions.
+                    if _html and not record["criteria"]:
+                        requirements_urls = _eligibility_links(_html, record["source_url"])
+                        pages = await asyncio.gather(
+                            *(fetch(requirements_url) for requirements_url in requirements_urls),
+                            return_exceptions=True,
+                        )
+                        for requirements_url, page_result in zip(requirements_urls, pages):
+                            if isinstance(page_result, Exception):
+                                continue
+                            requirements_html, _error = page_result
+                            if requirements_html:
+                                extracted = extract_criteria_from_html(requirements_html)
+                                _merge_linked_criteria(record, extracted, requirements_url)
                     results[record["source_url"]] = record
                 for url, title in links:
                     candidate_urls.setdefault(url, title)
