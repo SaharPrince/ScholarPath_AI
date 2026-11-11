@@ -70,6 +70,8 @@ class SourcePagePromotionTests(unittest.TestCase):
             "Scholarship Providers",
             "Scholarships by Target Group and Stage of University Education",
             "Scholarship Programmes for Pakistan",
+            "Studienwerk",
+            "Scholarship Department",
         ):
             with self.subTest(title=title):
                 self.assertFalse(
