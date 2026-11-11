@@ -24,6 +24,18 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
                         urlparse(source["official_url"]).hostname,
                     )
 
+    def test_multi_programme_hss_and_naumann_indexes_are_not_single_awards(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        self.assertEqual(
+            sources["Hanns Seidel Foundation – Scholarships"]["source_type"],
+            "official_index",
+        )
+        self.assertEqual(
+            sources["Friedrich Naumann Foundation – Scholarships"]["source_type"],
+            "official_index",
+        )
+        self.assertNotIn("eligibility_urls", sources["Hanns Seidel Foundation – Scholarships"])
+
     def test_hss_declares_its_official_eligibility_page(self) -> None:
         hss = next(source for source in GERMANY_SOURCES if source["name"].startswith("Hanns Seidel"))
         self.assertEqual(
