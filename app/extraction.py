@@ -365,7 +365,7 @@ def _parse_deadline_date(value: str | None) -> str | None:
     closing_matches = [
         match for match in matches
         if re.search(
-            r"(?i)(?:until|through|deadline(?:\\s+is)?|closes?(?:\\s+on)?|closing date|apply by|no later than)\\s*$",
+            r"(?i)(?:until|through|deadline(?:\s+is)?|closes?(?:\s+on)?|closing date|apply by|no later than)\s*$",
             value[max(0, match.start() - 48):match.start()],
         )
     ]
