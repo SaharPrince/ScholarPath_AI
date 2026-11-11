@@ -288,7 +288,17 @@ def _split_criteria_statements(value: str) -> list[str]:
             part = re.sub(token, original, part, flags=re.I)
         part = re.sub(r"\b([A-Z])INITIAL", r"\1.", part)
         cleaned = _clean(part)
-        if cleaned and cleaned not in restored:
+        if (
+            restored
+            and re.match(r"(?i)^B\\.\\s+für Zweitausbildung\\b", cleaned)
+            and re.search(r"(?i)\\bz\\.$", restored[-1])
+        ):
+            # Some German provider pages split the abbreviation "z. B."
+            # across separate list items or DOM text blocks. Rejoin the
+            # continuation before returning criteria so the age condition
+            # remains one complete, evidence-backed statement.
+            restored[-1] = f"{restored[-1]} {cleaned}"
+        elif cleaned and cleaned not in restored:
             restored.append(cleaned)
     return restored
 
