@@ -284,14 +284,14 @@ def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
     if re.search(r"\b(?:under|less than|below)\s+\d{1,2}\s+years?\s+old\b|\b\d{1,2}\s+years?\s+old\b", text):
         return "age_limit", "Age limit"
     if re.search(
-        r"\\b(german language skills|language skills|language proficiency|"
-        r"command of the (?:english|german) language|deutschkenntnisse|sprachkenntnisse)\\b",
+        r"\b(german language skills|command of the (?:english|german) language|"
+        r"deutschkenntnisse|sprachkenntnisse)\b",
         text,
     ):
         return "language_requirements", "Language requirements"
     if re.search(r"\b(above-average|academic performance|grades|gpa|school performance)\b", text):
         return "academic_requirements", "Academic requirements"
-    if re.search(r"\b(master(?:'s)?|phd|doctoral|bachelor|undergraduate)\b", text):
+    if re.search(r"\b(master(?:'s)?|phd|doctoral)\b", text):
         return "study_level", "Study level"
     if re.search(r"\b(full-time|part-time|university|higher education institution|enrolled|admitted)\b", text):
         return "study_level", "Study requirements"
