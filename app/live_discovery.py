@@ -322,7 +322,6 @@ async def discover_live_scholarships() -> list[dict]:
             candidate_urls: dict[str, str] = {}
             root_records: list[tuple[dict, str | None]] = []
             programme_records: list[tuple[dict, str | None]] = []
-            programme_enrichment_tasks: list[asyncio.Task] = []
             try:
                 # Consume index pages as soon as each one completes. A slow root
                 # page must not hide faster curated programme pages when the
@@ -342,13 +341,6 @@ async def discover_live_scholarships() -> list[dict]:
                             root_records.append((record, page_html))
                         else:
                             programme_records.append((record, page_html))
-                            if page_html and not record["criteria"]:
-                                # Start linked eligibility fetches as soon as
-                                # each programme page arrives. This overlaps
-                                # secondary requests with slower index pages.
-                                programme_enrichment_tasks.append(
-                                    asyncio.create_task(enrich_records([(record, page_html)]))
-                                )
                             if _has_actionable_eligibility(record):
                                 results[record["source_url"]] = record
                     for url, title in links:
@@ -356,9 +348,9 @@ async def discover_live_scholarships() -> list[dict]:
 
                 # Direct programme records are kept immediately, then enriched
                 # concurrently so one secondary page cannot starve other results.
-                eligibility_results, *_ = await asyncio.gather(
+                eligibility_results, _ = await asyncio.gather(
                     eligibility_task,
-                    *programme_enrichment_tasks,
+                    enrich_records(programme_records),
                 )
                 _promote_actionable_records(results, programme_records)
                 eligibility_pages: dict[str, str] = {}
@@ -429,9 +421,7 @@ async def discover_live_scholarships() -> list[dict]:
                         task.cancel()
                 if not eligibility_task.done():
                     eligibility_task.cancel()
-                for task in programme_enrichment_tasks:
-                    if not task.done():
-                        task.cancel()
+
 
         async def run_source_group(sources: list[dict], timeout: float) -> None:
             if not sources or timeout <= 0:
@@ -455,11 +445,30 @@ async def discover_live_scholarships() -> list[dict]:
                 except Exception:
                     logger.exception("Official source scan failed")
 
-        # Give every configured provider the same request-time opportunity.
-        # A priority phase consumed most of the short serverless budget before
-        # secondary providers even started, making identical searches return
-        # radically different result counts depending on network timing.
-        await run_source_group(GERMANY_SOURCES, DISCOVERY_BUDGET_SECONDS)
+        # Prioritize curated individual programme pages and the main
+        # scholarship foundations. Their named awards are more actionable than
+        # broad indexes, while the remaining providers still receive a bounded
+        # portion of the same live request budget.
+        priority_names = {
+            "Heinrich Böll Foundation – Scholarships",
+            "Konrad Adenauer Foundation – International Scholarships",
+        }
+        priority_sources = [
+            source for source in GERMANY_SOURCES
+            if source.get("programme_urls") or source["name"] in priority_names
+        ]
+        secondary_sources = [
+            source for source in GERMANY_SOURCES
+            if source not in priority_sources
+        ]
+        loop = asyncio.get_running_loop()
+        discovery_started = loop.time()
+        priority_budget = min(6.0, DISCOVERY_BUDGET_SECONDS)
+        await run_source_group(priority_sources, priority_budget)
+        remaining_budget = max(
+            0.0, DISCOVERY_BUDGET_SECONDS - (loop.time() - discovery_started)
+        )
+        await run_source_group(secondary_sources, remaining_budget)
         if successful_pages == 0:
             raise RuntimeError("No official scholarship source pages responded")
 
