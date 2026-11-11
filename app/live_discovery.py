@@ -115,7 +115,7 @@ def _source_page_urls(source: dict) -> list[str]:
         url for url in source.get("programme_urls", ())
         if source_host and _normalized_host(url) == source_host
     ]
-    return list(dict.fromkeys([*base_urls, *programme_urls]))
+    return list(dict.fromkeys([*programme_urls, *base_urls]))
 
 
 def _eligibility_links(html: str, page_url: str, limit: int = 3) -> list[str]:
@@ -379,29 +379,53 @@ async def discover_live_scholarships() -> list[dict]:
                 if not eligibility_task.done():
                     eligibility_task.cancel()
 
-        # Return opportunities from sources that respond within the request
-        # budget. One slow provider must never discard results from every other
-        # official provider.
-        tasks = [
-            asyncio.create_task(inspect_source(dict(source)))
-            for source in GERMANY_SOURCES
+        # Prioritize providers with curated programme pages, plus the main
+        # scholarship foundations. This prevents a large set of slower index
+        # pages from consuming the entire serverless budget before direct awards
+        # are inspected.
+        priority_names = {
+            "Heinrich Böll Foundation – Scholarships",
+            "Konrad Adenauer Foundation – International Scholarships",
+        }
+        priority_sources = [
+            source for source in GERMANY_SOURCES
+            if source.get("programme_urls") or source["name"] in priority_names
         ]
-        done, pending = await asyncio.wait(
-            tasks,
-            timeout=DISCOVERY_BUDGET_SECONDS,
-            return_when=asyncio.ALL_COMPLETED,
+        secondary_sources = [
+            source for source in GERMANY_SOURCES
+            if source not in priority_sources
+        ]
+
+        async def run_source_group(sources: list[dict], timeout: float) -> None:
+            if not sources or timeout <= 0:
+                return
+            tasks = [
+                asyncio.create_task(inspect_source(dict(source)))
+                for source in sources
+            ]
+            done, pending = await asyncio.wait(
+                tasks,
+                timeout=timeout,
+                return_when=asyncio.ALL_COMPLETED,
+            )
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            for task in done:
+                try:
+                    task.result()
+                except Exception:
+                    continue
+
+        loop = asyncio.get_running_loop()
+        discovery_started = loop.time()
+        priority_budget = min(6.0, DISCOVERY_BUDGET_SECONDS)
+        await run_source_group(priority_sources, priority_budget)
+        remaining_budget = max(
+            0.0, DISCOVERY_BUDGET_SECONDS - (loop.time() - discovery_started)
         )
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
-        # Consume exceptions from completed source tasks; source failures are
-        # isolated and do not prevent partial live results from being returned.
-        for task in done:
-            try:
-                task.result()
-            except Exception:
-                continue
+        await run_source_group(secondary_sources, remaining_budget)
         if successful_pages == 0:
             raise RuntimeError("No official scholarship source pages responded")
 
