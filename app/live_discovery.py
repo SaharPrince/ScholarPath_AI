@@ -252,50 +252,81 @@ async def discover_live_scholarships() -> list[dict]:
             source_url = source["official_url"]
             index_urls = _source_page_urls(source)
             eligibility_urls = list(source.get("eligibility_urls", ()))
-            # Fetch explicitly curated eligibility pages alongside their
-            # programme landing page so a slow secondary request cannot make
-            # the scholarship lose its actual requirements.
-            index_results, eligibility_results = await asyncio.gather(
-                asyncio.gather(
-                    *(
-                        inspect_page(source, url, _source_candidate_title(source, url))
-                        for url in index_urls
-                    ),
-                    return_exceptions=True,
-                ),
-                asyncio.gather(
+
+            async def fetch_eligibility_pages():
+                return await asyncio.gather(
                     *(fetch(url) for url in eligibility_urls),
                     return_exceptions=True,
-                ),
-            )
-            eligibility_pages: dict[str, str] = {}
-            for url, page_result in zip(eligibility_urls, eligibility_results):
-                if isinstance(page_result, Exception):
-                    continue
-                requirements_html, _error = page_result
-                if requirements_html:
-                    eligibility_pages[url] = requirements_html
+                )
+
+            eligibility_task = asyncio.create_task(fetch_eligibility_pages())
+            index_tasks = [
+                asyncio.create_task(
+                    inspect_page(source, url, _source_candidate_title(source, url))
+                )
+                for url in index_urls
+            ]
             candidate_urls: dict[str, str] = {}
-            for item in index_results:
-                if isinstance(item, Exception):
-                    continue
-                record, links, _html = item
-                if record and _is_promotable_source_page(record, source):
-                    # Programme landing pages frequently link to a separate
-                    # eligibility page. Enrich root-page records too, not only
-                    # discovered detail links, or providers such as HSS lose
-                    # their actual applicant conditions.
-                    if _should_merge_source_eligibility(record, source_url):
-                        for requirements_url, requirements_html in eligibility_pages.items():
-                            extracted = extract_criteria_from_html(requirements_html)
-                            _merge_linked_criteria(record, extracted, requirements_url)
-                    if _html and not record["criteria"]:
+            root_records: list[tuple[dict, str | None]] = []
+            try:
+                # Consume index pages as soon as each one completes. A slow root
+                # page must not hide faster curated programme pages when the
+                # overall serverless discovery budget expires.
+                for completed in asyncio.as_completed(index_tasks):
+                    try:
+                        item = await completed
+                    except Exception:
+                        continue
+                    record, links, page_html = item
+                    if record and _is_promotable_source_page(record, source):
+                        if _should_merge_source_eligibility(record, source_url):
+                            # Source-level eligibility belongs only to the root
+                            # programme. Enrich it after the parallel fetch ends,
+                            # without blocking direct programme records.
+                            root_records.append((record, page_html))
+                        else:
+                            if page_html and not record["criteria"]:
+                                requirements_urls = _eligibility_links(
+                                    page_html, record["source_url"]
+                                )
+                                pages = await asyncio.gather(
+                                    *(fetch(url) for url in requirements_urls),
+                                    return_exceptions=True,
+                                )
+                                for requirements_url, page_result in zip(requirements_urls, pages):
+                                    if isinstance(page_result, Exception):
+                                        continue
+                                    requirements_html, _error = page_result
+                                    if requirements_html:
+                                        extracted = extract_criteria_from_html(requirements_html)
+                                        _merge_linked_criteria(
+                                            record, extracted, requirements_url
+                                        )
+                            if _has_actionable_eligibility(record):
+                                results[record["source_url"]] = record
+                    for url, title in links:
+                        candidate_urls.setdefault(url, title)
+
+                eligibility_results = await eligibility_task
+                eligibility_pages: dict[str, str] = {}
+                for url, page_result in zip(eligibility_urls, eligibility_results):
+                    if isinstance(page_result, Exception):
+                        continue
+                    requirements_html, _error = page_result
+                    if requirements_html:
+                        eligibility_pages[url] = requirements_html
+
+                for record, page_html in root_records:
+                    for requirements_url, requirements_html in eligibility_pages.items():
+                        extracted = extract_criteria_from_html(requirements_html)
+                        _merge_linked_criteria(record, extracted, requirements_url)
+                    if page_html and not record["criteria"]:
                         requirements_urls = [
-                            url for url in _eligibility_links(_html, record["source_url"])
+                            url for url in _eligibility_links(page_html, record["source_url"])
                             if url not in eligibility_pages
                         ]
                         pages = await asyncio.gather(
-                            *(fetch(requirements_url) for requirements_url in requirements_urls),
+                            *(fetch(url) for url in requirements_urls),
                             return_exceptions=True,
                         )
                         for requirements_url, page_result in zip(requirements_urls, pages):
@@ -307,40 +338,46 @@ async def discover_live_scholarships() -> list[dict]:
                                 _merge_linked_criteria(record, extracted, requirements_url)
                     if _has_actionable_eligibility(record):
                         results[record["source_url"]] = record
-                for url, title in links:
-                    candidate_urls.setdefault(url, title)
-            # Curated programme URLs already cover these providers' key awards.
-            # Follow at most one extra link per such source to stay inside the
-            # serverless budget without starving the curated programme pages.
-            detail_limit = 1 if source.get("programme_urls") else MAX_CANDIDATES_PER_SOURCE
-            detail_items = list(candidate_urls.items())[:detail_limit]
-            if detail_items:
-                details = await asyncio.gather(
-                    *(inspect_page(source, url, title) for url, title in detail_items),
-                    return_exceptions=True,
-                )
-                for item in details:
-                    if isinstance(item, Exception):
-                        continue
-                    record, _links, detail_html = item
-                    if record and not _is_generic_source_title(record):
-                        # Follow a few clearly labelled same-domain requirements
-                        # pages when the programme page contains no eligibility.
-                        if detail_html and not record["criteria"]:
-                            requirements_urls = _eligibility_links(detail_html, record["source_url"])
-                            pages = await asyncio.gather(
-                                *(fetch(requirements_url) for requirements_url in requirements_urls),
-                                return_exceptions=True,
-                            )
-                            for requirements_url, page_result in zip(requirements_urls, pages):
-                                if isinstance(page_result, Exception):
-                                    continue
-                                requirements_html, _error = page_result
-                                if requirements_html:
-                                    extracted = extract_criteria_from_html(requirements_html)
-                                    _merge_linked_criteria(record, extracted, requirements_url)
-                        if _has_actionable_eligibility(record):
-                            results[record["source_url"]] = record
+
+                # Curated programme URLs already cover these providers' key
+                # awards. Follow at most one extra link per such source.
+                detail_limit = 1 if source.get("programme_urls") else MAX_CANDIDATES_PER_SOURCE
+                detail_items = list(candidate_urls.items())[:detail_limit]
+                if detail_items:
+                    details = await asyncio.gather(
+                        *(inspect_page(source, url, title) for url, title in detail_items),
+                        return_exceptions=True,
+                    )
+                    for item in details:
+                        if isinstance(item, Exception):
+                            continue
+                        record, _links, detail_html = item
+                        if record and not _is_generic_source_title(record):
+                            if detail_html and not record["criteria"]:
+                                requirements_urls = _eligibility_links(
+                                    detail_html, record["source_url"]
+                                )
+                                pages = await asyncio.gather(
+                                    *(fetch(url) for url in requirements_urls),
+                                    return_exceptions=True,
+                                )
+                                for requirements_url, page_result in zip(requirements_urls, pages):
+                                    if isinstance(page_result, Exception):
+                                        continue
+                                    requirements_html, _error = page_result
+                                    if requirements_html:
+                                        extracted = extract_criteria_from_html(requirements_html)
+                                        _merge_linked_criteria(
+                                            record, extracted, requirements_url
+                                        )
+                            if _has_actionable_eligibility(record):
+                                results[record["source_url"]] = record
+            finally:
+                for task in index_tasks:
+                    if not task.done():
+                        task.cancel()
+                if not eligibility_task.done():
+                    eligibility_task.cancel()
 
         # Return opportunities from sources that respond within the request
         # budget. One slow provider must never discard results from every other
