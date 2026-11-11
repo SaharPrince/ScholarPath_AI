@@ -43,6 +43,16 @@ OPPORTUNITY_TERMS = ("scholarship", "fellowship", "grant", "studentship", "award
 DATE_PATTERN = re.compile(
     r"(?i)\b(?:\d{1,2}[./ -](?:\d{1,2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[./, -]*\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})\b"
 )
+GERMAN_DATE_PATTERN = re.compile(
+    r"(?i)\b(?P<day>\d{1,2})\.?\s+"
+    r"(?P<month>januar|februar|märz|maerz|april|mai|juni|juli|august|"
+    r"september|oktober|november|dezember)\s+(?P<year>\d{4})\b"
+)
+GERMAN_MONTHS = {
+    "januar": 1, "februar": 2, "märz": 3, "maerz": 3, "april": 4,
+    "mai": 5, "juni": 6, "juli": 7, "august": 8, "september": 9,
+    "oktober": 10, "november": 11, "dezember": 12,
+}
 ROLLING_PATTERN = re.compile(r"(?i)\b(rolling basis|no fixed deadline|applications? accepted throughout the year|open year[- ]round)\b")
 OPEN_PATTERN = re.compile(r"(?i)\b(applications? (?:(?:are )?(?:now )?)open|now accepting applications|currently accepting applications|apply now)\b")
 UPCOMING_PATTERN = re.compile(r"(?i)\b(applications? (?:will|are expected to) open|opens? for applications)\b")
@@ -357,7 +367,7 @@ def _parse_deadline_date(value: str | None) -> str | None:
     """Normalize an explicitly extracted English deadline date to ISO format."""
     if not value:
         return None
-    matches = list(DATE_PATTERN.finditer(value))
+    matches = sorted(\n        [*DATE_PATTERN.finditer(value), *GERMAN_DATE_PATTERN.finditer(value)],\n        key=lambda item: item.start(),\n    )
     if not matches:
         return None
     # For application windows, prefer the first closing date (for example,
@@ -371,6 +381,13 @@ def _parse_deadline_date(value: str | None) -> str | None:
     ]
     match = closing_matches[0] if closing_matches else matches[0]
     candidate = match.group(0).strip()
+    german_match = GERMAN_DATE_PATTERN.fullmatch(candidate)
+    if german_match:
+        month = GERMAN_MONTHS[german_match.group("month").casefold()]
+        return (
+            f"{int(german_match.group('year')):04d}-"
+            f"{month:02d}-{int(german_match.group('day')):02d}"
+        )
     for date_format in (
         "%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y",
         "%d %B %Y", "%d %b %Y", "%Y-%m-%d",
@@ -463,7 +480,7 @@ def _find_labeled_text(content_root: BeautifulSoup, labels: tuple[str, ...], fie
                 )
                 if len(value.split()) < 3 and not any(term in value.lower() for term in meaningful_terms):
                     continue
-            if field_name == "deadline_text" and not (DATE_PATTERN.search(value) or ROLLING_PATTERN.search(value)):
+            if field_name == "deadline_text" and not (DATE_PATTERN.search(value) or GERMAN_DATE_PATTERN.search(value) or ROLLING_PATTERN.search(value)):
                 continue
             return value
     return None
@@ -1017,8 +1034,26 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             content_root,
             ("Application Deadlines", "Our Next Application Deadlines", "Deadlines"),
         )
-        if deadline_section and DATE_PATTERN.search(deadline_section):
+        if deadline_section and (DATE_PATTERN.search(deadline_section) or GERMAN_DATE_PATTERN.search(deadline_section)):
             fields["deadline_text"] = deadline_section[:1200]
+            evidence.append(("deadline_text", fields["deadline_text"]))
+
+    # German providers often publish application windows as dated list items
+    # without a separate heading or an English "deadline" label.
+    if "deadline_text" not in fields:
+        application_windows = []
+        for node in content_root.find_all(["p", "li", "td", "dd"]):
+            value = _clean(node.get_text(" ", strip=True))
+            has_date = DATE_PATTERN.search(value) or GERMAN_DATE_PATTERN.search(value)
+            has_window_marker = re.search(
+                r"(?i)\\b(?:bis(?: einschließlich)?|application (?:period|window|deadline)|"
+                r"bewerbungs(?:frist|schluss|zeitraum)|closing date|applications? close)\\b",
+                value,
+            )
+            if has_date and has_window_marker:
+                application_windows.append(value)
+        if application_windows:
+            fields["deadline_text"] = " / ".join(application_windows)[:1200]
             evidence.append(("deadline_text", fields["deadline_text"]))
 
     if not _is_opportunity(candidate_title or title, page_title or title, page_url, body_text):
