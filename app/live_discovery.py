@@ -93,6 +93,11 @@ def _opportunity_id(url: str) -> int:
 
 
 
+def _should_merge_source_eligibility(record: dict, source_url: str) -> bool:
+    """Apply source-level eligibility pages only to the source's own programme."""
+    return record.get("source_url") == source_url
+
+
 def _source_page_urls(source: dict) -> list[str]:
     """Return root/index pages plus explicitly curated same-host programmes."""
     source_url = source["official_url"]
@@ -271,9 +276,10 @@ async def discover_live_scholarships() -> list[dict]:
                     # eligibility page. Enrich root-page records too, not only
                     # discovered detail links, or providers such as HSS lose
                     # their actual applicant conditions.
-                    for requirements_url, requirements_html in eligibility_pages.items():
-                        extracted = extract_criteria_from_html(requirements_html)
-                        _merge_linked_criteria(record, extracted, requirements_url)
+                    if _should_merge_source_eligibility(record, source_url):
+                        for requirements_url, requirements_html in eligibility_pages.items():
+                            extracted = extract_criteria_from_html(requirements_html)
+                            _merge_linked_criteria(record, extracted, requirements_url)
                     if _html and not record["criteria"]:
                         requirements_urls = [
                             url for url in _eligibility_links(_html, record["source_url"])
