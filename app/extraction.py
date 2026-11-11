@@ -452,10 +452,18 @@ def _is_opportunity(candidate_title: str, page_title: str, page_url: str, body_t
     return has_opportunity_identity and has_specific_fact
 
 
-def _remove_site_chrome(soup: BeautifulSoup) -> BeautifulSoup:
+def _remove_site_chrome(soup: BeautifulSoup, page_url: str | None = None) -> BeautifulSoup:
     """Remove shared navigation and layout regions before reading programme facts."""
     for node in soup(["script", "style", "noscript", "svg", "nav", "footer", "aside"]):
         node.decompose()
+
+    # FES programme pages embed cards for other scholarships in the same main
+    # content area. They are navigation teasers, not requirements for the
+    # programme being viewed; remove them before extracting any facts.
+    hostname = (urlparse(page_url).hostname or "").casefold() if page_url else ""
+    if hostname == "fes.de" or hostname.endswith(".fes.de"):
+        for teaser in soup.select(".ce-teaser"):
+            teaser.decompose()
 
     # Inspect the complete tree before decomposing anything. Removing a parent
     # Tag clears the attributes of its descendants in BeautifulSoup; mutating
@@ -994,10 +1002,10 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
     return extracted
 
 
-def extract_criteria_from_html(html: str) -> list[tuple[str, str, str]]:
+def extract_criteria_from_html(html: str, page_url: str | None = None) -> list[tuple[str, str, str]]:
     """Extract eligibility from a linked official requirements page."""
     soup = BeautifulSoup(html, "html.parser")
-    content_root = _remove_site_chrome(soup)
+    content_root = _remove_site_chrome(soup, page_url)
     section_specs = {
         "eligibility": (
             "Eligibility", "Eligibility Criteria", "Who can apply", "Eligible applicants",
@@ -1183,7 +1191,7 @@ def _classify_applicant_category(body_text: str) -> str:
 
 def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None = None) -> ExtractedPage | None:
     soup = BeautifulSoup(html, "html.parser")
-    content_root = _remove_site_chrome(soup)
+    content_root = _remove_site_chrome(soup, page_url)
 
     h1 = content_root.find("h1")
     title_node = h1 or soup.find("title")
