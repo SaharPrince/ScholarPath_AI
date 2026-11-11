@@ -106,6 +106,28 @@ button,input,select{max-width:100%}
  .select-option{min-height:46px;font-size:16px}
 }
 
+/* Enforce shrink-to-fit behaviour for every form control on narrow screens. */
+@media(max-width:600px){
+ html,body{width:100%;max-width:100%;min-width:0}
+ .shell,.nav,.brand,.hero,.hero .shell,.hero h1,.hero p,.hero-tags,
+ main,.profile-panel,#profileForm,.profile-grid,.profile-field,
+ .select-control,.select-trigger,.filters,.field,.grid,.card,.footer,.footer .shell{
+  min-width:0;max-width:100%;
+ }
+ .shell{width:100%}
+ #profileForm,.profile-grid,.profile-field,.select-control,.field{width:100%}
+ .profile-grid{grid-template-columns:minmax(0,1fr)}
+ .profile-field input,.profile-field select,.select-control>select,
+ .select-trigger,.field input,.field select{
+  box-sizing:border-box;width:100%;min-width:0;max-width:100%;
+ }
+ .profile-panel,.card,.filters{overflow-wrap:anywhere}
+ .nav{flex-wrap:wrap}
+ .brand{max-width:100%;overflow-wrap:anywhere}
+ .hero h1,.hero p{overflow-wrap:anywhere}
+}
+
+
 </style>
 </head>
 <body>
