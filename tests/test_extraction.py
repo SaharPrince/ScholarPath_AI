@@ -207,6 +207,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         html = """
         <html><body><main>
           <h1>Förderung für Auszubildende</h1>
+          <p>Mit dem Stipendium für Auszubildende unterstützen wir engagierte Nachwuchskräfte.</p>
           <p>Wir suchen Auszubildende, die die Werte der Sozialen Demokratie teilen.</p>
           <ul>
             <li>am Anfang des ersten und spätestens am Anfang des zweiten Ausbildungsjahres stehen</li>
@@ -234,6 +235,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         html = """
         <html><body><main>
           <h1>Stipendium für Auszubildende – Lux Like Ausbildung</h1>
+          <p>Das Stipendium unterstützt Auszubildende mit finanzieller Förderung.</p>
           <h2>Wer kann sich für ein Azubi-Stipendium bewerben?</h2>
           <ul>
             <li>Azubis in einer anerkannten Ausbildung nach BBiG/HwO oder in Gesundheitsberufen</li>
