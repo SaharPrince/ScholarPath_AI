@@ -1304,11 +1304,11 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                 # Broad ineligibility sections can contain history and selection copy.
                 # Only bypass this filter under an explicit "cannot support" heading.
                 if field_name == "ineligibility" and not embedded_ineligibility_context and not re.search(
-                    r"(ineligible|not eligible|not be accepted|will not be accepted|"
+                    r"\b(ineligible|not eligible|not be accepted|will not be accepted|"
                     r"cannot apply|cannot be nominated|not eligible to|are excluded|"
                     r"dual .{0,30}national(?:ity|s)?|employees? of|contractors? of|"
                     r"alumni of|already availed|already studying|applied for immigration|"
-                    r"attended graduate school|long[- ]term .{0,20}experience)",
+                    r"attended graduate school|long[- ]term .{0,20}experience)\b",
                     statement,
                     re.I,
                 ):
