@@ -1957,5 +1957,20 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertEqual(page.title, "Studieren – Horizonte erweitern – Zukunft gestalten")
 
 
+    def test_thousands_separator_is_not_misread_as_a_calendar_date(self) -> None:
+        from app.extraction import DATE_PATTERN
+
+        for value in (
+            "The monthly scholarship is worth 1.500 Euro.",
+            "Applicants receive 3.500 Euro per semester.",
+            "Funding amounts range from 1.000 to 2.500 Euro.",
+        ):
+            with self.subTest(value=value):
+                self.assertIsNone(DATE_PATTERN.search(value))
+
+        self.assertIsNotNone(DATE_PATTERN.search("Applications close on 15.04.2027."))
+        self.assertIsNotNone(DATE_PATTERN.search("Deadline: 15/04/2027."))
+
+
 if __name__ == "__main__":
     unittest.main()
