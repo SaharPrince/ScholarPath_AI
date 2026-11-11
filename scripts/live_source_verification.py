@@ -16,6 +16,7 @@ import httpx
 
 from app.discovery import _candidate_links
 from app.source_catalog import OFFICIAL_SOURCES
+from app.live_discovery import discover_live_scholarships
 
 
 HEADERS = {
@@ -104,6 +105,31 @@ async def main() -> None:
         print("Access-restricted sources (not treated as broken URLs):")
         for item in access_restricted:
             print("-", item)
+
+    print("\\n========== LIVE SCHOLARSHIP DISCOVERY CHECK ==========")
+    records = await discover_live_scholarships()
+    print(f"Fresh live scholarship records extracted: {len(records)}")
+    for record in records:
+        print(
+            "RECORD | "
+            f"{record.get('source_name')} | "
+            f"{record.get('title')} | "
+            f"criteria={len(record.get('criteria', []))} | "
+            f"{record.get('source_url')}"
+        )
+
+    # The two KAAD programmes are directly curated official detail pages and
+    # provide a stable minimum smoke-test for real record extraction. This
+    # checks discovery output only; no scholarship data is persisted.
+    kaad_urls = {
+        record.get("source_url")
+        for record in records
+        if "kaad.de/en/stipendien/stipendienprogramm-" in str(record.get("source_url", ""))
+    }
+    if len(kaad_urls) < 2:
+        blocking_failures.append(
+            "Live discovery did not return both directly configured KAAD programme pages."
+        )
 
     if blocking_failures:
         print("LIVE CHECK RESULT: FAILED")
