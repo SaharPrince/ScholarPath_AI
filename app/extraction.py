@@ -801,6 +801,20 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
         return False
     if re.match(r"(?i)^speak german at an adequate level\b", value):
         return False
+    # Provider marketing and application-page instructions are not eligibility rules.
+    if re.match(
+        r"(?i)^(?:das neue förderprogramm|stipendium für die berufliche ausbildung\s*[–-]\s*"
+        r"das bietet dir|individuelle betreuung durch mentor|hier kannst du prüfen|"
+        r"die restlichen, unpersönlicheren felder|lux like ausbildung\s*[–-])",
+        value,
+    ):
+        return False
+    if re.search(
+        r"(?i)\b(?:es gibt|existieren) unterschiedliche "
+        r"(?:stipendienprogramme|förderprogramme)\b",
+        value,
+    ):
+        return False
     # Funding amounts describe the award, not a condition the applicant must meet.
     if (
         re.search(r"(?i)\b(?:stipendium|scholarship|funding|förderung)\b", value)
@@ -855,7 +869,10 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         raw = _clean(node.get_text(" ", strip=True))
         if not raw or len(raw) < 4 or len(raw) > 1400:
             continue
-        if (
+        if raw_values and re.match(r"(?i)^b\.\s+für zweitausbildung\b", raw):
+            # Repair a source line break in the German abbreviation "z. B.".
+            raw_values[-1] = f"{raw_values[-1]} {raw}"
+        elif (
             raw_values
             and re.search(
                 r"(?i)\b(?:command|knowledge|proficiency|fluency|understanding|ability|mastery)\s*$",
