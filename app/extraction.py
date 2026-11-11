@@ -501,6 +501,18 @@ def _find_labeled_text(content_root: BeautifulSoup, labels: tuple[str, ...], fie
                 continue
             return value
     return None
+def _has_explicit_not_supported_heading(content_root: BeautifulSoup) -> bool:
+    """Identify provider headings that make every following list item an exclusion."""
+    expected = {
+        "unfortunately, we cannot support the following",
+        "unfortunately, we cannot fund the following",
+    }
+    return any(
+        _clean(heading.get_text(" ", strip=True)).rstrip(":?! .").casefold() in expected
+        for heading in content_root.find_all(["h2", "h3", "h4", "h5"])
+    )
+
+
 def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str, ...]) -> str | None:
     """Collect visible paragraph/list content beneath a matching section heading."""
     wanted = {name.casefold() for name in heading_names}
@@ -1176,15 +1188,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
 
     # Some official pages place exclusion rules inside a broader technical
     # eligibility section. Split at the explicit exclusion-introduction sentence.
-    embedded_ineligibility_context = bool(
-        _find_heading_section(
-            content_root,
-            (
-                "Unfortunately, we cannot support the following",
-                "Unfortunately, we cannot fund the following",
-            ),
-        )
-    )
+    embedded_ineligibility_context = _has_explicit_not_supported_heading(content_root)
     eligibility_section = fields.get("eligibility")
     if eligibility_section:
         statements = _split_criteria_statements(eligibility_section)
@@ -1297,9 +1301,18 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                     statement,
                 ):
                     continue
-                # This field is populated only from an explicit ineligibility
-                # label/heading or a clearly marked exclusion list. Preserve
-                # short source bullets such as "Second degrees" verbatim.
+                # Broad ineligibility sections can contain history and selection copy.
+                # Only bypass this filter under an explicit "cannot support" heading.
+                if field_name == "ineligibility" and not embedded_ineligibility_context and not re.search(
+                    r"(ineligible|not eligible|not be accepted|will not be accepted|"
+                    r"cannot apply|cannot be nominated|not eligible to|are excluded|"
+                    r"dual .{0,30}national(?:ity|s)?|employees? of|contractors? of|"
+                    r"alumni of|already availed|already studying|applied for immigration|"
+                    r"attended graduate school|long[- ]term .{0,20}experience)",
+                    statement,
+                    re.I,
+                ):
+                    continue
                 exception_match = re.search(
                     r"(?i)\b(?:with the exception of|except for|except|excluding)\b\s+(.+)$",
                     statement,
