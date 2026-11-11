@@ -281,7 +281,7 @@ async def discover_live_scholarships() -> list[dict]:
                         continue
                     requirements_html, _error = page_result
                     if requirements_html:
-                        extracted = extract_criteria_from_html(requirements_html)
+                        extracted = extract_criteria_from_html(requirements_html, requirements_url)
                         _merge_linked_criteria(record, extracted, requirements_url)
 
             eligibility_task = asyncio.create_task(fetch_eligibility_pages())
@@ -334,7 +334,7 @@ async def discover_live_scholarships() -> list[dict]:
                 root_followups = []
                 for record, page_html in root_records:
                     for requirements_url, requirements_html in eligibility_pages.items():
-                        extracted = extract_criteria_from_html(requirements_html)
+                        extracted = extract_criteria_from_html(requirements_html, requirements_url)
                         _merge_linked_criteria(record, extracted, requirements_url)
                     if page_html and not record["criteria"]:
                         root_followups.append((record, page_html))
