@@ -62,6 +62,17 @@ class SourcePagePromotionTests(unittest.TestCase):
                     _is_promotable_source_page(record, {"source_type": source_type})
                 )
 
+    def test_record_requires_actionable_eligibility_criteria(self):
+        from app.live_discovery import _has_actionable_eligibility
+
+        self.assertFalse(_has_actionable_eligibility({"criteria": []}))
+        self.assertFalse(_has_actionable_eligibility({
+            "criteria": [{"criterion_type": "selection_process", "requirement_text": "Selection by donor."}]
+        }))
+        self.assertTrue(_has_actionable_eligibility({
+            "criteria": [{"criterion_type": "eligibility", "requirement_text": "Applicants must hold a degree."}]
+        }))
+
     def test_generic_provider_landing_titles_are_rejected(self):
         from app.live_discovery import _is_promotable_source_page
 
@@ -74,6 +85,7 @@ class SourcePagePromotionTests(unittest.TestCase):
             "Scholarship Department",
             "Scholarships & Funding",
             "The Most Important Domestic Scholarship Programmes:",
+            "DAAD Scholarships - An Overview",
         ):
             with self.subTest(title=title):
                 self.assertFalse(
