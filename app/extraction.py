@@ -283,7 +283,11 @@ def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
     text = statement.casefold()
     if re.search(r"\b(?:under|less than|below)\s+\d{1,2}\s+years?\s+old\b|\b\d{1,2}\s+years?\s+old\b", text):
         return "age_limit", "Age limit"
-    if re.search(r"\b(language|german|english|sprachkenntnisse|deutschkenntnisse)\b", text):
+    if re.search(
+        r"\\b(german language skills|language skills|language proficiency|"
+        r"command of the (?:english|german) language|deutschkenntnisse|sprachkenntnisse)\\b",
+        text,
+    ):
         return "language_requirements", "Language requirements"
     if re.search(r"\b(above-average|academic performance|grades|gpa|school performance)\b", text):
         return "academic_requirements", "Academic requirements"
