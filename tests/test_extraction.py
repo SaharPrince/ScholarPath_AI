@@ -1547,5 +1547,24 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(any("full-time course of study" in text for text in texts))
 
 
+    def test_accepts_german_hss_scholarship_landing_page(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Studieren – Horizonte erweitern – Zukunft gestalten</h1>
+          <p>Ein Stipendium ist weit mehr als nur eine finanzielle Hilfe.</p>
+          <p>Sie erfüllen die Voraussetzungen und finden sich in unserem Programm wieder?
+             Dann bewerben Sie sich! Unser Bewerbungsportal ist geöffnet.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.hss.de/stipendium/",
+            "Hanns Seidel Foundation – Scholarships",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertEqual(page.title, "Studieren – Horizonte erweitern – Zukunft gestalten")
+
+
 if __name__ == "__main__":
     unittest.main()
