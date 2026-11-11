@@ -810,7 +810,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         r"mindestens|höchstens|nicht förderfähig|förderfähig|"
         r"studieren|erlernen|engagiert|engagieren|identifizieren|"
         r"haben|sind|stehen|erhalten|ausbildung|ausbildungsberuf|"
-        r"ausbildungsjahr|ausbildungsvertrag|sprachkenntnisse|deutschkenntnisse|"
+        r"ausbildungsjahr\w*|ausbildungsvertrag|sprachkenntnisse|deutschkenntnisse|"
         r"unter \d{1,2}\s+jahre|wohnsitz|anerkannt(?:e|en|er))\b"
     )
     applicant_signal = re.compile(
@@ -910,7 +910,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
                 continue
             lowered = statement.casefold()
             if re.search(r"(?i)\b(preferred|preferable|desirable|recommended|"
-                         r"an advantage|priority will be given|besonders willkommen|"
+                         r"an advantage|priority will be given|besonders willkommen|engagiert(?:e|en)?|"
                          r"ausdrücklich zu einer bewerbung ermutigt|bevorzugt berücksichtigt)\b", statement):
                 kind, label = "selection_criteria", "Selection preference"
             elif re.search(r"(?i)\b(ineligible|not eligible|cannot apply|must not)\b", statement):
