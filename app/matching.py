@@ -152,14 +152,14 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
 
     if kind in {"academic_requirements", "study_level", "category_i_eligibility", "category_ii_eligibility"}:
         target = (profile.get("target_study_level") or "").lower()
-        if re.search(r"\\b(?:for|starting|admission to|completed their)\\s+(?:a\\s+)?master(?:'s)?\\b", lower) or "master scholarship" in lower:
+        if re.search(r"\b(?:for|starting|admission to|completed their)\s+(?:a\s+)?master(?:'s)?\b", lower) or "master scholarship" in lower:
             if not target:
                 return _result("unknown", "Choose your intended study level to check this Master's-specific requirement.")
             if target in {"bachelors", "bachelor", "undergraduate"}:
                 return _result("fail", "This scholarship criterion is for Master's applicants, not undergraduate study.")
             if target not in {"master", "masters", "master's"}:
                 return _result("informational", "This rule applies to Master's applicants, not your selected study level.")
-        if re.search(r"\\b(?:for|starting|admission to|completed their)\\s+(?:a\\s+)?(?:phd|doctoral)\\b", lower) or "phd scholarship" in lower:
+        if re.search(r"\b(?:for|starting|admission to|completed their)\s+(?:a\s+)?(?:phd|doctoral)\b", lower) or "phd scholarship" in lower:
             if not target:
                 return _result("unknown", "Choose your intended study level to check this PhD-specific requirement.")
             if target in {"bachelors", "bachelor", "undergraduate"}:
