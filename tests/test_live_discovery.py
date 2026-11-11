@@ -109,6 +109,32 @@ class SourcePagePromotionTests(unittest.TestCase):
             "criteria": [{"criterion_type": "eligibility", "requirement_text": "Applicants must hold a degree."}]
         }))
 
+    def test_index_root_is_not_a_scholarship_but_curated_programme_is(self):
+        from app.live_discovery import _is_promotable_source_page
+
+        source = {
+            "source_type": "official_index",
+            "official_url": "https://provider.example/scholarships",
+        }
+        self.assertFalse(_is_promotable_source_page({
+            "title": "Scholarship Opportunities",
+            "source_url": "https://provider.example/scholarships",
+        }, source))
+        self.assertTrue(_is_promotable_source_page({
+            "title": "International Student Scholarship",
+            "source_url": "https://provider.example/scholarships/international-students",
+        }, source))
+
+    def test_application_guides_are_not_promoted_as_scholarships(self):
+        from app.live_discovery import _is_promotable_source_page
+
+        for title in ("Applying for a scholarship", "How to apply", "Application procedure"):
+            with self.subTest(title=title):
+                self.assertFalse(_is_promotable_source_page(
+                    {"title": title},
+                    {"source_type": "official_programme"},
+                ))
+
     def test_generic_provider_landing_titles_are_rejected(self):
         from app.live_discovery import _is_promotable_source_page
 
