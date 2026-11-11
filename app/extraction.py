@@ -1000,7 +1000,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     section_specs = {
         "eligibility": (
             "Eligibility Criteria", "Eligibility", "Who can apply", "Eligible applicants",
-            "Technical Eligibility Requirements",
+            "Technical Eligibility Requirements", "Requirements",
         ),
         "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
         "study_level": ("Degree Level", "Study Level", "Level of Study", "Eligible Degree Levels"),
@@ -1184,11 +1184,11 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                             f"{excluded_part} (excluded by the source's stated exception)",
                         ))
                 else:
-                    criteria.append((
-                        field_name,
-                        field_name.replace("_", " ").title(),
-                        statement,
-                    ))
+                    criterion_kind, criterion_label = (
+                        _classify_eligibility_statement(statement) if field_name == "eligibility"
+                        else (field_name, field_name.replace("_", " ").title())
+                    )
+                    criteria.append((criterion_kind, criterion_label, statement))
 
     if description:
         evidence.append(("description", description))
