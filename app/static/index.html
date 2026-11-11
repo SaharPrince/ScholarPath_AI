@@ -252,6 +252,63 @@ main.shell{padding-bottom:78px}
 @media(prefers-reduced-motion:reduce){
  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+/* Interaction polish + quiet geometric texture. Decorative only: no discovery logic changes. */
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{
+ background-color:var(--paper);
+ background-image:
+  radial-gradient(circle at 8% 24%,rgba(56,117,83,.045),transparent 25rem),
+  radial-gradient(circle at 92% 68%,rgba(232,187,103,.055),transparent 24rem);
+}
+.hero:before{
+ content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.16;
+ background-image:linear-gradient(rgba(225,244,232,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(225,244,232,.16) 1px,transparent 1px);
+ background-size:42px 42px;
+ mask-image:linear-gradient(90deg,transparent 2%,#000 65%,#000);
+}
+.hero .shell{z-index:1}
+.profile-panel,.stat,.filters,.card,.empty,.fact,.criterion{
+ transition:transform .28s cubic-bezier(.2,.75,.25,1),box-shadow .28s ease,border-color .22s ease,background-color .22s ease;
+}
+.stat:hover{transform:translateY(-3px);box-shadow:0 17px 38px rgba(20,49,38,.11)}
+.profile-panel{background-image:linear-gradient(135deg,rgba(236,246,238,.48),transparent 48%)}
+.profile-field input:hover,.profile-field select:hover,.field input:hover,.field select:hover{border-color:#b9d3c1}
+button,a,.select-trigger,.select-option{ -webkit-tap-highlight-color:transparent}
+button:active,.detailbtn:active,.match-button:active{transform:translateY(1px) scale(.985)}
+.detailbtn:focus-visible,.match-button:focus-visible,.close:focus-visible,.hero-cta:focus-visible{
+ outline:3px solid rgba(72,145,102,.42);outline-offset:3px
+}
+.card{animation:sp-card-in .48s both cubic-bezier(.2,.7,.25,1)}
+.card:nth-child(2){animation-delay:45ms}.card:nth-child(3){animation-delay:90ms}.card:nth-child(4){animation-delay:135ms}
+.profile-panel{animation:sp-rise .55s both cubic-bezier(.2,.7,.25,1)}
+.stat{animation:sp-rise .45s both cubic-bezier(.2,.7,.25,1)}
+.stat:nth-child(2){animation-delay:55ms}.stat:nth-child(3){animation-delay:110ms}
+.overlay.show{animation:sp-fade-in .2s ease both}
+.overlay.show .drawer{animation:sp-drawer-in .32s cubic-bezier(.2,.75,.25,1) both}
+.select-menu{transform-origin:top center;animation:sp-menu-in .16s ease-out both}
+.criterion:hover,.fact:hover{border-color:#c8ddce;box-shadow:0 8px 20px rgba(20,49,38,.055)}
+@keyframes sp-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sp-card-in{from{opacity:0;transform:translateY(10px) scale(.992)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes sp-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes sp-drawer-in{from{opacity:.7;transform:translateX(22px)}to{opacity:1;transform:translateX(0)}}
+@keyframes sp-menu-in{from{opacity:0;transform:translateY(-5px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+::selection{background:#d5eadb;color:#173d2e}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:#edf2ed}
+::-webkit-scrollbar-thumb{background:#c4d5c9;border:2px solid #edf2ed;border-radius:20px}
+::-webkit-scrollbar-thumb:hover{background:#9fbaa8}
+@media(max-width:600px){
+ .hero:before{background-size:32px 32px;opacity:.12}
+ .stat:hover,.card:hover{transform:none}
+ .card{animation-duration:.38s}
+}
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto}
+ .card,.profile-panel,.stat,.overlay.show,.overlay.show .drawer,.select-menu{animation:none!important}
+ .stat:hover,.card:hover,.criterion:hover,.fact:hover{transform:none}
+}
+
 </style>
 </head>
 <body>
