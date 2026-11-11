@@ -130,6 +130,8 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             <li>eine Ausbildung in einem anerkannten Ausbildungsberuf absolvieren.</li>
             <li>zu dem in § 8 des Berufsausbildungsgesetzes genannten Personenkreis gehören.</li>
             <li>die Voraussetzungen nach § 10 BAföG entsprechend erfüllen.</li>
+            <li>Für die Entscheidung über den Zugang zur Förderung ist das Verzeichnis der anerkannten Ausbildungsberufe des Bundesinstituts für Berufsbildung (BIBB) in der jeweils geltenden Fassung zugrunde zu legen.</li>
+            <li>Im Bereich der bundesrechtlich geregelten Ausbildungsberufe ist dieses Verzeichnis abschließend.</li>
           </ol>
         </main></body></html>
         """
@@ -140,6 +142,9 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertEqual(_parse_deadline_date(page.fields["deadline_text"]), "2026-06-15")
         self.assertIn("300 Euro im Monat", page.fields["funding_summary"])
         self.assertTrue(any("anerkannten Ausbildungsberuf" in item[2] for item in page.criteria))
+        self.assertTrue(any("§ 10 BAföG" in item[2] for item in page.criteria))
+        self.assertFalse(any("Für die Entscheidung über den Zugang" in item[2] for item in page.criteria))
+        self.assertFalse(any("dieses Verzeichnis abschließend" in item[2] for item in page.criteria))
 
     def test_extracts_german_application_windows_from_list_items(self) -> None:
         html = """
