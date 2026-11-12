@@ -339,10 +339,16 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         # An explicit statement that there is no age ceiling is informational,
         # not a condition an applicant must satisfy.
         return False
+    if criterion_type == "application_requirements" and re.search(
+        r"(?i)\b(both (?:the )?(?:commonwealth|hec)|commonwealth and hec|hec and commonwealth)\b",
+        requirement_text,
+    ):
+        # A dual-portal rule is a mandatory application step, even though it is
+        # not a personal eligibility qualification.
+        return True
     if criterion_type in {"required_documents", "application_requirements", "post_selection_requirement"}:
-        # Documents and submission steps may be essential to complete an
-        # application, but they do not determine whether the applicant meets
-        # the scholarship's personal eligibility conditions.
+        # Supporting documents and post-award obligations are useful process
+        # information, not conditions that determine initial applicant eligibility.
         return False
     if criterion_type in {
         "ineligibility", "age_limit", "category_i_eligibility", "category_ii_eligibility",
