@@ -17,7 +17,18 @@ class PublicScholarshipCacheHeaderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.headers.get("cache-control"),
-            "public, s-maxage=15, stale-while-revalidate=15",
+            "public, s-maxage=60, stale-while-revalidate=300",
+        )
+
+    async def test_static_source_registry_is_cached_at_the_edge(self):
+        transport = httpx.ASGITransport(app=main.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/sources")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers.get("cache-control"),
+            "public, s-maxage=3600, stale-while-revalidate=86400",
         )
 
     async def test_profile_matching_post_is_never_publicly_cached(self):
