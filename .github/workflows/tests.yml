@@ -36,7 +36,6 @@ jobs:
   live-official-sources:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
