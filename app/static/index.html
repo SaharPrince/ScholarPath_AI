@@ -483,7 +483,8 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 .site-language-toggle{display:grid;place-items:center;width:38px;height:38px;border:1px solid #789287;border-radius:50%;background:#e0f0e5;color:#173b31;font-family:inherit;font-size:19px;cursor:pointer}
 .site-language-toggle:hover{background:#cfe5d6}
 .site-language-toggle:focus-visible,.site-language select:focus-visible{outline:3px solid #a7d8b8;outline-offset:3px}
-.site-language-menu{position:absolute;right:0;top:calc(100% + 9px);width:190px;max-height:min(70vh,360px);overflow-y:auto;padding:6px;border:1px solid #d4e2d8;border-radius:12px;background:#fff;box-shadow:0 12px 32px rgba(20,45,35,.16)}
+.site-language{direction:ltr}
+.site-language-menu{position:fixed;z-index:1000;top:8px;left:8px;right:auto;width:min(240px,calc(100vw - 16px));max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;padding:6px;border:1px solid #d4e2d8;border-radius:12px;background:#fff;color:#173b31;direction:ltr;box-shadow:0 12px 32px rgba(20,45,35,.16)}
 .site-language-menu[hidden]{display:none}
 .site-language-option{display:block;width:100%;min-height:40px;padding:9px 11px;border:0;border-radius:8px;background:transparent;color:#173b31;font:inherit;font-size:13px;text-align:left;cursor:pointer}
 .site-language-option:hover,.site-language-option:focus-visible{outline:0;background:#edf5f0}
@@ -492,18 +493,17 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 #siteOriginal{display:none!important}
 #siteTranslationStatus:empty{display:none}
 #siteTranslationStatus{position:fixed;z-index:100;left:50%;bottom:18px;transform:translateX(-50%);width:min(560px,calc(100vw - 24px));max-height:30vh;overflow:auto;padding:11px 15px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:#102b27;color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.22);font-size:13px;line-height:1.45;text-align:center;white-space:normal;overflow-wrap:anywhere}
-.site-language-menu{box-sizing:border-box;right:0;width:min(210px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:min(65vh,360px);overscroll-behavior:contain}
+.site-language-menu{max-height:calc(100dvh - 16px);width:min(240px,calc(100vw - 16px));max-width:calc(100vw - 16px)}
 .site-language-option{min-height:44px;padding:10px 12px;font-size:14px}
 .site-language-toggle{flex:0 0 38px}
 @media(max-width:760px){
  .site-language{margin-left:auto;position:relative}
  .site-language-toggle{width:38px;height:38px;flex-basis:38px}
- .site-language-menu{position:fixed;top:72px;right:12px;left:auto;width:min(240px,calc(100vw - 24px));max-height:calc(100dvh - 96px)}
  .site-language-option{min-height:46px;font-size:15px}
  #siteTranslationStatus{bottom:max(12px,env(safe-area-inset-bottom));width:calc(100vw - 24px);font-size:12px}
 }
 @media(max-width:420px){
- .site-language-menu{right:10px;width:calc(100vw - 20px);max-width:calc(100vw - 20px)}
+ .site-language-menu{width:calc(100vw - 16px);max-width:calc(100vw - 16px)}
  .site-language-option{min-height:48px}
 }
 </style>
@@ -902,6 +902,21 @@ const siteContentObserver=new MutationObserver(records=>{
 });
 siteContentObserver.observe(document.body,{childList:true,subtree:true});
 const languageToggle=$("siteLanguageToggle"),languageMenu=$("siteLanguageMenu"),languageSelect=$("siteLanguage");
+// Keep the popup outside RTL/transformed header containers so it is positioned against the viewport.
+document.body.appendChild(languageMenu);
+function positionLanguageMenu(){
+ const rect=languageToggle.getBoundingClientRect();
+ const margin=8;
+ const width=Math.min(240,window.innerWidth-margin*2);
+ languageMenu.style.width=width+"px";
+ languageMenu.style.maxHeight=Math.max(120,window.innerHeight-margin*2)+"px";
+ const menuHeight=languageMenu.getBoundingClientRect().height;
+ const left=Math.max(margin,Math.min(rect.right-width,window.innerWidth-width-margin));
+ const below=rect.bottom+8;
+ const top=below+menuHeight<=window.innerHeight-margin?below:Math.max(margin,rect.top-menuHeight-8);
+ languageMenu.style.left=left+"px";
+ languageMenu.style.top=top+"px";
+}
 function updateLanguageMenuSelection(){
  languageMenu.querySelectorAll("[data-language]").forEach(option=>{
   option.setAttribute("aria-pressed",String(option.dataset.language===languageSelect.value));
@@ -911,7 +926,7 @@ languageToggle.addEventListener("click",()=>{
  const opening=languageMenu.hidden;
  languageMenu.hidden=!opening;
  languageToggle.setAttribute("aria-expanded",String(opening));
- if(opening)languageMenu.querySelector("[data-language]")?.focus();
+ if(opening){positionLanguageMenu();languageMenu.querySelector("[data-language]")?.focus();}
 });
 languageMenu.querySelectorAll("[data-language]").forEach(option=>option.addEventListener("click",()=>{
  languageSelect.value=option.dataset.language;
@@ -923,11 +938,13 @@ languageMenu.querySelectorAll("[data-language]").forEach(option=>option.addEvent
 }));
 languageSelect.addEventListener("change",updateLanguageMenuSelection);
 document.addEventListener("click",event=>{
- if(!event.target.closest(".site-language")){
+ if(!event.target.closest(".site-language")&&!languageMenu.contains(event.target)){
   languageMenu.hidden=true;
   languageToggle.setAttribute("aria-expanded","false");
  }
 });
+window.addEventListener("resize",()=>{if(!languageMenu.hidden)positionLanguageMenu();},{passive:true});
+window.addEventListener("scroll",()=>{if(!languageMenu.hidden)positionLanguageMenu();},{passive:true,capture:true});
 document.addEventListener("keydown",event=>{
  if(event.key==="Escape"&&!languageMenu.hidden){
   languageMenu.hidden=true;
