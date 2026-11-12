@@ -1,5 +1,8 @@
+import asyncio
+import copy
 import secrets
 from pathlib import Path
+from time import monotonic
 
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -46,19 +49,43 @@ def list_sources() -> list[dict]:
     ]
 
 
+# Reuse a recent official-source scan across list, detail, and matching requests.
+# This is a short-lived process cache only: no scholarship data is written to disk or a database.
+_DISCOVERY_CACHE_TTL_SECONDS = 60
+_discovery_cache_rows: list[dict] | None = None
+_discovery_cache_expires_at = 0.0
+_discovery_cache_lock = asyncio.Lock()
+
+
 async def _live_results() -> list[dict]:
-    try:
-        return await discover_live_scholarships()
-    except TimeoutError as exc:
-        raise HTTPException(
-            status_code=504,
-            detail="Official-source discovery took too long. Please try again.",
-        ) from exc
-    except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail="Live discovery could not reach the official sources. Please try again.",
-        ) from exc
+    global _discovery_cache_rows, _discovery_cache_expires_at
+
+    now = monotonic()
+    if _discovery_cache_rows is not None and now < _discovery_cache_expires_at:
+        return copy.deepcopy(_discovery_cache_rows)
+
+    # Single-flight refresh: concurrent visitors share one provider scan instead
+    # of launching dozens of duplicate requests to official websites.
+    async with _discovery_cache_lock:
+        now = monotonic()
+        if _discovery_cache_rows is not None and now < _discovery_cache_expires_at:
+            return copy.deepcopy(_discovery_cache_rows)
+        try:
+            rows = await discover_live_scholarships()
+        except TimeoutError as exc:
+            raise HTTPException(
+                status_code=504,
+                detail="Official-source discovery took too long. Please try again.",
+            ) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=502,
+                detail="Live discovery could not reach the official sources. Please try again.",
+            ) from exc
+
+        _discovery_cache_rows = copy.deepcopy(rows)
+        _discovery_cache_expires_at = monotonic() + _DISCOVERY_CACHE_TTL_SECONDS
+        return copy.deepcopy(_discovery_cache_rows)
 
 
 @app.get("/api/scholarships", tags=["scholarships"])
