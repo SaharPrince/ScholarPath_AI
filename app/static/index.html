@@ -478,17 +478,21 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 @media(max-width:620px){.criterion{padding:14px}.criterion-copy{font-size:13px}.requirements-intro{font-size:12px}}
 
 
-/* Small, direct language selector in the site header. Selecting a language translates immediately. */
-.site-language{position:relative;flex:0 0 auto;z-index:30}
-.site-language select{width:auto;max-width:145px;min-width:112px;height:36px;padding:0 28px 0 11px;border:1px solid #789287;border-radius:9px;background:#e0f0e5;color:#173b31;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
-.site-language select:focus-visible{outline:3px solid #a7d8b8;outline-offset:3px}
+/* Compact globe trigger; language choices appear only when opened. */
+.site-language{position:relative;flex:0 0 auto;z-index:50}
+.site-language-toggle{display:grid;place-items:center;width:38px;height:38px;border:1px solid #789287;border-radius:50%;background:#e0f0e5;color:#173b31;font-family:inherit;font-size:19px;cursor:pointer}
+.site-language-toggle:hover{background:#cfe5d6}
+.site-language-toggle:focus-visible,.site-language select:focus-visible{outline:3px solid #a7d8b8;outline-offset:3px}
+.site-language-menu{position:absolute;right:0;top:calc(100% + 9px);min-width:175px;padding:7px;border:1px solid #d4e2d8;border-radius:12px;background:#fff;box-shadow:0 12px 32px rgba(20,45,35,.16)}
+.site-language-menu[hidden]{display:none}
+.site-language-menu select{display:block;width:100%;height:38px;padding:0 9px;border:1px solid #789287;border-radius:8px;background:#fff;color:#173b31;font-family:inherit;font-size:13px;cursor:pointer}
 #siteOriginal{display:none!important}
 #siteTranslationStatus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:760px){.site-language{margin-left:auto}.site-language select{max-width:130px;min-width:105px;height:34px}}
+@media(max-width:760px){.site-language{margin-left:auto}.site-language-toggle{width:36px;height:36px}}
 </style>
 </head>
 <body>
-<header class="topbar"><div class="shell nav"><a class="brand" href="#" aria-label="ScholarCompass home"><span class="brandmark">✦</span> ScholarCompass</a><nav class="navlinks" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#profilePanel">Eligibility</a><a href="#motion-lab">Experience</a></nav><div class="navnote"><span class="live-dot"></span> Live official sources</div><div class="site-language" data-translation-ui><select id="siteLanguage" aria-label="Choose website language" title="Choose website language"><option value="en">🌐 Language</option><option value="ur">اردو · Urdu</option><option value="ar">العربية · Arabic</option><option value="fr">Français · French</option><option value="es">Español · Spanish</option><option value="hi">हिन्दी · Hindi</option><option value="bn">বাংলা · Bengali</option></select><button id="siteOriginal" type="button" hidden>Show original</button><span id="siteTranslationStatus" role="status" aria-live="polite"></span></div></div></header>
+<header class="topbar"><div class="shell nav"><a class="brand" href="#" aria-label="ScholarCompass home"><span class="brandmark">✦</span> ScholarCompass</a><nav class="navlinks" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#profilePanel">Eligibility</a><a href="#motion-lab">Experience</a></nav><div class="navnote"><span class="live-dot"></span> Live official sources</div><div class="site-language" data-translation-ui><button id="siteLanguageToggle" class="site-language-toggle" type="button" aria-label="Choose website language" aria-expanded="false" aria-controls="siteLanguageMenu" title="Translate website">🌐</button><div id="siteLanguageMenu" class="site-language-menu" hidden><select id="siteLanguage" aria-label="Choose language"><option value="en">English (original)</option><option value="ur">اردو · Urdu</option><option value="ar">العربية · Arabic</option><option value="fr">Français · French</option><option value="es">Español · Spanish</option><option value="hi">हिन्दी · Hindi</option><option value="bn">বাংলা · Bengali</option></select></div><button id="siteOriginal" type="button" hidden>Show original</button><span id="siteTranslationStatus" role="status" aria-live="polite"></span></div></div></header>
 <section class="hero"><div class="pattern" aria-hidden="true"></div><div class="orb one" aria-hidden="true"></div><div class="orb two" aria-hidden="true"></div><div class="shell hero-inner"><div class="eyebrow"><span class="pulse"></span> A clearer path to your future</div><h1>Find scholarships.<br><em>Know where you stand.</em></h1><p>Discover current opportunities from official German providers, understand the eligibility rules, and see what still needs checking — without guesswork.</p><div class="searchbox"><span class="search-icon" aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search by scholarship, provider or destination…" aria-label="Search scholarships"><button class="primary" id="heroSearch">Explore opportunities <span aria-hidden="true">→</span></button></div><div class="trustline"><span><b class="check">✓</b> Official-source links</span><span><b class="check">✓</b> Clear eligibility criteria</span><span><b class="check">✓</b> Verification status shown</span></div></div></section>
 <main class="shell">
 <div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Live opportunities found</span></div><div class="stat"><strong id="openCount">—</strong><span>Open according to source</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
@@ -842,9 +846,30 @@ const siteContentObserver=new MutationObserver(records=>{
  if(pageChanged&&activeSiteLanguage!=="en"&&!siteShowingOriginal)refreshWebsiteTranslation();
 });
 siteContentObserver.observe(document.body,{childList:true,subtree:true});
-$("siteLanguage").addEventListener("change",()=>{
- if($("siteLanguage").value==="en"){translateWholeWebsite();return;}
+const languageToggle=$("siteLanguageToggle"),languageMenu=$("siteLanguageMenu"),languageSelect=$("siteLanguage");
+languageToggle.addEventListener("click",()=>{
+ const opening=languageMenu.hidden;
+ languageMenu.hidden=!opening;
+ languageToggle.setAttribute("aria-expanded",String(opening));
+ if(opening)languageSelect.focus();
+});
+languageSelect.addEventListener("change",()=>{
+ languageMenu.hidden=true;
+ languageToggle.setAttribute("aria-expanded","false");
  translateWholeWebsite();
+});
+document.addEventListener("click",event=>{
+ if(!event.target.closest(".site-language")){
+  languageMenu.hidden=true;
+  languageToggle.setAttribute("aria-expanded","false");
+ }
+});
+document.addEventListener("keydown",event=>{
+ if(event.key==="Escape"&&!languageMenu.hidden){
+  languageMenu.hidden=true;
+  languageToggle.setAttribute("aria-expanded","false");
+  languageToggle.focus();
+ }
 });
 try{
  const savedLanguage=localStorage.getItem("scholarpath-language");
