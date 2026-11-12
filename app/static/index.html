@@ -799,14 +799,14 @@ async function translateWholeWebsite(){
  }
  const unique=[...new Set(items.map(item=>item.original).filter(value=>value.trim()))];
  const pending=unique.filter(value=>!translationCache.has(target+"|"+value));
- const isVisible=original=>{
-  const item=items.find(entry=>entry.original===original);
-  const element=item?.kind==="text"?item.node.parentElement:item?.node;
-  if(!element||!element.isConnected)return false;
+ const visibleOriginals=new Set();
+ items.forEach(item=>{
+  const element=item.kind==="text"?item.node.parentElement:item.node;
+  if(!element||!element.isConnected)return;
   const rect=element.getBoundingClientRect();
-  return rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<window.innerHeight&&rect.right>0&&rect.left<window.innerWidth;
- };
- pending.sort((left,right)=>Number(isVisible(right))-Number(isVisible(left)));
+  if(rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<window.innerHeight&&rect.right>0&&rect.left<window.innerWidth)visibleOriginals.add(item.original);
+ });
+ pending.sort((left,right)=>Number(visibleOriginals.has(right))-Number(visibleOriginals.has(left)));
  siteTranslationInProgress=true;
  language.disabled=true;
  status.textContent="Translating visible content first into "+(translationLabels[target]||target)+"…";
