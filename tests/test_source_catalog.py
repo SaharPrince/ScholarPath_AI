@@ -78,6 +78,32 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
             "Evangelisches Studienwerk Doctoral Scholarship",
         )
 
+    def test_avicenna_national_and_international_programmes_are_separate(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        self.assertEqual(
+            sources["Avicenna Studienwerk – Scholarships"]["official_url"],
+            "https://www.avicenna-studienwerk.de/stipendium/",
+        )
+        self.assertEqual(
+            sources["Avicenna Studienwerk – International Scholarship Programme"]["official_url"],
+            "https://www.avicenna-studienwerk.de/scholarship/",
+        )
+        self.assertEqual(
+            sources["Avicenna Studienwerk – International Scholarship Programme"]["source_type"],
+            "official_programme",
+        )
+
+    def test_university_funding_directories_are_not_individual_awards(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        self.assertEqual(
+            sources["TU Berlin – Scholarships and Funding for International Students"]["source_type"],
+            "official_index",
+        )
+        self.assertEqual(
+            sources["University of Würzburg – Scholarships by Target Group"]["source_type"],
+            "official_index",
+        )
+
     def test_discovery_targets_belong_to_configured_sources(self) -> None:
         source_urls = {source["official_url"] for source in GERMANY_SOURCES}
         for source_url, candidate_url, title in OFFICIAL_DISCOVERY_TARGETS:
