@@ -147,11 +147,14 @@ class ProfileMatchingTests(unittest.TestCase):
         result = match_scholarship(scholarship, criteria, {})
         self.assertEqual(result["match_status"], "needs_more_information")
 
-    def test_unknown_mandatory_criteria_prevent_false_eligible(self):
+    def test_application_documents_are_informational_not_eligibility_gates(self):
         scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
-        criteria = [self.criterion("required_documents", "Documents", "Submit transcript.")]
+        criteria = [self.criterion("required_documents", "Documents", "Submit transcript.", False)]
         result = match_scholarship(scholarship, criteria, {})
         self.assertEqual(result["match_status"], "needs_more_information")
+        self.assertEqual(result["checks"][0]["status"], "informational")
+        self.assertEqual(result["checks"][-1]["criterion_label"], "Eligibility criteria unavailable")
+        self.assertEqual(result["checks"][-1]["status"], "unknown")
 
     def test_failed_mandatory_criterion_marks_not_eligible(self):
         scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
