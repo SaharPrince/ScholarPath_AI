@@ -198,9 +198,10 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         r"\bvor\s+oder\s+zu\s+beginn\s+des\s+ersten\s+(?:hochschul)?semesters\b",
         lower,
     ):
-        if semester is None:
-            return _result("unknown", "Add your current semester (0 if the programme has not started) to check this first-semester application window.")
-        if semester > 1:
+        stage = profile.get("first_semester_timing")
+        if stage not in {"not_started", "at_beginning", "after_beginning", "later_semester"}:
+            return _result("unknown", "Confirm whether the Master's programme has not started, is at the beginning of semester 1, or is already underway.")
+        if stage in {"after_beginning", "later_semester"}:
             return _result("fail", "This application window is limited to before or the beginning of the first semester.")
         timing_matched = True
     if re.search(r"\bafter\s+(?:the\s+)?fourth\s+semester\b|\bnach\s+dem\s+vierten\s+semester\b", lower) and re.search(
