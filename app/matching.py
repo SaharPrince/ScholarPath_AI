@@ -49,7 +49,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                        "Your German residence permit is for study purposes." if permit == "study"
                        else "This programme requires a German residence permit for study purposes.")
 
-    if re.search(r"(?:already studying in germany|currently enrolled.*germany|an einer deutschen hochschule eingeschrieben)", lower):
+    if re.search(r"(?:already (?:be )?studying in germany|currently enrolled.*germany|an einer deutschen hochschule eingeschrieben|bereits an einer deutschen hochschule studieren)", lower):
         enrolled = profile.get("currently_enrolled_in_germany")
         if enrolled is None:
             return _result("unknown", "Confirm whether you are currently enrolled at a German university.")
