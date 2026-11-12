@@ -111,7 +111,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("unknown", "Add how many months you have been in Germany to check this residence-duration rule.")
         if months <= 15:
             return _result("pass", f"You reported {months:g} months in Germany; the published maximum is 15 months.")
-        if re.search(r"\b(?:unless|exception|except|already studied|previously studied|prepar\w*)\b", lower):
+        if re.search(r"\b(?:unless|exception|except|already studied|previously studied|prepar\w*|ausnahme|bereits in deutschland studiert|studienvorbereitung)\b", lower):
             exception = profile.get("residence_duration_exception")
             if exception == "none":
                 return _result("fail", "You reported more than 15 months in Germany and indicated that neither published exception applies.")
@@ -397,6 +397,14 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                            else "You indicated that you do not already hold a PhD.")
         return _result("unknown", "This exclusion needs a specific answer or manual review.")
 
+    if re.search(r"(?:doctoral|phd|promotion|promovierende|promotionsstudium)", lower) and re.search(r"(?:admission|admitted|zulassung|zugelassen)", lower):
+        admitted = profile.get("doctoral_admission_confirmed")
+        if admitted is None:
+            return _result("unknown", "Confirm whether you have formal admission to the doctoral programme.")
+        return _result("pass" if admitted else "fail",
+                       "You confirmed formal admission to doctoral studies." if admitted
+                       else "This programme requires formal admission to doctoral studies.")
+
     if kind == "doctoral_admission":
         admitted = profile.get("doctoral_admission_confirmed")
         if admitted is None:
@@ -451,7 +459,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                     return _result("fail", f"This programme explicitly excludes {excluded_level} study.")
                 return _result("informational", f"The exclusion applies to {excluded_level} study, not your selected study level.")
 
-        if re.search(r"\b(?:completed|finished)\s+(?:a\s+)?bachelor(?:'s)?\s+degree\b", lower):
+        if re.search(r"\b(?:completed|finished)\s+(?:a\s+)?bachelor(?:'s)?\s+degree\b|\b(?:abgeschlossen(?:e[snr]?)?\s+)?bachelor(?:-?studium|-?abschluss)\b", lower):
             current_level = (profile.get("current_education_level") or "").lower()
             if current_level not in {"bachelors", "masters", "phd"}:
                 if not current_level:
