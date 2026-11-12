@@ -730,6 +730,14 @@ function readTranslationUsage(){
  return {day:utcTranslationDay(),characters:0,rateLimitedUntil:0,rateLimitHits:0};
 }
 let translationUsage=readTranslationUsage();
+function refreshTranslationUsageDay(){
+ const today=utcTranslationDay();
+ if(translationUsage.day!==today){
+  translationUsage={day:today,characters:0,rateLimitedUntil:0,rateLimitHits:0};
+  translationRateLimitedUntil=0;
+  persistTranslationUsage();
+ }
+}
 function persistTranslationUsage(){
  try{localStorage.setItem(TRANSLATION_USAGE_KEY,JSON.stringify(translationUsage));}catch(_){}
 }
@@ -751,8 +759,6 @@ function recordSuccessfulTranslationRequest(characters){
  persistTranslationUsage();
 }
 const translationCache=new Map();
-const TRANSLATION_CACHE_KEY="scholarpath-translation-cache-v2";
-const TRANSLATION_CACHE_LIMIT=400;
 try{
  const saved=JSON.parse(localStorage.getItem(TRANSLATION_CACHE_KEY)||"[]");
  if(Array.isArray(saved))saved.slice(-TRANSLATION_CACHE_LIMIT).forEach(entry=>{
@@ -789,6 +795,7 @@ function splitTranslationText(value,maxBytes=450){
  return chunks;
 }
 async function translatePublicText(value,target){
+ refreshTranslationUsageDay();
  const chunks=splitTranslationText(value),translated=[];
  for(const chunk of chunks){
   const now=Date.now();
