@@ -348,6 +348,14 @@ def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
 
 def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Infer mandatory status conservatively, preserving explicit preferences."""
+    if re.search(
+        r"(?i)\\b(?:no|keine)\\s+(?:doctoral|doctoral-completion|promotionsabschluss)\\s+(?:completion\\s+)?scholarships?\\b|"
+        r"\\bkeine\\s+promotionsabschlussstipendien\\b",
+        requirement_text,
+    ):
+        # This describes a funding type the foundation does not offer; it is
+        # not a personal exclusion that should make doctoral applicants fail.
+        return False
     if criterion_type in {"target_audience", "selection_process", "selection_criteria"}:
         # These describe award administration or ranking, not applicant eligibility.
         return False
