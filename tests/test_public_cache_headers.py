@@ -31,12 +31,18 @@ class PublicScholarshipCacheHeaderTests(unittest.IsolatedAsyncioTestCase):
             "public, s-maxage=3600, stale-while-revalidate=86400",
         )
 
-    async def test_profile_matching_post_is_never_publicly_cached(self):
+    async def test_successful_profile_matching_post_is_never_publicly_cached(self):
         transport = httpx.ASGITransport(app=main.app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post("/api/match", json={})
+        profile = {
+            "nationality": "Pakistani",
+            "current_education_level": "intermediate",
+            "target_study_level": "bachelors",
+        }
+        with patch.object(main, "_live_results", new=AsyncMock(return_value=[])):
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post("/api/match", json=profile)
 
-        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.headers.get("cache-control"))
 
     async def test_failed_scholarship_response_is_not_cached(self):
