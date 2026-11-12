@@ -762,8 +762,8 @@ function setWebsiteDirection(language){
  document.body.dir=document.documentElement.dir;
 }
 async function translateWholeWebsite(){
- const language=$("siteLanguage"),button=$("siteTranslate"),status=$("siteTranslationStatus");
- if(!language||!button||!status||siteTranslationInProgress)return;
+ const language=$("siteLanguage"),status=$("siteTranslationStatus");
+ if(!language||!status||siteTranslationInProgress)return;
  const target=language.value;
  activeSiteLanguage=target;
  const items=collectWebsiteText();
@@ -785,7 +785,7 @@ async function translateWholeWebsite(){
   return;
  }
  siteTranslationInProgress=true;
- button.disabled=true;language.disabled=true;
+ language.disabled=true;
  status.textContent="Translating the website into "+(translationLabels[target]||target)+"…";
  try{
   for(let i=0;i<pending.length;i++){
@@ -811,7 +811,7 @@ async function translateWholeWebsite(){
   setWebsiteDirection("en");
   status.textContent="Translation stopped: "+error.message+" Original website text is still available.";
  }finally{
-  button.disabled=false;language.disabled=false;siteTranslationInProgress=false;
+  language.disabled=false;siteTranslationInProgress=false;
  }
 }
 function toggleWebsiteOriginal(){
