@@ -222,7 +222,6 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             "bachelors": {"bachelor", "bachelors", "undergraduate", "undergraduate degree"},
             "master": {"master", "masters", "postgraduate", "ms", "mphil"},
             "phd": {"phd", "doctoral", "doctorate"},
-        "vocational_training": {"vocational training", "ausbildung", "apprenticeship", "vocational"},
         }
         target_key = next((key for key, aliases in target_aliases.items()
                            if target in aliases), target)
@@ -451,6 +450,7 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         "bachelors": {"bachelor", "bachelors", "bachelor's", "undergraduate", "undergraduate degree", "bs", "b.s."},
         "master": {"master", "masters", "master's", "postgraduate", "ms", "mphil", "m.phil"},
         "phd": {"phd", "doctoral", "doctorate"},
+        "vocational_training": {"vocational training", "ausbildung", "apprenticeship", "vocational"},
     }
     target_key = next(
         (
