@@ -7,12 +7,38 @@ import sqlite3
 import unittest
 
 from app.extraction import (
-    _clean, _classify_application_status, _classify_applicant_category,
+    _clean, _classify_application_status, _classify_applicant_category, _classify_eligibility_statement,
     _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, extract_criteria_from_html, parse_scholarship_page, _save_evidence, _parse_hec_knowledge_corridor, _remove_site_chrome,
 )
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
+    def test_bachelor_qualification_statements_get_study_level_type(self):
+        self.assertEqual(
+            _classify_eligibility_statement("Proof of a completed Bachelor's degree is required."),
+            ("study_level", "Study level"),
+        )
+        self.assertEqual(
+            _classify_eligibility_statement("Nachweis eines abgeschlossenen Bachelorstudiums."),
+            ("study_level", "Study level"),
+        )
+
+    def test_rosa_residence_exception_stays_attached_to_15_month_rule(self):
+        statements = _split_criteria_statements(
+            "You must not have been in Germany for more than 15 months. "
+            "This applies unless you have already studied in Germany or are preparing for university studies."
+        )
+        self.assertEqual(len(statements), 1)
+        self.assertIn("15 months", statements[0])
+        self.assertIn("unless", statements[0])
+
+        german_statements = _split_criteria_statements(
+            "Sie dürfen sich nicht länger als 15 Monate in Deutschland aufhalten. "
+            "Ausnahme: Sie haben bereits in Deutschland studiert oder bereiten sich auf das Studium vor."
+        )
+        self.assertEqual(len(german_statements), 1)
+        self.assertIn("Ausnahme", german_statements[0])
+
     def test_villigst_faq_process_exceptions_are_not_mandatory_but_admission_is(self):
         self.assertTrue(_is_mandatory_criterion(
             "doctoral_admission",
