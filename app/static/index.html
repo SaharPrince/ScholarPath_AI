@@ -490,8 +490,22 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 .site-language-option[aria-pressed="true"]{background:#e0f0e5;color:#145b48;font-weight:750}
 .site-language-menu #siteLanguage{display:none!important}
 #siteOriginal{display:none!important}
-#siteTranslationStatus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-@media(max-width:760px){.site-language{margin-left:auto}.site-language-toggle{width:36px;height:36px}}
+#siteTranslationStatus:empty{display:none}
+#siteTranslationStatus{position:fixed;z-index:100;left:50%;bottom:18px;transform:translateX(-50%);width:min(560px,calc(100vw - 24px));max-height:30vh;overflow:auto;padding:11px 15px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:#102b27;color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.22);font-size:13px;line-height:1.45;text-align:center;white-space:normal;overflow-wrap:anywhere}
+.site-language-menu{box-sizing:border-box;right:0;width:min(210px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:min(65vh,360px);overscroll-behavior:contain}
+.site-language-option{min-height:44px;padding:10px 12px;font-size:14px}
+.site-language-toggle{flex:0 0 38px}
+@media(max-width:760px){
+ .site-language{margin-left:auto;position:relative}
+ .site-language-toggle{width:38px;height:38px;flex-basis:38px}
+ .site-language-menu{position:fixed;top:72px;right:12px;left:auto;width:min(240px,calc(100vw - 24px));max-height:calc(100dvh - 96px)}
+ .site-language-option{min-height:46px;font-size:15px}
+ #siteTranslationStatus{bottom:max(12px,env(safe-area-inset-bottom));width:calc(100vw - 24px);font-size:12px}
+}
+@media(max-width:420px){
+ .site-language-menu{right:10px;width:calc(100vw - 20px);max-width:calc(100vw - 20px)}
+ .site-language-option{min-height:48px}
+}
 </style>
 </head>
 <body>
@@ -785,38 +799,46 @@ async function translateWholeWebsite(){
  }
  const unique=[...new Set(items.map(item=>item.original).filter(value=>value.trim()))];
  const pending=unique.filter(value=>!translationCache.has(target+"|"+value));
- const required=pending.reduce((sum,value)=>sum+translationBytes(value),0);
- if(translationBudgetUsed+required>4500){
-  status.textContent="The free translation service's daily limit may be exceeded. Some page text remains in English; your original content is unchanged.";
-  localStorage.setItem("scholarpath-language",target);
-  return;
- }
+
  siteTranslationInProgress=true;
  language.disabled=true;
  status.textContent="Translating the website into "+(translationLabels[target]||target)+"…";
  try{
-  for(let i=0;i<pending.length;i++){
-   const original=pending[i];
-   translationCache.set(target+"|"+original,await translatePublicText(original,target));
-   status.textContent="Translating website… "+(i+1)+" of "+pending.length;
-  }
-  items.forEach(item=>{
-   const translated=translationCache.get(target+"|"+item.original);
-   if(translated!==undefined){
+  let translatedCount=0;
+  const applyCachedText=original=>{
+   const translated=translationCache.get(target+"|"+original);
+   if(translated===undefined)return;
+   items.forEach(item=>{
+    if(item.original!==original)return;
     if(item.kind==="text")item.node.nodeValue=translated;
     else item.node.setAttribute(item.name,translated);
-   }
-  });
+   });
+  };
+  for(let i=0;i<pending.length;i++){
+   const original=pending[i];
+   const cost=translationBytes(original);
+   if(translationBudgetUsed+cost>5000)throw new Error("The free translation allowance for today has been reached. Some content may remain in English; choose English to restore the original page.");
+   const translated=await translatePublicText(original,target);
+   translationCache.set(target+"|"+original,translated);
+   translatedCount++;
+   applyCachedText(original);
+   status.textContent="Translating into "+translationLabels[target]+"… "+translatedCount+" of "+pending.length+" text items";
+  }
+  items.forEach(item=>applyCachedText(item.original));
   siteShowingOriginal=false;
   setWebsiteDirection(target);
   $("siteOriginal").hidden=false;
   $("siteOriginal").textContent="Show original";
-  status.textContent="Website interface and visible page content translated into "+translationLabels[target]+". Machine translation is an aid; check important rules with the official provider.";
+  status.textContent="Page translated into "+translationLabels[target]+". Machine translation may be imperfect; check important requirements with the official provider.";
   localStorage.setItem("scholarpath-language",target);
  }catch(error){
-  applyWebsiteOriginals(items);
-  setWebsiteDirection("en");
-  status.textContent="Translation stopped: "+error.message+" Original website text is still available.";
+  items.forEach(item=>applyCachedText(item.original));
+  siteShowingOriginal=false;
+  setWebsiteDirection(target);
+  $("siteOriginal").hidden=false;
+  $("siteOriginal").textContent="Show original";
+  status.textContent=(translationCache.size?"Partially translated into "+translationLabels[target]+". ":"Translation could not be completed. ")+error.message;
+  if(translationCache.size)localStorage.setItem("scholarpath-language",target);
  }finally{
   language.disabled=false;siteTranslationInProgress=false;
  }
