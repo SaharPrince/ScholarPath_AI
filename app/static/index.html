@@ -459,6 +459,24 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 @media(max-width:390px){.searchbox{flex-wrap:wrap}.searchbox input{flex-basis:calc(100% - 40px)}.searchbox .primary{width:100%}.hero h1{font-size:36px}.motionlab{border-radius:17px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.live-dot,.pulse,.pattern,.orb,.card{animation:none!important}.card,.labcontrols button{transition:none!important}}
 
+
+/* Plain-language requirement cards: no clipped sentences or unexplained walls of text. */
+.requirements-intro{font-size:13px;line-height:1.65;color:#68776f;margin:0 0 18px}
+.requirement-group{margin:22px 0}
+.requirement-group>h4{font-size:13px;letter-spacing:.02em;color:#244d3d;margin:0 0 10px}
+.criterion{padding:16px 17px;margin:10px 0;border:1px solid #e3ebe4;border-radius:14px;background:#fff;box-shadow:0 5px 16px #173b2807}
+.criteriontop{display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+.criterion-label{font-size:10px;text-transform:uppercase;letter-spacing:.09em;font-weight:800;color:#668073}
+.criterion-copy{font-size:14px;line-height:1.65;color:#263c32;font-weight:600;overflow-wrap:anywhere}
+.original-wording{margin-top:11px;border-top:1px solid #edf1ed;padding-top:9px}
+.original-wording summary{cursor:pointer;font-size:11px;color:#527c66;font-weight:750;list-style:none}
+.original-wording summary:before{content:"＋";margin-right:7px}
+.original-wording[open] summary:before{content:"−"}
+.original-wording p{font-size:12px;line-height:1.7;color:#64736b;background:#f7f9f6;border-radius:9px;padding:12px;margin:9px 0 0;white-space:normal}
+.criterion>a{display:inline-block;margin-top:11px;font-size:11px;color:#176b55;font-weight:750;text-decoration:none}
+.criterion>a:hover{text-decoration:underline}
+@media(max-width:620px){.criterion{padding:14px}.criterion-copy{font-size:13px}.requirements-intro{font-size:12px}}
+
 </style>
 </head>
 <body>
@@ -512,38 +530,49 @@ const shortText=v=>v?String(v):"Not stated by the source";
 function summarizeRequirement(text,label){
  const raw=String(text||"").replace(/\s+/g," ").trim();
  const lower=raw.toLowerCase();
- if(!raw)return "Check official source";
- if(/no upper age limit|there is no upper age limit/.test(lower))return "No upper age limit";
+ if(!raw)return "Check the official provider page for the full condition.";
+ // Narrow translations of recurring German scholarship conditions.
+ const german=[
+  [/am anfang des ersten und spätestens am anfang des zweiten ausbildungsjahres stehen/,"Be in the first year of your apprenticeship, or no later than the start of year two."],
+  [/einen staatlich anerkannten ausbildungsberuf erlernen/,"Be training in an occupation officially recognized by the German state."],
+  [/einen ausbildungsvertrag oder die schriftliche zusage für einen ausbildungsplatz haben/,"Have an apprenticeship contract or written confirmation of a training place."],
+  [/bereits an einer deutschen.*hochschule eingeschrieben sein|bereits an einer deutschen hochschule studieren/,"Already be enrolled at a university in Germany."],
+  [/gute deutsche sprachkenntnisse|sehr gute deutsche sprachkenntnisse/,"Have good German-language skills. The provider does not state a clear level here, so confirm what level they accept."],
+  [/keine anderen stipendienleistungen aus öffentlichen mitteln erhalten/,"Not receive another scholarship funded by public money."],
+  [/gesellschaftspolitisch engagiert sein/,"Be actively involved in community or public-life activities."],
+  [/sich mit den werten der sozialen demokratie identifizieren/,"Support the values of social democracy."],
+  [/ständigen wohnsitz in deutschland/,"Have your permanent home in Germany."],
+  [/unter 45 jahre/,"Be younger than 45."],
+  [/deutsche staatsangehörige.*eu- oder ewr-staates.*geflüchtete/,"Meet one of the listed status conditions: German citizenship, EU/EEA citizenship, refugee status, or tolerated residence status."]
+ ];
+ for(const [pattern,summary] of german)if(pattern.test(lower))return summary;
+ if(/no upper age limit|there is no upper age limit/.test(lower))return "There is no upper age limit.";
  let m=raw.match(/minimum score of (\d+) out of (\d+) in ([A-Za-z-]+)/i);
- if(m)return m[3].toUpperCase()+" score: at least "+m[1]+"/"+m[2];
+ if(m)return "Score at least "+m[1]+" out of "+m[2]+" in "+m[3].toUpperCase()+".";
  m=raw.match(/(\d{2})\s*years? in case of regular government employees/i);
- if(m)return "Age: up to "+m[1]+" years (government, faculty or research staff)";
+ if(m)return "Age limit: "+m[1]+" years for government employees, university faculty, and approved researchers.";
  m=raw.match(/(\d{2})\s*years? in all other cases/i);
- if(m)return "Age: up to "+m[1]+" years (other applicants)";
- if(/pakistani\s*\/\s*aj&?k nationals?/i.test(raw))return "Pakistani/AJ&K nationality required";
- if(/dual nationals? are not eligible|dual nationality/i.test(lower))return "Dual nationality not accepted";
- if(/not have a second\/third division|no second\/third division/.test(lower))return "No 2nd/3rd division in latest degree";
- if(/maximum of one second division/.test(lower))return "At most one 2nd division in academic record";
- m=raw.match(/first division in (\d{2}) years? (bachelors?|master'?s?|ms|m\.?phil\.?).*?(?:relevant field)?/i);
- if(m)return m[2].replace(/bachelor/i,"Bachelor's").replace(/master/i,"Master's")+" ("+m[1]+" years), first division";
+ if(m)return "Age limit: "+m[1]+" years for other applicants.";
+ if(/pakistani\s*\/\s*aj&?k nationals?/i.test(raw))return "You must be a Pakistani or Azad Jammu and Kashmir national.";
+ if(/dual nationals? are not eligible|dual nationality/i.test(lower))return "Applicants with dual nationality cannot apply.";
+ if(/not have a second\/third division|no second\/third division/.test(lower))return "Your latest degree must not contain a second- or third-division result.";
+ if(/maximum of one second division/.test(lower))return "You may have no more than one second-division result in your academic record.";
+ m=raw.match(/first division in (\d{2}) years? (bachelors?|master'?s?|ms|m\.?phil\.?)/i);
+ if(m)return "You need a first division in your "+m[1]+"-year "+m[2].replace(/bachelor/i,"Bachelor's").replace(/master/i,"Master's")+" degree.";
  m=raw.match(/minimum (\d{1,2}) years? (bachelors?|master'?s?|ms|m\.?phil\.?)/i);
- if(m)return "Minimum "+m[1]+" years "+m[2];
+ if(m)return "Your "+m[2]+" degree must be at least "+m[1]+" years long.";
  m=raw.match(/minimum (?:score of )?(\d{1,3})\s*(?:%|percent)/i);
- if(m)return "At least "+m[1]+"% marks";
+ if(m)return "You need at least "+m[1]+"% marks.";
  m=raw.match(/(\d{1,3})\s*(?:%|percent)\s*(?:and above|or above|minimum)/i);
- if(m)return "At least "+m[1]+"% marks";
- if(/all disciplines are eligible/i.test(lower))return "All study fields accepted";
- if(/result-awaiting candidates may apply/i.test(lower))return "Awaiting results accepted; final documents due before studies start";
- if(/confirmed admission|secured admission/i.test(lower))return "Admission offer required";
- let compact=raw
-  .replace(/^(all )?applicants? (are )?(required to|must|should)\s+/i,"")
-  .replace(/^(an )?applicant must\s+/i,"")
-  .replace(/^must\s+/i,"")
-  .replace(/\bplease note that\b/ig,"")
-  .replace(/\bfor consideration\b/ig,"")
-  .replace(/\s+/g," ").trim();
- if(compact.length>112)compact=compact.slice(0,109).replace(/\s+\S*$/,"")+"…";
- return compact;
+ if(m)return "You need at least "+m[1]+"% marks.";
+ if(/all disciplines are eligible|students of all disciplines|all disciplines may apply/i.test(lower))return "Students from any subject or study field may apply.";
+ if(/result-awaiting candidates may apply/i.test(lower))return "You may apply while waiting for your results. Submit final documents before your studies begin.";
+ if(/confirmed admission|secured admission/i.test(lower))return "You must have an admission offer.";
+ if(/completed their first degree abroad/i.test(lower))return "You must have completed your first university degree outside Germany.";
+ if(/completed their graduate degree abroad/i.test(lower))return "You must have completed your graduate degree outside Germany.";
+ return raw.replace(/^(all )?applicants? (are )?(required to|must|should)\s+/i,"")
+  .replace(/^(an )?applicant must\s+/i,"").replace(/^must\s+/i,"")
+  .replace(/\bplease note that\b/ig,"").replace(/\bfor consideration\b/ig,"").trim();
 }
 function requirementKey(type,label,text){
  const raw=(String(label||"")+" "+String(text||"")).toLowerCase();
@@ -578,17 +607,21 @@ function requirementPairs(type,label,text){
  return [[requirementKey(type,label,raw),short]];
 }
 function renderRequirements(criteria){
- const rows=[];
+ const groups={"Must meet":[],"Other information":[]};
  const seen=new Set();
  criteria.filter(c=>!["selection_process","selection_criteria","target_audience"].includes(c.criterion_type))
   .forEach(c=>requirementPairs(c.criterion_type,c.criterion_label,c.requirement_text).forEach(([key,value])=>{
    const signature=(key+"|"+value).toLowerCase();
    if(seen.has(signature))return;
    seen.add(signature);
-   rows.push({key,value,evidence:c.evidence_url||""});
+   groups[c.is_mandatory===false?"Other information":"Must meet"].push({
+    key,value,raw:c.requirement_text||"",evidence:c.evidence_url||""
+   });
   }));
- if(!rows.length)return '<p>No clear requirements were found on the live source page. Check the official source before applying.</p>';
- return rows.map(r=>'<article class="criterion"><div class="criteriontop"><h4>'+esc(r.key)+'</h4><strong>'+esc(r.value)+'</strong></div>'+(r.evidence?'<a href="'+esc(r.evidence)+'" target="_blank" rel="noopener">Official source ↗</a>':'<span class="trust">Source page</span>')+'</article>').join("");
+ const section=(title,rows)=>!rows.length?"":'<section class="requirement-group"><h4>'+title+'</h4>'+rows.map(r=>'<article class="criterion"><div class="criteriontop"><span class="criterion-label">'+esc(r.key)+'</span><span class="criterion-copy">'+esc(r.value)+'</span></div>'+(r.raw&&r.raw.trim()!==r.value.trim()?'<details class="original-wording"><summary>See original provider wording</summary><p>'+esc(r.raw)+'</p></details>':'')+(r.evidence?'<a href="'+esc(r.evidence)+'" target="_blank" rel="noopener">Check this rule on the official source ↗</a>':'<span class="trust">Source page</span>')+'</article>').join("")+'</section>';
+ const total=groups["Must meet"].length+groups["Other information"].length;
+ if(!total)return '<p>No clear requirements were found on the live source page. Check the official source before applying.</p>';
+ return '<p class="requirements-intro">Each condition is explained in plain language. Open the original wording to compare the provider’s exact rule.</p>'+section("What you must meet",groups["Must meet"])+section("Other information",groups["Other information"]);
 }
 function render(){
  const q=$("search").value.trim().toLowerCase(),s=$("status").value,t=$("trust").value;
