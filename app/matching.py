@@ -242,6 +242,13 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     if kind == "age_limit":
         if "no upper age limit" in lower or "no age limit" in lower:
             return _result("informational", "The source explicitly states there is no upper age limit.")
+        if re.search(r"(?i)\b(?:older than|over)\s+\d+\b", lower) and re.search(
+            r"(?i)\b(?:special|additional)\s+(?:application|request|form)\b", lower
+        ):
+            return _result(
+                "informational",
+                "The age condition calls for an additional application or special request; it is not an automatic age-based rejection. Review the provider's instructions.",
+            )
         age = _number(profile.get("age"))
         if age is None:
             return _result("unknown", "Add your age to check the published age limit.")
