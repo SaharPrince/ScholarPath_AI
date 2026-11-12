@@ -300,7 +300,26 @@ def _split_criteria_statements(value: str) -> list[str]:
             restored[-1] = f"{restored[-1]} {cleaned}"
         elif cleaned and cleaned not in restored:
             restored.append(cleaned)
-    return restored
+    # Keep a residence-duration exception attached to the 15-month rule.
+    # The provider presents this as one condition, even when sentence splitting
+    # would otherwise turn the exception into a separate, unmatchable criterion.
+    merged = []
+    for statement in restored:
+        if (
+            merged
+            and re.search(r"\\b15\\s+months?\\b|\\b15\\s+monate?\\b", merged[-1], re.I)
+            and re.search(
+                r"\\b(?:unless|exception|except|ausnahme|already studied in germany|"
+                r"previously studied in germany|prepar\\w*|bereits in deutschland studiert|"
+                r"studienvorbereitung)\\b",
+                statement,
+                re.I,
+            )
+        ):
+            merged[-1] = f"{merged[-1]} {statement}"
+        else:
+            merged.append(statement)
+    return merged
 
 
 def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
