@@ -34,7 +34,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     if not criterion.get("is_mandatory", True):
         return _result("informational", "This is selection or programme information, not a mandatory eligibility check.")
 
-    if re.search(r"(?:not been in germany for more than|no more than)\\s*15\\s*months?", lower):
+    if re.search(r"(?:not been in germany for more than|no more than)\s*15\s*months?", lower):
         months = _number(profile.get("months_in_germany"))
         if months is None:
             return _result("unknown", "Add how many months you have been in Germany to check this residence-duration rule.")
@@ -57,7 +57,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                        "You confirmed current enrolment in Germany." if enrolled
                        else "This programme requires current enrolment at a German university.")
 
-    if re.search(r"(?:at least|minimum of|mindestens)\\s*(?:6|six|sechs)\\s*months?.{0,80}(?:remaining|left|rest|verbleib)", lower):
+    if re.search(r"(?:at least|minimum of|mindestens)\s*(?:6|six|sechs)\s*months?.{0,80}(?:remaining|left|rest|verbleib)", lower):
         remaining = _number(profile.get("months_remaining_in_program"))
         if remaining is None:
             return _result("unknown", "Add how many months remain in your current study programme.")
@@ -71,7 +71,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         return _result("pass" if 1 <= year <= 2 else "fail",
                        f"You reported apprenticeship year {year:g}; this award accepts the first or second year.")
 
-    if re.search(r"(?:state[- ]recognized|state recognized|staatlich anerkannten)\\s+(?:training|occupation|ausbildungsberuf)", lower):
+    if re.search(r"(?:state[- ]recognized|state recognized|staatlich anerkannten)\s+(?:training|occupation|ausbildungsberuf)", lower):
         recognized = profile.get("recognized_apprenticeship")
         if recognized is None:
             return _result("unknown", "Confirm whether your apprenticeship is a state-recognized occupation.")
