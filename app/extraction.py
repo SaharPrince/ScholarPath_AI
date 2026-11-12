@@ -345,9 +345,13 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         requirement_text,
     ):
         return True
+    if criterion_type in {"required_documents", "application_requirements", "post_selection_requirement"}:
+        # Documents and submission steps may be essential to complete an
+        # application, but they do not determine whether the applicant meets
+        # the scholarship's personal eligibility conditions.
+        return False
     if criterion_type in {
-        "ineligibility", "required_documents", "post_selection_requirement",
-        "age_limit", "category_i_eligibility", "category_ii_eligibility",
+        "ineligibility", "age_limit", "category_i_eligibility", "category_ii_eligibility",
     }:
         # An extracted age-limit criterion is an explicit eligibility boundary,
         # even when the source phrases it as "40 years in case of..." rather
