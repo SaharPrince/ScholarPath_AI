@@ -674,7 +674,7 @@ let detailTranslationNodes=[];
 let detailShowingOriginal=false;
 function translationBytes(value){return new TextEncoder().encode(value).length;}
 function splitTranslationText(value,maxBytes=450){
- const words=value.match(/\\S+\\s*/gu)||[];
+ const words=value.match(/\S+\s*/gu)||[];
  const chunks=[];let current="";
  for(const word of words){
   if(translationBytes(current+word)>maxBytes&&current){chunks.push(current.trim());current="";}
@@ -716,7 +716,7 @@ async function translateDetailPage(){
   if(!node.hasAttribute("data-original-text"))node.setAttribute("data-original-text",node.textContent||"");
   const original=node.getAttribute("data-original-text")||"";
   if(!original.trim())return;
-  const key=target+"\\n"+original;
+  const key=target+"|"+original;
   if(!translationCache.has(key))pending.push({node,original,key});
  });
  const needed=pending.reduce((sum,item)=>sum+translationBytes(item.original),0);
@@ -730,7 +730,7 @@ async function translateDetailPage(){
   for(let i=0;i<nodes.length;i++){
    const node=nodes[i],original=node.getAttribute("data-original-text")||"";
    if(!original.trim())continue;
-   const key=target+"\\n"+original;
+   const key=target+"|"+original;
    let translated=translationCache.get(key);
    if(!translated)translated=await translateScholarshipText(original,target);
    translationCache.set(key,translated);
@@ -756,7 +756,7 @@ function toggleDetailOriginal(){
  detailTranslationNodes.forEach(node=>{
   const original=node.getAttribute("data-original-text")||"";
   const target=$("detailLanguage")?.value||"";
-  const translated=translationCache.get(target+"\\n"+original);
+  const translated=translationCache.get(target+"|"+original);
   node.textContent=detailShowingOriginal?original:(translated||original);
  });
  $("showOriginal").textContent=detailShowingOriginal?"Show translation":"Show original";
