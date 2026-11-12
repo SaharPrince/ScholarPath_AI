@@ -472,6 +472,118 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(c, {"german_language_level": "C1"})["status"], "unknown")
 
 
+    def test_fes_bachelor_application_window_checks_both_semester_conditions(self):
+        c = self.criterion(
+            "eligibility",
+            "Application timing",
+            "Applications are accepted after the first semester and until three semesters before the end of the standard study period.",
+        )
+        self.assertEqual(evaluate_criterion(c, {})["status"], "unknown")
+        self.assertEqual(
+            evaluate_criterion(c, {"current_semester_in_program": 2, "remaining_semesters_in_program": 3})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"current_semester_in_program": 1, "remaining_semesters_in_program": 4})["status"],
+            "fail",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"current_semester_in_program": 3, "remaining_semesters_in_program": 2})["status"],
+            "fail",
+        )
+
+    def test_fes_master_application_is_limited_to_before_or_beginning_of_first_semester(self):
+        c = self.criterion(
+            "study_level",
+            "Master application timing",
+            "Apply before or at the beginning of the first semester of the Master's programme.",
+        )
+        self.assertEqual(evaluate_criterion(c, {})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 0})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 1})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 2})["status"], "fail")
+
+    def test_fes_medical_student_window_is_after_fourth_through_sixth_semester(self):
+        c = self.criterion(
+            "eligibility",
+            "Medical study application timing",
+            "Medical students may apply after the fourth semester until the end of the sixth semester.",
+        )
+        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 5})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 4})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 7})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {})["status"], "unknown")
+
+    def test_rosa_luxemburg_half_standard_duration_rule(self):
+        c = self.criterion(
+            "eligibility",
+            "Remaining study duration",
+            "At least half of the standard study period must remain at the start of funding.",
+        )
+        self.assertEqual(evaluate_criterion(c, {})["status"], "unknown")
+        self.assertEqual(
+            evaluate_criterion(c, {"remaining_semesters_in_program": 3, "standard_programme_semesters": 6})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"remaining_semesters_in_program": 2, "standard_programme_semesters": 6})["status"],
+            "fail",
+        )
+
+    def test_rosa_luxemburg_15_month_rule_respects_published_exceptions(self):
+        c = self.criterion(
+            "eligibility",
+            "Residence duration",
+            "You must not have been in Germany for more than 15 months unless you have already studied in Germany or are preparing for university studies.",
+        )
+        self.assertEqual(evaluate_criterion(c, {"months_in_germany": 18})["status"], "unknown")
+        self.assertEqual(
+            evaluate_criterion(c, {"months_in_germany": 18, "residence_duration_exception": "prior_study"})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"months_in_germany": 18, "residence_duration_exception": "study_preparation"})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"months_in_germany": 18, "residence_duration_exception": "none"})["status"],
+            "fail",
+        )
+
+    def test_rosa_luxemburg_international_study_requires_completed_bachelors(self):
+        c = self.criterion(
+            "study_level",
+            "Academic qualification",
+            "Proof of a completed Bachelor's degree is required.",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"current_education_level": "bachelors"})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"current_education_level": "intermediate"})["status"],
+            "fail",
+        )
+
+    def test_explicit_excluded_study_level_is_not_mistaken_for_eligible(self):
+        c = self.criterion(
+            "study_level",
+            "Excluded study levels",
+            "Bachelor's programmes are not eligible for this international scholarship.",
+        )
+        self.assertEqual(evaluate_criterion(c, {"target_study_level": "bachelors"})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {"target_study_level": "master"})["status"], "informational")
+
+    def test_political_alignment_is_not_requested_or_inferred(self):
+        c = self.criterion(
+            "eligibility",
+            "Values",
+            "Applicants must identify with the values of social democracy.",
+        )
+        result = evaluate_criterion(c, {})
+        self.assertEqual(result["status"], "unknown")
+        self.assertIn("does not ask you to disclose", result["explanation"])
+
 class GermanStudyLevelFilteringTests(unittest.TestCase):
     def criterion(self, kind, label, text, mandatory=True):
         return {
