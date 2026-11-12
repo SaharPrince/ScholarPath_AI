@@ -13,14 +13,16 @@ The product is deliberately limited to two jobs:
 
 **Scholarship opportunities are not stored in a database.**
 
-- Every scholarship search fetches current pages from the configured official sources.
-- Results and their extracted criteria are assembled in memory for that request.
+- When the shared edge cache expires, a scholarship request fetches current pages from the configured official sources.
+- Public scholarship list/detail responses are edge-cached for 60 seconds, with stale-while-revalidate for up to 5 minutes to reduce repeat serverless invocations.
+- Each serverless instance also shares one in-memory source scan for 60 seconds; concurrent requests wait for the same scan instead of launching duplicate provider requests.
+- The static source registry is edge-cached for one hour because it changes only with a code deployment.
+- Results and extracted criteria are assembled in memory; no scholarship result is written to a database.
 - The source registry is configuration in `app/source_catalog.py`; it is not a stored scholarship catalogue.
-- Live scholarship endpoints do not read or write persisted scholarship records.
-- A URL-derived identifier is used to refer to a result within a response. It is not a database record.
-- Operational source configuration and legacy database helpers are separate from the live scholarship result path.
+- A URL-derived identifier refers to a result within a response. It is not a database record.
+- Applicant-specific `POST /api/match` responses are never placed in a shared public cache.
 
-A new search fetches the sources again. Results can change when a provider updates a page, blocks automated requests, or publishes a new application cycle.
+After the cache windows expire, the next request fetches the sources again. Results can change when a provider updates a page, blocks automated requests, or publishes a new application cycle.
 
 ## Official-source and evidence rules
 
