@@ -979,7 +979,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
             if not (has_actor or has_qualification or statement_is_implied_list_condition):
                 continue
             lowered = statement.casefold()
-            if re.search(r"(?i)\b(preferred|preferable|desirable|recommended|encouraged|"
+            if re.search(r"(?i)\b(preferred|preferable|desirable|recommended|encourage(?:d|s)?|"
                          r"particularly welcome|priority (?:will be|is) given|welcome applications|"
                          r"an advantage|besonders willkommen|engagiert(?:e|en)?|"
                          r"ausdrücklich zu einer bewerbung ermutigt|bevorzugt berücksichtigt)\b", statement):
