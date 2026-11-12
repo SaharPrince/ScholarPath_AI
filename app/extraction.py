@@ -1567,6 +1567,63 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
 
 
 
+VILLIGST_DOCTORAL_FAQ_URL = (
+    "https://www.evstudienwerk.de/english/scholarship-for-doctoral-students-faq/"
+)
+
+
+def _augment_villigst_doctoral_faq(
+    parsed: ExtractedPage, html: str, faq_url: str = VILLIGST_DOCTORAL_FAQ_URL
+) -> ExtractedPage:
+    """Add doctoral FAQ clarifications to the existing award, retaining FAQ evidence."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), faq_url)
+    page_text = _clean(root.get_text(" ", strip=True))
+
+    def add(kind: str, label: str, statement: str) -> None:
+        statement = _clean(statement)
+        item = (kind, label, statement)
+        if not statement or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = faq_url
+        evidence_item = ("eligibility", statement)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = faq_url
+
+    if re.search(r"(?i)must provide evidence of admission.{0,100}doctorate", page_text):
+        add(
+            "doctoral_admission",
+            "Admission to doctoral studies",
+            "Applicants must provide evidence of admission (authorisation) to do a doctorate.",
+        )
+    if re.search(r"(?i)do not have to be enrolled during the doctorate", page_text):
+        add(
+            "application_requirements",
+            "Doctoral enrolment clarification",
+            "Applicants do not have to be enrolled at the university during the doctorate.",
+        )
+    if re.search(r"(?i)working longer than one year at your project", page_text):
+        add(
+            "application_requirements",
+            "Doctoral project started more than one year ago",
+            "If you have worked on your doctoral project for longer than one year, you may still apply; explain separately why you are applying now.",
+        )
+    if re.search(r"(?i)older than 35.{0,100}can i apply", page_text):
+        add(
+            "age_limit",
+            "Age exception",
+            "Applicants older than 35 may apply; explain the reasons for pursuing a doctorate in your CV.",
+        )
+    if re.search(r"(?i)work is already in the final phase cannot be considered", page_text):
+        add(
+            "doctoral_project_stage",
+            "Doctoral project stage",
+            "Applicants whose doctoral project is already in its final phase cannot be considered.",
+        )
+    return parsed
+
+
 HEC_KNOWLEDGE_CORRIDOR_BASE = (
     "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
 )
@@ -2365,6 +2422,20 @@ async def extract_candidate_details(
                 )
             else:
                 parsed = parse_scholarship_page(html, candidate["candidate_url"], candidate["candidate_title"]) if html else None
+            if (
+                parsed
+                and (urlparse(candidate["candidate_url"]).hostname or "").casefold() == "www.evstudienwerk.de"
+                and urlparse(candidate["candidate_url"]).path.rstrip("/").casefold()
+                == "/english/scholarship-for-doctoral-students"
+            ):
+                faq_html, _faq_error = await _fetch_page(
+                    client, VILLIGST_DOCTORAL_FAQ_URL
+                )
+                if faq_html:
+                    parsed = _augment_villigst_doctoral_faq(
+                        parsed, faq_html, VILLIGST_DOCTORAL_FAQ_URL
+                    )
+
             status = "failed" if error else ("insufficient_evidence" if parsed is None else "extracted")
             message = error or (None if parsed else "Page was not classified as a specific opportunity or lacked explicit scholarship facts.")
 
