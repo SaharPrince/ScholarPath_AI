@@ -868,7 +868,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         r"(?i)\b(?:must|must not|required|are required|is required|"
         r"should have|should hold|need to|needs to|eligible|ineligible|"
         r"not eligible|only applicants|only candidates|can apply|may apply|"
-        r"cannot apply|preferred|preferable|desirable|recommended|encouraged|"
+        r"cannot apply|preferred|preferable|desirable|recommended|encourage(?:d|s)?|"
         r"particularly welcome|priority (?:will be|is) given|at least|minimum of|maximum age|no older than|"
         r"no more than|between \d|professional experience|from the following countries|"
         r"citizens? of|nationals? of|resident in|residing in|"
