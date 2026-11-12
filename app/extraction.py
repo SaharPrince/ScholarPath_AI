@@ -339,12 +339,6 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         # An explicit statement that there is no age ceiling is informational,
         # not a condition an applicant must satisfy.
         return False
-    if criterion_type == "application_requirements" and re.search(
-        r"(?i)\b(sole responsibility|both (?:the )?(?:commonwealth|hec)|"
-        r"commonwealth and hec|hec and commonwealth)\b",
-        requirement_text,
-    ):
-        return True
     if criterion_type in {"required_documents", "application_requirements", "post_selection_requirement"}:
         # Documents and submission steps may be essential to complete an
         # application, but they do not determine whether the applicant meets
