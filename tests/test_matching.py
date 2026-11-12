@@ -306,6 +306,13 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
 
 
 class GermanStudyLevelFilteringTests(unittest.TestCase):
+    def criterion(self, kind, label, text, mandatory=True):
+        return {
+            "id": 99, "criterion_type": kind, "criterion_label": label,
+            "requirement_text": text, "is_mandatory": mandatory,
+            "evidence_url": "https://official.example/eligibility",
+        }
+
     def test_master_profile_excludes_german_doctoral_scholarship(self):
         from app.matching import match_profile_to_scholarships
         rows = [{"id": 91, "title": "Promotionsstipendium"}]
