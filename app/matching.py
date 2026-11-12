@@ -34,6 +34,66 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     if not criterion.get("is_mandatory", True):
         return _result("informational", "This is selection or programme information, not a mandatory eligibility check.")
 
+    # Sensitive circumstances are not collected or inferred by this matcher.
+    if re.search(
+        r"(?i)financial(?:ly)?\s+(?:need|needy|disadvantaged|hardship)|"
+        r"financial\s+(?:circumstances|situation|hardship)|household\s+income|"
+        r"parent(?:s|al)?\s+income|baf[oö]g|income\s+assessment",
+        lower,
+    ):
+        return _result(
+            "unknown",
+            "The provider assesses financial need separately. This matcher does not ask for income, family finances, or financial documents; review the official provider's confidential process.",
+        )
+
+    if re.search(
+        r"(?i)\b(?:refugee|asylum\s+seeker|disabilit(?:y|ies)|disabled|"
+        r"chronic\s+illness|religion|religious|denomination|muslim|christian|"
+        r"protestant|catholic|gender|women|woman|female|single\s+parent|"
+        r"minor\s+child(?:ren)?|caregiv(?:er|ing)|care\s+responsibilit(?:y|ies)|"
+        r"family\s+responsibilit(?:y|ies))\b",
+        lower,
+    ):
+        return _result(
+            "unknown",
+            "The provider lists a personal or sensitive circumstance for this opportunity. This matcher does not ask you to disclose it; review the official condition privately with the provider.",
+        )
+
+    # Named-university enrolment is distinct from enrolment in a country.
+    source_text = f"{label} {text}"
+    institution_match = re.search(
+        r"(?:enrolled|registered|matriculated|students?)\s+(?:at|in)\s+(?:the\s+)?"
+        r"([A-Z][A-Za-zÀ-ÿ0-9&.'-]*(?:\s+(?:of|the|and|[A-Z][A-Za-zÀ-ÿ0-9&.'-]*)){0,5})",
+        source_text,
+    )
+    if not institution_match:
+        institution_match = re.search(
+            r"eingeschrieben\s+an\s+der\s+"
+            r"([A-Z][A-Za-zÀ-ÿ0-9&.'-]*(?:\s+(?:of|the|and|[A-Z][A-Za-zÀ-ÿ0-9&.'-]*)){0,5})",
+            source_text,
+        )
+    if institution_match:
+        required_institution = institution_match.group(1).strip(" .,:;")
+        if not re.fullmatch(
+            r"(?i)(?:a|any|recognized|german|public|national)\s+(?:recognized\s+)?university(?:\s+in\s+germany)?",
+            required_institution,
+        ):
+            applicant_institution = re.sub(
+                r"[^a-z0-9]+", " ", str(profile.get("current_university_name") or "").casefold()
+            ).strip()
+            required_normalized = re.sub(r"[^a-z0-9]+", " ", required_institution.casefold()).strip()
+            enrolled_here = profile.get("currently_enrolled_at_current_university")
+            if not applicant_institution:
+                return _result("unknown", "If you wish, enter the name of your current university to check this institution-specific condition.")
+            if enrolled_here is None:
+                return _result("unknown", "Confirm whether you are currently enrolled at the university you entered.")
+            if not enrolled_here:
+                return _result("fail", "This opportunity requires current enrolment at the named university.")
+            if required_normalized not in applicant_institution and applicant_institution not in required_normalized:
+                return _result("fail", f"The published condition requires enrolment at {required_institution}.")
+            return _result("pass", f"You confirmed current enrolment at {required_institution}.")
+
+
     if re.search(r"(?:not have been in germany for more than|have not been in germany for more than|not been in germany for more than|no more than)\s*15\s*months?", lower):
         months = _number(profile.get("months_in_germany"))
         if months is None:
