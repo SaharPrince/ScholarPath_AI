@@ -596,8 +596,10 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
             "Bewerbungszeitpunkt",
             "Bewerbung vor oder zu Beginn des ersten Hochschulsemesters.",
         )
-        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 1})["status"], "pass")
-        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 2})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {"first_semester_timing": "not_started"})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"first_semester_timing": "at_beginning"})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"first_semester_timing": "after_beginning"})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {"first_semester_timing": "later_semester"})["status"], "fail")
 
     def test_rosa_german_four_semester_threshold_is_supported(self):
         c = self.criterion(
