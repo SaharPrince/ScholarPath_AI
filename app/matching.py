@@ -105,7 +105,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("pass", f"You confirmed current enrolment at {required_institution}.")
 
 
-    if re.search(r"(?:not have been in germany for more than|have not been in germany for more than|not been in germany for more than|no more than)\s*15\s*months?", lower):
+    if re.search(r"(?:not have been in germany for more than|have not been in germany for more than|not been in germany for more than|no more than)\s*15\s*months?|(?:nicht länger als|nicht mehr als|höchstens)\s*15\s*monate?", lower):
         months = _number(profile.get("months_in_germany"))
         if months is None:
             return _result("unknown", "Add how many months you have been in Germany to check this residence-duration rule.")
@@ -146,7 +146,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     if semester_minimum:
         raw_minimum = next(group for group in semester_minimum.groups() if group is not None)
         semester_words = {
-            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "ein": 1, "eine": 1, "zwei": 2, "drei": 3, "vier": 4, "fünf": 5, "sechs": 6,
         }
         minimum_semesters = int(raw_minimum) if raw_minimum.isdigit() else semester_words[raw_minimum]
         remaining = _number(profile.get("remaining_semesters_in_program"))
