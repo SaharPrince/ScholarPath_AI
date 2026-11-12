@@ -249,6 +249,13 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 "informational",
                 "The age condition calls for an additional application or special request; it is not an automatic age-based rejection. Review the provider's instructions.",
             )
+        if re.search(r"(?i)\b(?:older than|over)\s+\d+\b", lower) and re.search(
+            r"(?i)\b(?:can apply|may apply|eligible to apply)\b", lower
+        ):
+            return _result(
+                "informational",
+                "The provider explicitly allows applicants above the stated age to apply in the described circumstances. Review the provider's explanation requirements; do not treat this wording as an automatic age-based rejection.",
+            )
         age = _number(profile.get("age"))
         if age is None:
             return _result("unknown", "Add your age to check the published age limit.")
