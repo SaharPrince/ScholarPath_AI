@@ -610,7 +610,7 @@ function requirementPairs(type,label,text){
 function renderRequirements(criteria){
  const groups={"Must meet":[],"Other information":[]};
  const seen=new Set();
- criteria.filter(c=>!["selection_process","selection_criteria","target_audience"].includes(c.criterion_type))
+ criteria
   .forEach(c=>requirementPairs(c.criterion_type,c.criterion_label,c.requirement_text).forEach(([key,value])=>{
    const signature=(key+"|"+value).toLowerCase();
    if(seen.has(signature))return;
