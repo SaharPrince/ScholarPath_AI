@@ -711,6 +711,7 @@ let activeSiteLanguage="en";
 let siteTranslationInProgress=false;
 const translationLabels={ur:"Urdu",ar:"Arabic",fr:"French",es:"Spanish",hi:"Hindi",bn:"Bengali"};
 function translationBytes(value){return new TextEncoder().encode(value).length;}
+function translationCharacters(value){return Array.from(value).length;}
 function splitTranslationText(value,maxBytes=450){
  const words=value.match(/\S+\s*/gu)||[];
  const chunks=[];let current="";
@@ -737,7 +738,7 @@ async function translatePublicText(value,target){
    throw new Error(payload.responseDetails||"The translation service could not translate this text.");
   }
   translated.push(payload.responseData.translatedText);
-  translationBudgetUsed+=translationBytes(chunk);
+  translationBudgetUsed+=translationCharacters(chunk);
  }
  return translated.join(" ");
 }
@@ -816,7 +817,7 @@ async function translateWholeWebsite(){
   };
   for(let i=0;i<pending.length;i++){
    const original=pending[i];
-   const cost=translationBytes(original);
+   const cost=translationCharacters(original);
    if(translationBudgetUsed+cost>5000)throw new Error("The free translation allowance for today has been reached. Some content may remain in English; choose English to restore the original page.");
    const translated=await translatePublicText(original,target);
    translationCache.set(target+"|"+original,translated);
