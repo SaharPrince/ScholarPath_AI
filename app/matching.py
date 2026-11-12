@@ -250,7 +250,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 "The age condition calls for an additional application or special request; it is not an automatic age-based rejection. Review the provider's instructions.",
             )
         if re.search(r"(?i)\b(?:older than|over)\s+\d+\b", lower) and re.search(
-            r"(?i)\b(?:can apply|may apply|eligible to apply)\b", lower
+            r"(?i)\b(?:can|may)\s+i\s+apply\b.{0,180}\b(?:yes|you can|you may)\b|\b(?:can|may)\s+apply\b|\beligible to apply\b", lower
         ):
             return _result(
                 "informational",
