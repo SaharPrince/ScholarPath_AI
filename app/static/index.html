@@ -603,8 +603,9 @@ function requirementPairs(type,label,text){
  const value=summarizeRequirement(raw,label).replace(/[.;]$/,"").trim();
  if(!value)return [["Eligibility","Check official source"]];
  if(/international students?/.test(lower)&&/completed/.test(lower))return [["Education",value]];
- const short=value.length<=54?value:value.slice(0,51).replace(/\s+\S*$/,"")+"…";
- return [[requirementKey(type,label,raw),short]];
+ // Keep the complete plain-language requirement visible. The original provider wording
+ // remains expandable below; silently shortening this summary can hide an eligibility condition.
+ return [[requirementKey(type,label,raw),value]];
 }
 function renderRequirements(criteria){
  const groups={"Must meet":[],"Other information":[]};
