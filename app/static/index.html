@@ -679,6 +679,7 @@ const originalTextNodes=new WeakMap();
 const originalAttributes=new WeakMap();
 let siteShowingOriginal=true;
 let activeSiteLanguage="en";
+let siteTranslationInProgress=false;
 const translationLabels={ur:"Urdu",ar:"Arabic",fr:"French",es:"Spanish",hi:"Hindi",bn:"Bengali"};
 function translationBytes(value){return new TextEncoder().encode(value).length;}
 function splitTranslationText(value,maxBytes=450){
@@ -728,7 +729,7 @@ function collectWebsiteText(){
   const original=originalTextNodes.get(node);
   if(original&&original.trim())items.push({kind:"text",node,original});
  }
- document.querySelectorAll("input[placeholder],input[aria-label],input[title],button[aria-label],select[aria-label],a[aria-label],img[alt]").forEach(el=>{
+ document.querySelectorAll("input[placeholder],textarea[placeholder],input[aria-label],textarea[aria-label],input[title],button[aria-label],select[aria-label],a[aria-label],img[alt]").forEach(el=>{
   if(el.closest("[data-translation-ui]"))return;
   const attrs=originalAttributes.get(el)||{};
   ["placeholder","aria-label","title","alt"].forEach(name=>{
@@ -754,7 +755,7 @@ function setWebsiteDirection(language){
 }
 async function translateWholeWebsite(){
  const language=$("siteLanguage"),button=$("siteTranslate"),status=$("siteTranslationStatus");
- if(!language||!button||!status)return;
+ if(!language||!button||!status||siteTranslationInProgress)return;
  const target=language.value;
  activeSiteLanguage=target;
  const items=collectWebsiteText();
@@ -775,6 +776,7 @@ async function translateWholeWebsite(){
   localStorage.setItem("scholarpath-language",target);
   return;
  }
+ siteTranslationInProgress=true;
  button.disabled=true;language.disabled=true;
  status.textContent="Translating the website into "+(translationLabels[target]||target)+"…";
  try{
@@ -801,7 +803,7 @@ async function translateWholeWebsite(){
   setWebsiteDirection("en");
   status.textContent="Translation stopped: "+error.message+" Original website text is still available.";
  }finally{
-  button.disabled=false;language.disabled=false;
+  button.disabled=false;language.disabled=false;siteTranslationInProgress=false;
  }
 }
 function toggleWebsiteOriginal(){
