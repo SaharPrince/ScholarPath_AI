@@ -100,6 +100,18 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
             "official_index",
         )
         self.assertEqual(
+            sources["TU Berlin – Deutschlandstipendium (Application Requirements)"]["official_url"],
+            "https://www.tu.berlin/en/careerservice/d-stipendium/application/basic-principles",
+        )
+        self.assertEqual(
+            sources["TU Berlin – STIBET I Equal Opportunities Scholarship"]["official_url"],
+            "https://www.tu.berlin/en/international/students-1/international-students/international-degree-seeking-students/scholarships-and-other-funding-for-international-students/scholarships-for-promoting-equal-opportunities-stibet-i",
+        )
+        self.assertEqual(
+            sources["TU Berlin – STIBET I Equal Opportunities Scholarship"]["source_type"],
+            "official_programme",
+        )
+        self.assertEqual(
             sources["University of Würzburg – Scholarships by Target Group"]["source_type"],
             "official_index",
         )
