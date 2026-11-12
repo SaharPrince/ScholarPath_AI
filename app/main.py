@@ -22,14 +22,21 @@ app = FastAPI(
 
 @app.middleware("http")
 async def cache_public_scholarship_reads(request, call_next):
-    """Let the edge reuse public GET results briefly without caching profiles."""
+    """Cache public GET data at the edge without ever caching applicant profiles."""
     response = await call_next(request)
     path = request.url.path
     is_scholarship_read = path == "/api/scholarships" or path.startswith("/api/scholarships/")
-    if request.method == "GET" and response.status_code == 200 and is_scholarship_read:
-        # A short edge TTL smooths cold serverless scans while keeping source data
-        # fresh. The matching POST route is deliberately never publicly cached.
-        response.headers["Cache-Control"] = "public, s-maxage=15, stale-while-revalidate=15"
+    is_source_registry = path == "/api/sources"
+    if request.method == "GET" and response.status_code == 200:
+        if is_scholarship_read:
+            # Keep the live catalogue fresh while allowing Vercel's edge cache to
+            # absorb repeat visits instead of invoking a serverless function each time.
+            response.headers["Cache-Control"] = "public, s-maxage=60, stale-while-revalidate=300"
+        elif is_source_registry:
+            # The curated registry changes only with a code deployment.
+            response.headers["Cache-Control"] = "public, s-maxage=3600, stale-while-revalidate=86400"
+    # POST /api/match is intentionally excluded: applicant-specific results must
+    # never be stored in a shared cache.
     return response
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
