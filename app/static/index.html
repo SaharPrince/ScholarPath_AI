@@ -480,7 +480,7 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 </style>
 </head>
 <body>
-<header class="topbar"><div class="shell nav"><a class="brand" href="#" aria-label="ScholarCompass home"><span class="brandmark">✦</span> ScholarCompass</a><nav class="navlinks" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#profilePanel">Eligibility</a><a href="#motion-lab">Experience</a></nav><div class="navnote"><span class="live-dot"></span> Live official sources</div></div></header>
+<header class="topbar"><div class="shell nav"><a class="brand" href="#" aria-label="ScholarCompass home"><span class="brandmark">✦</span> ScholarCompass</a><nav class="navlinks" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#profilePanel">Eligibility</a><a href="#motion-lab">Experience</a></nav><div class="navnote"><span class="live-dot"></span> Live official sources</div><div class="site-language" data-translation-ui style="display:flex;align-items:center;gap:7px;flex-wrap:wrap"><label for="siteLanguage" style="font-size:11px;color:#e5f0e9">Language</label><select id="siteLanguage" aria-label="Website language" style="max-width:150px;padding:8px;border:1px solid #789287;border-radius:8px;background:#173b31;color:#fff"><option value="en">English</option><option value="ur">اردو · Urdu</option><option value="ar">العربية · Arabic</option><option value="fr">Français · French</option><option value="es">Español · Spanish</option><option value="hi">हिन्दी · Hindi</option><option value="bn">বাংলা · Bengali</option></select><button id="siteTranslate" type="button" style="padding:8px 10px;border:1px solid #789287;border-radius:8px;background:#e0f0e5;color:#173b31;font-weight:700">Translate site</button><button id="siteOriginal" type="button" hidden style="padding:8px 10px;border:1px solid #789287;border-radius:8px;background:transparent;color:#fff">Show original</button><span id="siteTranslationStatus" role="status" aria-live="polite" style="font-size:10px;color:#d5e4db"></span></div></div></header>
 <section class="hero"><div class="pattern" aria-hidden="true"></div><div class="orb one" aria-hidden="true"></div><div class="orb two" aria-hidden="true"></div><div class="shell hero-inner"><div class="eyebrow"><span class="pulse"></span> A clearer path to your future</div><h1>Find scholarships.<br><em>Know where you stand.</em></h1><p>Discover current opportunities from official German providers, understand the eligibility rules, and see what still needs checking — without guesswork.</p><div class="searchbox"><span class="search-icon" aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search by scholarship, provider or destination…" aria-label="Search scholarships"><button class="primary" id="heroSearch">Explore opportunities <span aria-hidden="true">→</span></button></div><div class="trustline"><span><b class="check">✓</b> Official-source links</span><span><b class="check">✓</b> Clear eligibility criteria</span><span><b class="check">✓</b> Verification status shown</span></div></div></section>
 <main class="shell">
 <div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Live opportunities found</span></div><div class="stat"><strong id="openCount">—</strong><span>Open according to source</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
@@ -640,7 +640,7 @@ function render(){
  <div class="meta"><span>⌖ ${esc(x.study_destination||x.country||"Destination not stated")}</span><span>◷ ${esc(x.deadline_text||"Deadline not stated")}</span></div>
  <div class="funding">${esc(x.funding_summary||"Funding details are not stated on the source page.")}</div>
  <div class="cardfoot"><span class="source" title="${esc(x.source_name)}">Source: ${esc(x.source_name)}</span><button type="button" class="detailbtn" data-id="${x.id}">Read simple requirements ↗</button></div></article>`).join(""):(allScholarships.length===0?'<div class="empty"><strong>No current opportunities found</strong>This live scan did not identify a specific opportunity. Some providers may temporarily block automated access; try again later or visit the official source list.</div>':'<div class="empty"><strong>No matching scholarships found</strong>Try changing your search or filters.</div>');
- // Card actions use one delegated listener so they keep working after live results are re-rendered.
+ // Card actions use one delegated listener so they keep working after live results are re-rendered.\n refreshWebsiteTranslation();
 }
 
 $("cards").addEventListener("click",e=>{
@@ -658,7 +658,7 @@ async function load(){
   allScholarships=await r.json();
   const sourceResponse=await fetch("/api/sources",{cache:"no-store"});
   if(sourceResponse.ok){const sources=await sourceResponse.json();activeSourceCount=sources.length;}
-  render();
+  render();\n  refreshWebsiteTranslation();
  }catch(e){
   $("cards").innerHTML='<div class="empty"><strong>Live discovery is temporarily unavailable</strong>'+esc(e.message)+' Please try again shortly.</div>';
   $("resultCount").textContent="Live scan unavailable";
@@ -666,15 +666,18 @@ async function load(){
  }
 }
 
-/* On-demand translation applies only to public scholarship-page text.
-   Student profile fields are never read or sent to the translation provider. */
+/* Whole-site translation. Only public interface/page text is processed.
+   Form control values are never read, serialized, or sent to the translation provider. */
 let translationBudgetUsed=0;
 const translationCache=new Map();
-let detailTranslationNodes=[];
-let detailShowingOriginal=false;
+const originalTextNodes=new WeakMap();
+const originalAttributes=new WeakMap();
+let siteShowingOriginal=true;
+let activeSiteLanguage="en";
+const translationLabels={ur:"Urdu",ar:"Arabic",fr:"French",es:"Spanish",hi:"Hindi",bn:"Bengali"};
 function translationBytes(value){return new TextEncoder().encode(value).length;}
 function splitTranslationText(value,maxBytes=450){
- const words=value.match(/\S+\s*/gu)||[];
+ const words=value.match(/\\S+\\s*/gu)||[];
  const chunks=[];let current="";
  for(const word of words){
   if(translationBytes(current+word)>maxBytes&&current){chunks.push(current.trim());current="";}
@@ -688,9 +691,8 @@ function splitTranslationText(value,maxBytes=450){
  if(current.trim())chunks.push(current.trim());
  return chunks;
 }
-async function translateScholarshipText(value,target){
- const chunks=splitTranslationText(value);
- const translated=[];
+async function translatePublicText(value,target){
+ const chunks=splitTranslationText(value),translated=[];
  for(const chunk of chunks){
   const params=new URLSearchParams({q:chunk,langpair:"autodetect|"+target,mt:"1"});
   const response=await fetch("https://api.mymemory.translated.net/get?"+params.toString(),{method:"GET",mode:"cors",cache:"no-store"});
@@ -704,72 +706,141 @@ async function translateScholarshipText(value,target){
  }
  return translated.join(" ");
 }
-async function translateDetailPage(){
- const button=$("translatePage"),status=$("translationStatus"),language=$("detailLanguage");
- if(!button||!status||!language)return;
- const target=language.value;
- if(detailTranslationNodes.length&&!detailShowingOriginal){
-  detailTranslationNodes.forEach(node=>{node.textContent=node.getAttribute("data-original-text")||"";});
- }
- detailShowingOriginal=true;
- $("detailBody").setAttribute("dir","ltr");
- $("showOriginal").hidden=true;
- const labels={ur:"Urdu",ar:"Arabic",fr:"French",es:"Spanish",hi:"Hindi",bn:"Bengali"};
- const selector="#detailTitle,#detailProvider,h3,h4,.fact small,.fact strong,.criterion-label,.criterion-copy,.original-wording summary,.original-wording p,.criterion a,.requirements-intro,.notice";
- const nodes=Array.from(document.querySelectorAll(selector)).filter(node=>!node.closest(".translation-tools")&&(node.id==="detailTitle"||node.id==="detailProvider"||$("detailBody").contains(node)));
- const pending=[];
- const pendingKeys=new Set();
- nodes.forEach(node=>{
-  if(!node.hasAttribute("data-original-text"))node.setAttribute("data-original-text",node.textContent||"");
-  const original=node.getAttribute("data-original-text")||"";
-  if(!original.trim())return;
-  const key=target+"|"+original;
-  if(!translationCache.has(key)&&!pendingKeys.has(key)){pending.push({node,original,key});pendingKeys.add(key);}
+function collectWebsiteText(){
+ const items=[];
+ const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{
+  acceptNode(node){
+   const parent=node.parentElement;
+   if(!parent||!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+   if(parent.closest("script,style,noscript,textarea,input,[contenteditable='true'],[data-translation-ui]"))return NodeFilter.FILTER_REJECT;
+   if(parent.closest(".translation-tools"))return NodeFilter.FILTER_REJECT;
+   return NodeFilter.FILTER_ACCEPT;
+  }
  });
- const needed=pending.reduce((sum,item)=>sum+translationBytes(item.original),0);
- if(translationBudgetUsed+needed>4500){
-  status.textContent="This page would exceed the translation service's 5,000-character daily anonymous allowance. Try a shorter scholarship page later; the original text is unchanged.";
+ while(walker.nextNode()){
+  const node=walker.currentNode;
+  if(!originalTextNodes.has(node))originalTextNodes.set(node,node.nodeValue);
+  const original=originalTextNodes.get(node);
+  if(original&&original.trim())items.push({kind:"text",node,original});
+ }
+ document.querySelectorAll("input[placeholder],input[aria-label],input[title],button[aria-label],select[aria-label],a[aria-label],img[alt]").forEach(el=>{
+  if(el.closest("[data-translation-ui]"))return;
+  const attrs=originalAttributes.get(el)||{};
+  ["placeholder","aria-label","title","alt"].forEach(name=>{
+   if(el.hasAttribute(name)){
+    if(!(name in attrs))attrs[name]=el.getAttribute(name);
+    if(attrs[name]?.trim())items.push({kind:"attr",node:el,name,original:attrs[name]});
+   }
+  });
+  originalAttributes.set(el,attrs);
+ });
+ return items;
+}
+function applyWebsiteOriginals(items){
+ items.forEach(item=>{
+  if(item.kind==="text")item.node.nodeValue=item.original;
+  else item.node.setAttribute(item.name,item.original);
+ });
+}
+function setWebsiteDirection(language){
+ document.documentElement.lang=language;
+ document.documentElement.dir=["ur","ar"].includes(language)?"rtl":"ltr";
+ document.body.dir=document.documentElement.dir;
+}
+async function translateWholeWebsite(){
+ const language=$("siteLanguage"),button=$("siteTranslate"),status=$("siteTranslationStatus");
+ if(!language||!button||!status)return;
+ const target=language.value;
+ activeSiteLanguage=target;
+ const items=collectWebsiteText();
+ applyWebsiteOriginals(items);
+ siteShowingOriginal=true;
+ $("siteOriginal").hidden=true;
+ setWebsiteDirection("en");
+ if(target==="en"){
+  status.textContent="Website language: English.";
+  localStorage.setItem("scholarpath-language","en");
   return;
  }
- button.disabled=true;language.disabled=true;status.textContent="Translating scholarship information into "+labels[target]+"…";
- const results=[];
+ const unique=[...new Set(items.map(item=>item.original).filter(value=>value.trim()))];
+ const pending=unique.filter(value=>!translationCache.has(target+"|"+value));
+ const required=pending.reduce((sum,value)=>sum+translationBytes(value),0);
+ if(translationBudgetUsed+required>4500){
+  status.textContent="The free translation service's daily limit may be exceeded. Some page text remains in English; your original content is unchanged.";
+  localStorage.setItem("scholarpath-language",target);
+  return;
+ }
+ button.disabled=true;language.disabled=true;
+ status.textContent="Translating the website into "+(translationLabels[target]||target)+"…";
  try{
-  for(let i=0;i<nodes.length;i++){
-   const node=nodes[i],original=node.getAttribute("data-original-text")||"";
-   if(!original.trim())continue;
-   const key=target+"|"+original;
-   let translated=translationCache.get(key);
-   if(!translated)translated=await translateScholarshipText(original,target);
-   translationCache.set(key,translated);
-   results.push({node,translated});
-   status.textContent="Translating scholarship information… "+(i+1)+" of "+nodes.length;
+  for(let i=0;i<pending.length;i++){
+   const original=pending[i];
+   translationCache.set(target+"|"+original,await translatePublicText(original,target));
+   status.textContent="Translating website… "+(i+1)+" of "+pending.length;
   }
-  detailTranslationNodes=nodes.filter(node=>node.hasAttribute("data-original-text"));
-  detailShowingOriginal=false;
-  results.forEach(item=>{item.node.textContent=item.translated;});
-  $("detailBody").setAttribute("lang",target);
-  $("detailBody").setAttribute("dir",target==="ur"||target==="ar"?"rtl":"ltr");
-  $("showOriginal").hidden=false;$("showOriginal").textContent="Show original";
-  status.textContent="Machine translation shown in "+labels[target]+". Check important eligibility conditions against the original provider wording.";
+  items.forEach(item=>{
+   const translated=translationCache.get(target+"|"+item.original);
+   if(translated!==undefined){
+    if(item.kind==="text")item.node.nodeValue=translated;
+    else item.node.setAttribute(item.name,translated);
+   }
+  });
+  siteShowingOriginal=false;
+  setWebsiteDirection(target);
+  $("siteOriginal").hidden=false;
+  $("siteOriginal").textContent="Show original";
+  status.textContent="Website interface and visible page content translated into "+translationLabels[target]+". Machine translation is an aid; check important rules with the official provider.";
+  localStorage.setItem("scholarpath-language",target);
  }catch(error){
-  status.textContent="Translation stopped: "+error.message+" Any completed translations are cached for this page session; original wording remains available.";
+  applyWebsiteOriginals(items);
+  setWebsiteDirection("en");
+  status.textContent="Translation stopped: "+error.message+" Original website text is still available.";
  }finally{
   button.disabled=false;language.disabled=false;
  }
 }
-function toggleDetailOriginal(){
- if(!detailTranslationNodes.length)return;
- detailShowingOriginal=!detailShowingOriginal;
- detailTranslationNodes.forEach(node=>{
-  const original=node.getAttribute("data-original-text")||"";
-  const target=$("detailLanguage")?.value||"";
-  const translated=translationCache.get(target+"|"+original);
-  node.textContent=detailShowingOriginal?original:(translated||original);
- });
- $("showOriginal").textContent=detailShowingOriginal?"Show translation":"Show original";
- $("detailBody").setAttribute("dir",detailShowingOriginal?"ltr":(["ur","ar"].includes($("detailLanguage")?.value)?"rtl":"ltr"));
- $("translationStatus").textContent=detailShowingOriginal?"Original provider wording restored.":"Machine translation shown. Verify important rules with the provider.";
+function toggleWebsiteOriginal(){
+ const items=collectWebsiteText();
+ siteShowingOriginal=!siteShowingOriginal;
+ if(siteShowingOriginal){
+  applyWebsiteOriginals(items);setWebsiteDirection("en");
+  $("siteOriginal").textContent="Show translation";
+  $("siteTranslationStatus").textContent="Original website wording restored.";
+ }else{
+  items.forEach(item=>{
+   const translated=translationCache.get(activeSiteLanguage+"|"+item.original);
+   if(translated!==undefined){
+    if(item.kind==="text")item.node.nodeValue=translated;
+    else item.node.setAttribute(item.name,translated);
+   }
+  });
+  setWebsiteDirection(activeSiteLanguage);
+  $("siteOriginal").textContent="Show original";
+  $("siteTranslationStatus").textContent="Machine translation shown. Verify important rules with official providers.";
+ }
 }
+function refreshWebsiteTranslation(){
+ if(activeSiteLanguage!=="en"&&!siteShowingOriginal){
+  const items=collectWebsiteText();
+  items.forEach(item=>{
+   const translated=translationCache.get(activeSiteLanguage+"|"+item.original);
+   if(translated!==undefined){
+    if(item.kind==="text")item.node.nodeValue=translated;
+    else item.node.setAttribute(item.name,translated);
+   }
+  });
+ }
+}
+$("siteTranslate").addEventListener("click",translateWholeWebsite);
+$("siteOriginal").addEventListener("click",toggleWebsiteOriginal);
+$("siteLanguage").addEventListener("change",()=>{
+ if($("siteLanguage").value==="en"){translateWholeWebsite();return;}
+ translateWholeWebsite();
+});
+try{
+ const savedLanguage=localStorage.getItem("scholarpath-language");
+ if(savedLanguage&&$("siteLanguage").querySelector('option[value="'+savedLanguage+'"]'))$("siteLanguage").value=savedLanguage;
+}catch(_){}
 
 async function showDetail(id){
  const x=allScholarships.find(item=>Number(item.id)===Number(id));
@@ -779,15 +850,8 @@ async function showDetail(id){
  const facts=[["Application status",nice(x.application_status)],["Source status","Fetched live · not independently verified"],["Study destination",x.study_destination||x.country],["Deadline",x.deadline_text],["Funding",x.funding_summary],["Applicant category",nice(x.applicant_category)]];
  const criteria=x.criteria||[];
  const groups={};criteria.forEach(c=>(groups[c.criterion_type]??=[]).push(c));
- $("detailBody").innerHTML=`<div class="translation-tools" style="display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:12px;margin-bottom:14px;border:1px solid #dce7e0;border-radius:12px;background:#f7faf8"><label for="detailLanguage" style="font-size:12px;font-weight:700">Translate page</label><select id="detailLanguage" aria-label="Translation language" style="max-width:170px;padding:8px;border:1px solid #cbd9d0;border-radius:8px;background:#fff"><option value="ur">Urdu · اردو</option><option value="ar">Arabic · العربية</option><option value="fr">French · Français</option><option value="es">Spanish · Español</option><option value="hi">Hindi · हिन्दी</option><option value="bn">Bengali · বাংলা</option></select><button id="translatePage" type="button" style="padding:8px 12px;border:0;border-radius:8px;background:#176b55;color:#fff;font-weight:700">Translate</button><button id="showOriginal" type="button" hidden style="padding:8px 12px;border:1px solid #cbd9d0;border-radius:8px;background:#fff;color:#245443">Show original</button><p style="flex-basis:100%;margin:0;font-size:11px;line-height:1.5;color:#60736a">Machine translation is an aid, not an official version. Only public scholarship-page text is sent to MyMemory; student profile answers are not sent. Daily free limits apply. Always confirm eligibility and deadlines with the provider.</p><p id="translationStatus" role="status" aria-live="polite" style="flex-basis:100%;margin:0;font-size:11px;color:#60736a"></p></div><div class="detailfacts">${facts.map(([k,v])=>`<div class="fact"><small>${esc(k)}</small><strong>${esc(shortText(v))}</strong></div>`).join("")}</div>
- <div class="links"><a href="${esc(x.source_url)}" target="_blank" rel="noopener">Official source page ↗</a>${x.application_url?`<a href="${esc(x.application_url)}" target="_blank" rel="noopener">Application portal ↗</a>`:""}</div>
- <h3>Eligibility Requirements</h3>
- ${renderRequirements(criteria)}
- <p class="notice">These details were fetched from the official source during this search and are not stored by ScholarPath. The information is not independently verified; confirm all requirements and deadlines with the provider.</p>`;
- detailTranslationNodes=[];detailShowingOriginal=false;
- $("showOriginal").hidden=true;
- $("translatePage").addEventListener("click",translateDetailPage);
- $("showOriginal").addEventListener("click",toggleDetailOriginal);
+ $("detailBody").innerHTML=`<div class="detailfacts">${"${facts.map(([k,v])=>`<div class=\"fact\"><small>${esc(k)}</small><strong>${esc(shortText(v))}</strong></div>`).join(\"\")}"}</div>\n <div class="links"><a href="${"${esc(x.source_url)}"}" target="_blank" rel="noopener">Official source page ↗</a>${"${x.application_url?`<a href=\"${esc(x.application_url)}\" target=\"_blank\" rel=\"noopener\">Application portal ↗</a>`:\"\"}"}</div>\n <h3>Eligibility Requirements</h3>\n ${"${renderRequirements(criteria)}"}\n <p class="notice">These details were fetched from the official source during this search and are not stored by ScholarPath. The information is not independently verified; confirm all requirements and deadlines with the provider.</p>`;
+ refreshWebsiteTranslation();
 }
 function closeDetail(){$("overlay").classList.remove("show");document.body.style.overflow="";}
 $("close").addEventListener("click",closeDetail);$("overlay").addEventListener("click",e=>{if(e.target===$("overlay"))closeDetail();});
