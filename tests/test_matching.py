@@ -270,3 +270,36 @@ class ProfileMatchingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GermanScholarshipMatchingTests(unittest.TestCase):
+    def criterion(self, kind, label, text, mandatory=True):
+        return {
+            "id": 99, "criterion_type": kind, "criterion_label": label,
+            "requirement_text": text, "is_mandatory": mandatory,
+            "evidence_url": "https://official.example/eligibility",
+        }
+
+    def test_german_b2_language_requirement_uses_profile_level(self):
+        c = self.criterion("language_requirements", "German language", "German language skills of at least level B2.")
+        self.assertEqual(evaluate_criterion(c, {"german_language_level": "B2"})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"german_language_level": "B1"})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {})["status"], "unknown")
+
+    def test_university_degree_and_experience_are_checked_separately(self):
+        c = self.criterion("study_level", "Study requirements", "have a university degree and professional experience in your home country")
+        self.assertEqual(evaluate_criterion(c, {
+            "current_education_level": "bachelors",
+            "professional_experience_years": 2,
+        })["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {
+            "current_education_level": "intermediate",
+            "professional_experience_years": 2,
+        })["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {
+            "current_education_level": "bachelors",
+        })["status"], "unknown")
+
+    def test_preferred_language_is_not_a_mandatory_match_failure(self):
+        c = self.criterion("language_requirements", "Language", "German language skills are preferred.", mandatory=False)
+        self.assertEqual(evaluate_criterion(c, {})["status"], "informational")
