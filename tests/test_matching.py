@@ -205,6 +205,36 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(result["checks_failed"], 0)
         self.assertEqual(result["checks"][1]["status"], "informational")
 
+    def test_germany_residence_and_enrolment_conditions_are_matched_conservatively(self):
+        residence = self.criterion("eligibility", "Residence duration", "Applicants must not have been in Germany for more than 15 months.")
+        self.assertEqual(evaluate_criterion(residence, {})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(residence, {"months_in_germany": 12})["status"], "pass")
+        self.assertEqual(evaluate_criterion(residence, {"months_in_germany": 16})["status"], "fail")
+
+        enrolled = self.criterion("eligibility", "Current study", "Applicants must already be studying in Germany.")
+        self.assertEqual(evaluate_criterion(enrolled, {})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(enrolled, {"currently_enrolled_in_germany": True})["status"], "pass")
+        self.assertEqual(evaluate_criterion(enrolled, {"currently_enrolled_in_germany": False})["status"], "fail")
+
+    def test_kaad_residence_permit_and_remaining_programme_conditions(self):
+        permit = self.criterion("eligibility", "Residence permit", "Hold a residence permit for study purposes.")
+        self.assertEqual(evaluate_criterion(permit, {})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(permit, {"german_residence_permit": "study"})["status"], "pass")
+        self.assertEqual(evaluate_criterion(permit, {"german_residence_permit": "other"})["status"], "fail")
+
+        remaining = self.criterion("eligibility", "Programme duration", "Have at least six months remaining in your programme.")
+        self.assertEqual(evaluate_criterion(remaining, {"months_remaining_in_program": 8})["status"], "pass")
+        self.assertEqual(evaluate_criterion(remaining, {"months_remaining_in_program": 4})["status"], "fail")
+
+    def test_apprenticeship_specific_conditions_are_matched(self):
+        year = self.criterion("eligibility", "Training year", "Be at the beginning of the first and no later than the beginning of the second Ausbildungsjahr.")
+        self.assertEqual(evaluate_criterion(year, {"apprenticeship_year": 2})["status"], "pass")
+        self.assertEqual(evaluate_criterion(year, {"apprenticeship_year": 3})["status"], "fail")
+        recognized = self.criterion("eligibility", "Recognized occupation", "Learn a staatlich anerkannten Ausbildungsberuf.")
+        self.assertEqual(evaluate_criterion(recognized, {"recognized_apprenticeship": True})["status"], "pass")
+        contract = self.criterion("eligibility", "Training contract", "Have an Ausbildungsvertrag or written confirmation of a training place.")
+        self.assertEqual(evaluate_criterion(contract, {"has_training_contract": False})["status"], "fail")
+
     def test_no_structured_criteria_never_means_eligible(self):
         scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
         result = match_scholarship(scholarship, [], {})
