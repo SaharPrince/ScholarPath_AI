@@ -94,6 +94,22 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("pass", f"Your domicile in {required_regions[0]} meets the published regional rule.")
         return _result("unknown", "This nationality rule needs a specific check against the official wording.")
 
+    if kind == "language_requirements":
+        language = (profile.get("german_language_level") or "").strip().upper()
+        levels = {"NONE": 0, "A1": 1, "A2": 2, "B1": 3, "B2": 4, "C1": 5, "C2": 6}
+        required = re.search(r"\b(A1|A2|B1|B2|C1|C2)\b", text, re.IGNORECASE)
+        if not language or language not in levels:
+            return _result("unknown", "Select your German language level to check this requirement.")
+        if not required:
+            if any(term in lower for term in ("german language", "german-language", "deutschkenntnisse")):
+                return _result("pass" if levels[language] > 0 else "fail",
+                               "Your German language level is recorded." if levels[language] > 0
+                               else "The source requires German language skills.")
+            return _result("unknown", "The required language or proficiency level needs manual review.")
+        minimum = levels[required.group(1).upper()]
+        return _result("pass" if levels[language] >= minimum else "fail",
+                       f"Your German level ({language}) {'meets' if levels[language] >= minimum else 'is below'} the published minimum ({required.group(1).upper()}).")
+
     if kind == "age_limit":
         if "no upper age limit" in lower or "no age limit" in lower:
             return _result("informational", "The source explicitly states there is no upper age limit.")
@@ -166,6 +182,34 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 return _result("fail", "This scholarship criterion is for PhD applicants, not undergraduate study.")
             if target not in {"phd", "doctoral"}:
                 return _result("informational", "This rule applies to PhD applicants, not your selected study level.")
+
+        if "university degree" in lower or "university qualification" in lower:
+            current_level = (profile.get("current_education_level") or "").lower()
+            level_ranks = {"below_matric": 0, "matric": 1, "intermediate": 2, "bachelors": 3, "masters": 4, "phd": 5}
+            rank = level_ranks.get(current_level)
+            if rank is None:
+                return _result("unknown", "Choose your highest completed education level to check the university-degree requirement.")
+            if rank < level_ranks["bachelors"]:
+                return _result("fail", "This requirement needs a completed university degree.")
+            if "professional experience" in lower or "work experience" in lower:
+                years = _number(profile.get("professional_experience_years"))
+                if years is None:
+                    return _result("unknown", "Add your relevant professional experience in years to check this requirement.")
+                if years <= 0:
+                    return _result("fail", "The source requires professional experience after your university degree.")
+            return _result("pass", "Your completed university degree meets this qualification requirement.")
+
+        if "professional experience" in lower or "work experience" in lower:
+            years = _number(profile.get("professional_experience_years"))
+            if years is None:
+                return _result("unknown", "Add your relevant professional experience in years to check this requirement.")
+            minimum_match = re.search(r"(?:at least|minimum of|minimum)\s*(\d+(?:\.\d+)?)\s*years?", lower)
+            minimum = float(minimum_match.group(1)) if minimum_match else 0.01
+            return _result("pass" if years >= minimum else "fail",
+                           f"You reported {years:g} years of experience; the published minimum is {minimum:g}."
+                           if minimum_match else
+                           ("Your reported professional experience meets the source's experience condition."
+                            if years > 0 else "The source requires professional experience."))
 
         # Match school and college entry requirements against the student's latest completed level.
         current_level = (profile.get("current_education_level") or "").lower()
@@ -406,6 +450,7 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         "bachelors": {"bachelor", "bachelors", "bachelor's", "undergraduate", "undergraduate degree", "bs", "b.s."},
         "master": {"master", "masters", "master's", "postgraduate", "ms", "mphil", "m.phil"},
         "phd": {"phd", "doctoral", "doctorate"},
+        "vocational_training": {"vocational training", "ausbildung", "apprenticeship", "vocational"},
     }
     target_key = next(
         (
@@ -417,7 +462,7 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         ),
         target,
     )
-    if target_key not in {"matric", "intermediate", "bachelors", "master", "phd"}:
+    if target_key not in {"matric", "intermediate", "bachelors", "master", "phd", "vocational_training"}:
         return None
 
     title = (scholarship.get("title") or "").lower()
@@ -449,18 +494,24 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         "bachelors": r"\b(?:bachelor|bachelors|undergraduate)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:bachelor|bachelors|undergraduate)\b",
         "master": r"\b(?:master|masters|postgraduate|ms|mphil)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:a\s+)?(?:master|masters|postgraduate|ms|mphil)\b",
         "phd": r"\b(?:phd|doctoral|doctorate)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:a\s+)?(?:phd|doctoral|doctorate)\b",
+        "vocational_training": r"\b(?:ausbildung|auszubildende|apprenticeship|vocational training)\b",
     }
     explicit_levels = {level for level, pattern in level_patterns.items() if re.search(pattern, text)}
+    if re.search(r"\b(?:promotionsstipendium|promotionsförderung|promovierende|doktorand(?:innen|en)?|doctoral|phd)\b", text):
+        explicit_levels.add("phd")
+    if re.search(r"\b(?:ausbildung|auszubildende|ausbildungsvertrag|apprenticeship)\b", text):
+        explicit_levels.add("vocational_training")
     if not explicit_levels or target_key in explicit_levels:
         return None
 
     # Multi-level awards (e.g. Master's and PhD) are valid for either named level.
-    if target_key in {"master", "phd"} and explicit_levels <= {"master", "phd"}:
+    if target_key in {"master", "phd"} and len(explicit_levels) > 1 and explicit_levels <= {"master", "phd"}:
         return None
     target_names = {
         "matric": "Matric", "intermediate": "Intermediate",
         "bachelors": "Bachelor's / undergraduate", "master": "Master's",
         "phd": "PhD",
+        "vocational_training": "vocational training / Ausbildung",
     }
     available = ", ".join(target_names[level] for level in sorted(explicit_levels))
     return f"This opportunity is explicitly for {available} study, not {target_names[target_key]} study."
