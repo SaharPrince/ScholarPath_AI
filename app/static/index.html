@@ -719,7 +719,7 @@ function showMatchDetail(id,rows){
 
 /* Build viewport-aware dropdowns while retaining native select values for forms and APIs. */
 (function enhanceSelectMenus(){
- const selects=Array.from(document.querySelectorAll("select")).filter(select=>select.id!=="siteLanguage");
+ const selects=Array.from(document.querySelectorAll("select"));
  let activeMenu=null,activeTrigger=null;
  function closeMenu(){if(activeMenu)activeMenu.remove();if(activeTrigger)activeTrigger.setAttribute("aria-expanded","false");activeMenu=null;activeTrigger=null;}
  function openMenu(select,trigger){
