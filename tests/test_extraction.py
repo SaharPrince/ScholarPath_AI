@@ -1,3 +1,8 @@
+from app.extraction import (
+    ExtractedPage,
+    VILLIGST_DOCTORAL_FAQ_URL,
+    _augment_villigst_doctoral_faq,
+)
 import sqlite3
 import unittest
 
@@ -8,6 +13,32 @@ from app.extraction import (
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
+    def test_villigst_doctoral_faq_adds_admission_exceptions_and_final_phase(self):
+        parsed = ExtractedPage(
+            title="Evangelisches Studienwerk Doctoral Scholarship",
+            description=None,
+            provider_name="Evangelisches Studienwerk",
+        )
+        faq = """
+        <html><body><main>
+          <p>Do I have to be admitted to the doctorate at the time of application?</p>
+          <p>Yes. You must provide evidence of admission (authorisation) to do a doctorate.</p>
+          <p>Do I have to be enrolled during the doctorate?</p>
+          <p>No, you do not have to be enrolled during the doctorate.</p>
+          <p>If you are working longer than one year at your project, please inform us with a separate document, why you want to apply now.</p>
+          <p>I am older than 35. Can I apply for a scholarship for the doctorate? Yes. Please explain your reasons in your CV.</p>
+          <p>Applications from doctoral students whose work is already in the final phase cannot be considered for a doctoral scholarship.</p>
+        </main></body></html>
+        """
+        result = _augment_villigst_doctoral_faq(parsed, faq, VILLIGST_DOCTORAL_FAQ_URL)
+        criteria = {item[0]: item[2] for item in result.criteria}
+        self.assertIn("doctoral_admission", criteria)
+        self.assertIn("application_requirements", criteria)
+        self.assertTrue(any("longer than one year" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "age_limit" for item in result.criteria))
+        self.assertIn("doctoral_project_stage", criteria)
+        self.assertTrue(all(url == VILLIGST_DOCTORAL_FAQ_URL for url in result.criteria_sources.values()))
+
     def test_line_preserving_cleanup_repairs_live_hec_theme_joins(self) -> None:
         from app.extraction import _clean_preserving_lines
 
