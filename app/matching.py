@@ -97,7 +97,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     if kind == "language_requirements":
         language = (profile.get("german_language_level") or "").strip().upper()
         levels = {"NONE": 0, "A1": 1, "A2": 2, "B1": 3, "B2": 4, "C1": 5, "C2": 6}
-        required = re.search(r"\\b(A1|A2|B1|B2|C1|C2)\\b", text, re.IGNORECASE)
+        required = re.search(r"\b(A1|A2|B1|B2|C1|C2)\b", text, re.IGNORECASE)
         if not language or language not in levels:
             return _result("unknown", "Select your German language level to check this requirement.")
         if not required:
@@ -203,7 +203,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             years = _number(profile.get("professional_experience_years"))
             if years is None:
                 return _result("unknown", "Add your relevant professional experience in years to check this requirement.")
-            minimum_match = re.search(r"(?:at least|minimum of|minimum)\\s*(\\d+(?:\\.\\d+)?)\\s*years?", lower)
+            minimum_match = re.search(r"(?:at least|minimum of|minimum)\s*(\d+(?:\.\d+)?)\s*years?", lower)
             minimum = float(minimum_match.group(1)) if minimum_match else 0.01
             return _result("pass" if years >= minimum else "fail",
                            f"You reported {years:g} years of experience; the published minimum is {minimum:g}."
