@@ -682,11 +682,18 @@ async function load(){
  $("cards").innerHTML='<div class="empty"><strong>Searching official German sources…</strong>Fetching current scholarship information directly from providers. Nothing is loaded from a stored scholarship catalogue.</div>';
  $("resultCount").textContent="Searching live sources…";
  try{
-  const r=await fetch("/api/scholarships?status=all&limit=100",{cache:"no-store"});
+  // Fetch the live catalogue and static source count together to avoid serial network waits.
+  const [r,sourceResponse]=await Promise.all([
+   fetch("/api/scholarships?status=all&limit=100",{cache:"no-store"}),
+   fetch("/api/sources",{cache:"default"})
+  ]);
   if(!r.ok){const p=await r.json().catch(()=>({}));throw new Error(p.detail||"Live scholarship scan returned "+r.status);}
-  allScholarships=await r.json();
-  const sourceResponse=await fetch("/api/sources",{cache:"no-store"});
-  if(sourceResponse.ok){const sources=await sourceResponse.json();activeSourceCount=sources.length;}
+  const [scholarships,sources]=await Promise.all([
+   r.json(),
+   sourceResponse.ok?sourceResponse.json():Promise.resolve([])
+  ]);
+  allScholarships=scholarships;
+  activeSourceCount=sources.length;
   render();
   const savedLanguage=localStorage.getItem("scholarpath-language");
   if(savedLanguage&&savedLanguage!=="en"&&$("siteLanguage").querySelector('option[value="'+savedLanguage+'"]')){
@@ -885,6 +892,10 @@ async function translateWholeWebsite(){
  }finally{
   language.disabled=false;
   siteTranslationInProgress=false;
+  if(translationRefreshPending){
+   translationRefreshPending=false;
+   refreshWebsiteTranslation();
+  }
  }
 }
 function toggleWebsiteOriginal(){
@@ -907,11 +918,22 @@ function toggleWebsiteOriginal(){
   $("siteTranslationStatus").textContent="Machine translation shown. Verify important rules with official providers.";
  }
 }
+let translationRefreshTimer=0;
+let translationRefreshPending=false;
 function refreshWebsiteTranslation(){
- if(activeSiteLanguage!=="en"&&!siteShowingOriginal)translateWholeWebsite();
+ if(activeSiteLanguage==="en"||siteShowingOriginal)return;
+ window.clearTimeout(translationRefreshTimer);
+ translationRefreshTimer=window.setTimeout(()=>{
+  if(siteTranslationInProgress){translationRefreshPending=true;return;}
+  translationRefreshPending=false;
+  translateWholeWebsite();
+ },180);
 }
 const siteContentObserver=new MutationObserver(records=>{
- const pageChanged=records.some(record=>!record.target.parentElement?.closest("[data-translation-ui]")&&!record.target.closest?.("[data-translation-ui]"));
+ const pageChanged=records.some(record=>{
+  const target=record.target.nodeType===Node.ELEMENT_NODE?record.target:record.target.parentElement;
+  return !target?.closest?.("[data-translation-ui]");
+ });
  if(pageChanged&&activeSiteLanguage!=="en"&&!siteShowingOriginal)refreshWebsiteTranslation();
 });
 siteContentObserver.observe(document.body,{childList:true,subtree:true});
