@@ -574,6 +574,76 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(c, {"target_study_level": "bachelors"})["status"], "fail")
         self.assertEqual(evaluate_criterion(c, {"target_study_level": "master"})["status"], "informational")
 
+    def test_fes_german_bachelor_timing_wording_is_supported(self):
+        c = self.criterion(
+            "eligibility",
+            "Bewerbungszeitpunkt",
+            "Bewerbung nach dem ersten Semester und bis drei Semester vor Ende der Regelstudienzeit.",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"current_semester_in_program": 2, "remaining_semesters_in_program": 3})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"current_semester_in_program": 1, "remaining_semesters_in_program": 4})["status"],
+            "fail",
+        )
+
+    def test_fes_german_master_timing_wording_is_supported(self):
+        c = self.criterion(
+            "study_level",
+            "Bewerbungszeitpunkt",
+            "Bewerbung vor oder zu Beginn des ersten Hochschulsemesters.",
+        )
+        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 1})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 2})["status"], "fail")
+
+    def test_rosa_german_four_semester_threshold_is_supported(self):
+        c = self.criterion(
+            "eligibility",
+            "Förderzeitraum",
+            "Zum Förderbeginn müssen noch mindestens 4 Semester der Regelstudienzeit verbleiben.",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"remaining_semesters_in_program": 4})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"remaining_semesters_in_program": 3})["status"],
+            "fail",
+        )
+
+    def test_rosa_german_residence_exception_is_supported(self):
+        c = self.criterion(
+            "eligibility",
+            "Aufenthaltsdauer",
+            "Sie dürfen sich zum Zeitpunkt der Bewerbung nicht länger als 15 Monate in Deutschland aufhalten. Ausnahme: Sie haben bereits in Deutschland studiert oder sich gezielt auf das Studium vorbereitet.",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"months_in_germany": 18, "residence_duration_exception": "prior_study"})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"months_in_germany": 18, "residence_duration_exception": "none"})["status"],
+            "fail",
+        )
+
+    def test_doctoral_admission_is_checked_even_when_extracted_as_study_level(self):
+        c = self.criterion(
+            "study_level",
+            "Promotionszulassung",
+            "Ausländische Promovierende müssen an einer deutschen Hochschule zur Promotion zugelassen sein.",
+        )
+        self.assertEqual(evaluate_criterion(c, {})["status"], "unknown")
+        self.assertEqual(
+            evaluate_criterion(c, {"doctoral_admission_confirmed": True})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(c, {"doctoral_admission_confirmed": False})["status"],
+            "fail",
+        )
+
     def test_political_alignment_is_not_requested_or_inferred(self):
         c = self.criterion(
             "eligibility",
