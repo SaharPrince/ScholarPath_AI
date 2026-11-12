@@ -309,6 +309,26 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                            else "You indicated that you do not already hold a PhD.")
         return _result("unknown", "This exclusion needs a specific answer or manual review.")
 
+    if kind == "doctoral_admission":
+        admitted = profile.get("doctoral_admission_confirmed")
+        if admitted is None:
+            return _result("unknown", "Confirm whether a university or doctoral committee has formally admitted you to doctoral studies.")
+        return _result(
+            "pass" if admitted else "fail",
+            "You confirmed formal admission to doctoral studies." if admitted
+            else "This scholarship requires formal admission to doctoral studies before applying.",
+        )
+
+    if kind == "doctoral_project_stage":
+        final_phase = profile.get("doctoral_project_final_phase")
+        if final_phase is None:
+            return _result("unknown", "Confirm whether your doctoral project is already in its final phase.")
+        return _result(
+            "fail" if final_phase else "pass",
+            "The provider excludes doctoral projects already in their final phase." if final_phase
+            else "You indicated that your doctoral project is not yet in its final phase.",
+        )
+
     if kind in {"academic_requirements", "study_level", "category_i_eligibility", "category_ii_eligibility"}:
         target = (profile.get("target_study_level") or "").lower()
         if re.search(r"\b(?:for|starting|admission to|completed their)\s+(?:a\s+)?master(?:'s)?\b", lower) or "master scholarship" in lower:
