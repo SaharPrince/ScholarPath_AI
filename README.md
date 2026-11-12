@@ -45,13 +45,9 @@ The matcher evaluates only criteria supported by the official source:
 
 Unknown must never be treated as eligible. Master's and PhD conditions are distinguished from undergraduate study so a Bachelor's applicant is not shown a graduate-only award as a match.
 
-## Translation
+## Language
 
-ScholarPath includes a site-wide, on-demand translation control in the header. It can translate the visible interface and page content—including navigation, discovery controls, scholarship cards and details, profile questions, and dynamically rendered results—into Urdu, Arabic, French, Spanish, Hindi, and Bengali. Urdu and Arabic use right-to-left page direction.
-
-The student can switch back to the original English wording at any time. Official source and application URLs are not changed. The translation flow processes visible public page text and interface labels only; it does not read, serialize, or send values entered into student profile form controls.
-
-Translations use the MyMemory public API from the browser. Its anonymous daily quota and per-request size limits apply, so a long page or repeated translations may exceed the available free allowance. When that happens, untranslated text remains in its original wording. The selected language is saved locally in the browser so it can be restored on a later visit. Machine translation is an aid, not an official provider translation; students should confirm eligibility and deadlines against the original provider source.
+The website interface is intentionally English-only. It does not call a translation provider, send page content to a translation service, or store a language preference. Scholarship providers may publish source material in other languages; the original official source link is always available so applicants can review the provider's own wording.
 
 
 ## Trust and application status
