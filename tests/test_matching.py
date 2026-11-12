@@ -499,9 +499,10 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
             "Apply before or at the beginning of the first semester of the Master's programme.",
         )
         self.assertEqual(evaluate_criterion(c, {})["status"], "unknown")
-        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 0})["status"], "pass")
-        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 1})["status"], "pass")
-        self.assertEqual(evaluate_criterion(c, {"current_semester_in_program": 2})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {"first_semester_timing": "not_started"})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"first_semester_timing": "at_beginning"})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"first_semester_timing": "after_beginning"})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {"first_semester_timing": "later_semester"})["status"], "fail")
 
     def test_fes_medical_student_window_is_after_fourth_through_sixth_semester(self):
         c = self.criterion(
