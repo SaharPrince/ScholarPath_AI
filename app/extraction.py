@@ -868,7 +868,8 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         r"(?i)\b(?:must|must not|required|are required|is required|"
         r"should have|should hold|need to|needs to|eligible|ineligible|"
         r"not eligible|only applicants|only candidates|can apply|may apply|"
-        r"cannot apply|preferred|preferable|desirable|recommended|at least|minimum of|maximum age|no older than|"
+        r"cannot apply|preferred|preferable|desirable|recommended|encouraged|"
+        r"particularly welcome|priority (?:will be|is) given|at least|minimum of|maximum age|no older than|"
         r"no more than|between \d|professional experience|from the following countries|"
         r"citizens? of|nationals? of|resident in|residing in|"
         r"hold a (?:bachelor|master|doctoral)|have completed|"
@@ -978,8 +979,9 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
             if not (has_actor or has_qualification or statement_is_implied_list_condition):
                 continue
             lowered = statement.casefold()
-            if re.search(r"(?i)\b(preferred|preferable|desirable|recommended|"
-                         r"an advantage|priority will be given|besonders willkommen|engagiert(?:e|en)?|"
+            if re.search(r"(?i)\b(preferred|preferable|desirable|recommended|encouraged|"
+                         r"particularly welcome|priority (?:will be|is) given|welcome applications|"
+                         r"an advantage|besonders willkommen|engagiert(?:e|en)?|"
                          r"ausdrücklich zu einer bewerbung ermutigt|bevorzugt berücksichtigt)\b", statement):
                 kind, label = "selection_criteria", "Selection preference"
             elif re.search(r"(?i)\b(ineligible|not eligible|cannot apply|must not)\b", statement):
