@@ -29,7 +29,64 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     text = re.sub(r"\s+", " ", criterion.get("requirement_text") or "").strip()
     lower = f"{label} {text}".lower()
 
+    # Germany-specific residence and apprenticeship conditions. These checks
+    # work across source-specific criterion labels while preserving unknowns.
     if not criterion.get("is_mandatory", True):
+        return _result("informational", "This is selection or programme information, not a mandatory eligibility check.")
+
+    if re.search(r"(?:not been in germany for more than|no more than)\\s*15\\s*months?", lower):
+        months = _number(profile.get("months_in_germany"))
+        if months is None:
+            return _result("unknown", "Add how many months you have been in Germany to check this residence-duration rule.")
+        return _result("pass" if months <= 15 else "fail",
+                       f"You reported {months:g} months in Germany; the published maximum is 15 months.")
+
+    if ("residence permit" in lower or "aufenthaltserlaubnis" in lower) and re.search(r"(?:study|studies|studying|studienzweck|studium)", lower):
+        permit = profile.get("german_residence_permit")
+        if permit not in {"study", "other", "none"}:
+            return _result("unknown", "Select whether your German residence permit is for study purposes.")
+        return _result("pass" if permit == "study" else "fail",
+                       "Your German residence permit is for study purposes." if permit == "study"
+                       else "This programme requires a German residence permit for study purposes.")
+
+    if re.search(r"(?:already studying in germany|currently enrolled.*germany|an einer deutschen hochschule eingeschrieben)", lower):
+        enrolled = profile.get("currently_enrolled_in_germany")
+        if enrolled is None:
+            return _result("unknown", "Confirm whether you are currently enrolled at a German university.")
+        return _result("pass" if enrolled else "fail",
+                       "You confirmed current enrolment in Germany." if enrolled
+                       else "This programme requires current enrolment at a German university.")
+
+    if re.search(r"(?:at least|minimum of|mindestens)\\s*6\\s*months?.{0,80}(?:remaining|left|rest|verbleib)", lower):
+        remaining = _number(profile.get("months_remaining_in_program"))
+        if remaining is None:
+            return _result("unknown", "Add how many months remain in your current study programme.")
+        return _result("pass" if remaining >= 6 else "fail",
+                       f"You reported {remaining:g} months remaining; at least 6 are required.")
+
+    if re.search(r"(?:first and.*second year|beginning of the first|spätestens am anfang des zweiten|ausbildungsjahr)", lower) and re.search(r"(?:training|apprenticeship|ausbildung|ausbildungsjahr)", lower):
+        year = _number(profile.get("apprenticeship_year"))
+        if year is None:
+            return _result("unknown", "Add your current apprenticeship year to check this condition.")
+        return _result("pass" if 1 <= year <= 2 else "fail",
+                       f"You reported apprenticeship year {year:g}; this award accepts the first or second year.")
+
+    if re.search(r"(?:state[- ]recognized|state recognized|staatlich anerkannten)\\s+(?:training|occupation|ausbildungsberuf)", lower):
+        recognized = profile.get("recognized_apprenticeship")
+        if recognized is None:
+            return _result("unknown", "Confirm whether your apprenticeship is a state-recognized occupation.")
+        return _result("pass" if recognized else "fail",
+                       "Your apprenticeship is marked as state-recognized." if recognized
+                       else "This award requires a state-recognized apprenticeship.")
+
+    if re.search(r"(?:training contract|contract for training|ausbildungsvertrag|written confirmation.*training place)", lower):
+        contract = profile.get("has_training_contract")
+        if contract is None:
+            return _result("unknown", "Confirm whether you have an apprenticeship contract or written training-place offer.")
+        return _result("pass" if contract else "fail",
+                       "You have a training contract or written offer." if contract
+                       else "This award requires an apprenticeship contract or written offer.")
+
         return _result("informational", "This is selection or programme information, not a mandatory eligibility check.")
 
     if kind == "nationality":
