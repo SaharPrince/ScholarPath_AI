@@ -331,3 +331,10 @@ class GermanStudyLevelFilteringTests(unittest.TestCase):
         criteria = {93: [self.criterion("eligibility", "Applicant type", "Applicants must have an Ausbildungsvertrag.")]}
         results = match_profile_to_scholarships(rows, criteria, {"target_study_level": "vocational_training"})
         self.assertEqual([item["id"] for item in results], [93])
+
+
+    def test_master_profile_excludes_hyphenated_german_doctoral_award(self):
+        from app.matching import match_profile_to_scholarships
+        rows = [{"id": 94, "title": "Promotions-förderung"}]
+        criteria = {94: [self.criterion("study_level", "Academic qualification", "Promotionsstipendium für Doktorandinnen.")]}
+        self.assertEqual(match_profile_to_scholarships(rows, criteria, {"target_study_level": "master"}), [])
