@@ -622,7 +622,7 @@ function renderRequirements(criteria){
  const section=(title,rows)=>!rows.length?"":'<section class="requirement-group"><h4>'+title+'</h4>'+rows.map(r=>'<article class="criterion"><div class="criteriontop"><span class="criterion-label">'+esc(r.key)+'</span><span class="criterion-copy">'+esc(r.value)+'</span></div>'+(r.raw&&r.raw.trim()!==r.value.trim()?'<details class="original-wording"><summary>See original provider wording</summary><p>'+esc(r.raw)+'</p></details>':'')+(r.evidence?'<a href="'+esc(r.evidence)+'" target="_blank" rel="noopener">Check this rule on the official source ↗</a>':'<span class="trust">Source page</span>')+'</article>').join("")+'</section>';
  const total=groups["Must meet"].length+groups["Other information"].length;
  if(!total)return '<p>No clear requirements were found on the live source page. Check the official source before applying.</p>';
- return '<p class="requirements-intro">Each condition is explained in plain language. Open the original wording to compare the provider’s exact rule.</p>'+section("What you must meet",groups["Must meet"])+section("Other information",groups["Other information"]);
+ return '<p class="requirements-intro">Each condition is explained in plain language. Open the original wording to compare the provider’s exact rule.</p>'+section("Mandatory requirements",groups["Must meet"])+section("Other information",groups["Other information"]);
 }
 function render(){
  const q=$("search").value.trim().toLowerCase(),s=$("status").value,t=$("trust").value;
@@ -675,7 +675,7 @@ async function showDetail(id){
  const groups={};criteria.forEach(c=>(groups[c.criterion_type]??=[]).push(c));
  $("detailBody").innerHTML=`<div class="detailfacts">${facts.map(([k,v])=>`<div class="fact"><small>${esc(k)}</small><strong>${esc(shortText(v))}</strong></div>`).join("")}</div>
  <div class="links"><a href="${esc(x.source_url)}" target="_blank" rel="noopener">Official source page ↗</a>${x.application_url?`<a href="${esc(x.application_url)}" target="_blank" rel="noopener">Application portal ↗</a>`:""}</div>
- <h3>Requirements</h3>
+ <h3>Eligibility Requirements</h3>
  ${renderRequirements(criteria)}
  <p class="notice">These details were fetched from the official source during this search and are not stored by ScholarPath. The information is not independently verified; confirm all requirements and deadlines with the provider.</p>`;
 }
