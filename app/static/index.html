@@ -483,16 +483,19 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 .site-language-toggle{display:grid;place-items:center;width:38px;height:38px;border:1px solid #789287;border-radius:50%;background:#e0f0e5;color:#173b31;font-family:inherit;font-size:19px;cursor:pointer}
 .site-language-toggle:hover{background:#cfe5d6}
 .site-language-toggle:focus-visible,.site-language select:focus-visible{outline:3px solid #a7d8b8;outline-offset:3px}
-.site-language-menu{position:absolute;right:0;top:calc(100% + 9px);min-width:175px;padding:7px;border:1px solid #d4e2d8;border-radius:12px;background:#fff;box-shadow:0 12px 32px rgba(20,45,35,.16)}
+.site-language-menu{position:absolute;right:0;top:calc(100% + 9px);width:190px;max-height:min(70vh,360px);overflow-y:auto;padding:6px;border:1px solid #d4e2d8;border-radius:12px;background:#fff;box-shadow:0 12px 32px rgba(20,45,35,.16)}
 .site-language-menu[hidden]{display:none}
-.site-language-menu select{display:block;width:100%;height:38px;padding:0 9px;border:1px solid #789287;border-radius:8px;background:#fff;color:#173b31;font-family:inherit;font-size:13px;cursor:pointer}
+.site-language-option{display:block;width:100%;min-height:40px;padding:9px 11px;border:0;border-radius:8px;background:transparent;color:#173b31;font:inherit;font-size:13px;text-align:left;cursor:pointer}
+.site-language-option:hover,.site-language-option:focus-visible{outline:0;background:#edf5f0}
+.site-language-option[aria-pressed="true"]{background:#e0f0e5;color:#145b48;font-weight:750}
+.site-language-menu #siteLanguage{display:none!important}
 #siteOriginal{display:none!important}
 #siteTranslationStatus{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 @media(max-width:760px){.site-language{margin-left:auto}.site-language-toggle{width:36px;height:36px}}
 </style>
 </head>
 <body>
-<header class="topbar"><div class="shell nav"><a class="brand" href="#" aria-label="ScholarCompass home"><span class="brandmark">✦</span> ScholarCompass</a><nav class="navlinks" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#profilePanel">Eligibility</a><a href="#motion-lab">Experience</a></nav><div class="navnote"><span class="live-dot"></span> Live official sources</div><div class="site-language" data-translation-ui><button id="siteLanguageToggle" class="site-language-toggle" type="button" aria-label="Choose website language" aria-expanded="false" aria-controls="siteLanguageMenu" title="Translate website">🌐</button><div id="siteLanguageMenu" class="site-language-menu" hidden><select id="siteLanguage" aria-label="Choose language"><option value="en">English (original)</option><option value="ur">اردو · Urdu</option><option value="ar">العربية · Arabic</option><option value="fr">Français · French</option><option value="es">Español · Spanish</option><option value="hi">हिन्दी · Hindi</option><option value="bn">বাংলা · Bengali</option></select></div><button id="siteOriginal" type="button" hidden>Show original</button><span id="siteTranslationStatus" role="status" aria-live="polite"></span></div></div></header>
+<header class="topbar"><div class="shell nav"><a class="brand" href="#" aria-label="ScholarCompass home"><span class="brandmark">✦</span> ScholarCompass</a><nav class="navlinks" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#profilePanel">Eligibility</a><a href="#motion-lab">Experience</a></nav><div class="navnote"><span class="live-dot"></span> Live official sources</div><div class="site-language" data-translation-ui><button id="siteLanguageToggle" class="site-language-toggle" type="button" aria-label="Choose website language" aria-expanded="false" aria-controls="siteLanguageMenu" title="Translate website">🌐</button><div id="siteLanguageMenu" class="site-language-menu" role="group" aria-label="Available website languages" hidden><button type="button" class="site-language-option" data-language="en">English</button><button type="button" class="site-language-option" data-language="ur">اردو · Urdu</button><button type="button" class="site-language-option" data-language="ar">العربية · Arabic</button><button type="button" class="site-language-option" data-language="fr">Français · French</button><button type="button" class="site-language-option" data-language="es">Español · Spanish</button><button type="button" class="site-language-option" data-language="hi">हिन्दी · Hindi</button><button type="button" class="site-language-option" data-language="bn">বাংলা · Bengali</button><select id="siteLanguage" aria-label="Choose language" hidden><option value="en">English</option><option value="ur">Urdu</option><option value="ar">Arabic</option><option value="fr">French</option><option value="es">Spanish</option><option value="hi">Hindi</option><option value="bn">Bengali</option></select></div><button id="siteOriginal" type="button" hidden>Show original</button><span id="siteTranslationStatus" role="status" aria-live="polite"></span></div></div></header>
 <section class="hero"><div class="pattern" aria-hidden="true"></div><div class="orb one" aria-hidden="true"></div><div class="orb two" aria-hidden="true"></div><div class="shell hero-inner"><div class="eyebrow"><span class="pulse"></span> A clearer path to your future</div><h1>Find scholarships.<br><em>Know where you stand.</em></h1><p>Discover current opportunities from official German providers, understand the eligibility rules, and see what still needs checking — without guesswork.</p><div class="searchbox"><span class="search-icon" aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search by scholarship, provider or destination…" aria-label="Search scholarships"><button class="primary" id="heroSearch">Explore opportunities <span aria-hidden="true">→</span></button></div><div class="trustline"><span><b class="check">✓</b> Official-source links</span><span><b class="check">✓</b> Clear eligibility criteria</span><span><b class="check">✓</b> Verification status shown</span></div></div></section>
 <main class="shell">
 <div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Live opportunities found</span></div><div class="stat"><strong id="openCount">—</strong><span>Open according to source</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
@@ -847,17 +850,26 @@ const siteContentObserver=new MutationObserver(records=>{
 });
 siteContentObserver.observe(document.body,{childList:true,subtree:true});
 const languageToggle=$("siteLanguageToggle"),languageMenu=$("siteLanguageMenu"),languageSelect=$("siteLanguage");
+function updateLanguageMenuSelection(){
+ languageMenu.querySelectorAll("[data-language]").forEach(option=>{
+  option.setAttribute("aria-pressed",String(option.dataset.language===languageSelect.value));
+ });
+}
 languageToggle.addEventListener("click",()=>{
  const opening=languageMenu.hidden;
  languageMenu.hidden=!opening;
  languageToggle.setAttribute("aria-expanded",String(opening));
- if(opening)languageSelect.focus();
+ if(opening)languageMenu.querySelector("[data-language]")?.focus();
 });
-languageSelect.addEventListener("change",()=>{
+languageMenu.querySelectorAll("[data-language]").forEach(option=>option.addEventListener("click",()=>{
+ languageSelect.value=option.dataset.language;
+ updateLanguageMenuSelection();
  languageMenu.hidden=true;
  languageToggle.setAttribute("aria-expanded","false");
  translateWholeWebsite();
-});
+ languageToggle.focus();
+}));
+languageSelect.addEventListener("change",updateLanguageMenuSelection);
 document.addEventListener("click",event=>{
  if(!event.target.closest(".site-language")){
   languageMenu.hidden=true;
@@ -874,6 +886,7 @@ document.addEventListener("keydown",event=>{
 try{
  const savedLanguage=localStorage.getItem("scholarpath-language");
  if(savedLanguage&&$("siteLanguage").querySelector('option[value="'+savedLanguage+'"]'))$("siteLanguage").value=savedLanguage;
+ updateLanguageMenuSelection();
 }catch(_){}
 
 async function showDetail(id){
@@ -921,7 +934,7 @@ function showMatchDetail(id,rows){
 
 /* Build viewport-aware dropdowns while retaining native select values for forms and APIs. */
 (function enhanceSelectMenus(){
- const selects=Array.from(document.querySelectorAll("select"));
+ const selects=Array.from(document.querySelectorAll("select")).filter(select=>select.id!=="siteLanguage");
  let activeMenu=null,activeTrigger=null;
  function closeMenu(){if(activeMenu)activeMenu.remove();if(activeTrigger)activeTrigger.setAttribute("aria-expanded","false");activeMenu=null;activeTrigger=null;}
  function openMenu(select,trigger){
