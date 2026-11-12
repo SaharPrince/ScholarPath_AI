@@ -86,7 +86,7 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         )
         self.assertEqual(
             sources["Avicenna Studienwerk – International Scholarship Programme"]["official_url"],
-            "https://www.avicenna-studienwerk.de/scholarship/",
+            "https://www.avicenna-studienwerk.de/internationales-stipendienprogramm/",
         )
         self.assertEqual(
             sources["Avicenna Studienwerk – International Scholarship Programme"]["source_type"],
