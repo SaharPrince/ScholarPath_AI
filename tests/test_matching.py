@@ -311,6 +311,31 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(result["status"], "informational")
         self.assertIn("explicitly allows applicants above the stated age", result["explanation"])
 
+    def test_villigst_requires_doctoral_admission_not_university_enrolment(self):
+        admission = self.criterion(
+            "doctoral_admission", "Admission to doctoral studies",
+            "Applicants must provide evidence of admission (authorisation) to do a doctorate.",
+        )
+        self.assertEqual(evaluate_criterion(admission, {})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(admission, {"doctoral_admission_confirmed": True})["status"], "pass")
+        self.assertEqual(evaluate_criterion(admission, {"doctoral_admission_confirmed": False})["status"], "fail")
+
+        not_enrolled = self.criterion(
+            "application_requirements", "Doctoral enrolment clarification",
+            "Applicants do not have to be enrolled at the university during the doctorate.",
+            mandatory=False,
+        )
+        self.assertEqual(evaluate_criterion(not_enrolled, {})["status"], "informational")
+
+    def test_villigst_final_phase_is_a_real_exclusion_and_unknown_is_not_failed(self):
+        criterion = self.criterion(
+            "doctoral_project_stage", "Doctoral project stage",
+            "Applicants whose doctoral project is already in its final phase cannot be considered.",
+        )
+        self.assertEqual(evaluate_criterion(criterion, {})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(criterion, {"doctoral_project_final_phase": False})["status"], "pass")
+        self.assertEqual(evaluate_criterion(criterion, {"doctoral_project_final_phase": True})["status"], "fail")
+
     def test_age_over_45_with_special_application_is_not_automatic_failure(self):
         c = self.criterion(
             "age_limit",
