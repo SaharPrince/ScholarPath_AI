@@ -229,6 +229,26 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(remaining, {"months_remaining_in_program": 8})["status"], "pass")
         self.assertEqual(evaluate_criterion(remaining, {"months_remaining_in_program": 4})["status"], "fail")
 
+    def test_two_remaining_semesters_rule_is_matched_exactly(self):
+        criterion = self.criterion(
+            "eligibility",
+            "Remaining study duration",
+            "You must still have two remaining semesters before you complete your studies.",
+        )
+        self.assertEqual(evaluate_criterion(criterion, {})["status"], "unknown")
+        self.assertEqual(
+            evaluate_criterion(criterion, {"remaining_semesters_in_program": 2})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"remaining_semesters_in_program": 3})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"remaining_semesters_in_program": 1})["status"],
+            "fail",
+        )
+
     def test_apprenticeship_specific_conditions_are_matched(self):
         year = self.criterion("eligibility", "Training year", "Be at the beginning of the first and no later than the beginning of the second Ausbildungsjahr.")
         self.assertEqual(evaluate_criterion(year, {"apprenticeship_year": 2})["status"], "pass")
