@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#102c2a">
-<title>ScholarPath AI — Find your next opportunity</title>
+<title>ScholarCompass — Find scholarships with clarity</title>
 <style>
 :root{color-scheme:light;--ink:#172b2a;--muted:#647572;--line:#e4ebe7;--paper:#f5f8f5;--white:#fff;--green:#176b55;--green2:#dff2e9;--gold:#e7b65b;--shadow:0 18px 55px rgba(24,54,44,.09)}
 *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}button,input,select{font:inherit}button{cursor:pointer}.shell{max-width:1180px;margin:auto;padding:0 28px}
@@ -390,11 +390,80 @@ button:active,.detailbtn:active,.match-button:active{transform:translateY(1px) s
  .card:hover h3{color:inherit}
 }
 
+
+/* ScholarCompass motion-led interface — applied to live data, not demo listings. */
+:root{--lime:#d8f36a;--ease:cubic-bezier(.2,.8,.2,1)}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+.topbar{height:76px;background:#f7f8f2;color:var(--ink);border-bottom:1px solid #e5ebe5;position:relative;z-index:4}
+.nav{height:76px}
+.brand{display:flex;align-items:center;gap:11px;color:var(--ink);font-size:19px;font-weight:850;letter-spacing:-.7px;text-decoration:none}
+.brandmark{width:36px;height:36px;border-radius:12px;background:var(--green);color:#fff;display:grid;place-items:center;box-shadow:0 7px 18px #176b5033}
+.navlinks{display:flex;gap:26px;align-items:center}
+.navlinks a{font-size:13px;font-weight:700;color:#58685f;text-decoration:none;transition:color .2s}
+.navlinks a:hover{color:var(--green)}
+.navnote{font-size:12px;color:#62736a;display:flex;align-items:center;gap:9px}
+.live-dot,.pulse{width:7px;height:7px;border-radius:50%;background:#41a879;box-shadow:0 0 0 4px #41a87922;animation:sc-pulse 2s infinite}
+.hero{position:relative;isolation:isolate;overflow:hidden;padding:76px 0 68px;color:var(--ink);background:radial-gradient(ellipse at 75% 20%,#e3f2dd 0,transparent 38%),linear-gradient(120deg,#f7f8f2,#edf5ec 55%,#f5f7f2)}
+.hero:after{display:none}
+.hero:before{content:"";position:absolute;z-index:-1;inset:0;opacity:.24;pointer-events:none;background-image:linear-gradient(#dce9dd 1px,transparent 1px),linear-gradient(90deg,#dce9dd 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(90deg,transparent 5%,#000 70%)}
+.hero-inner{position:relative;z-index:1}
+.pattern{position:absolute;z-index:0;right:3%;top:22px;width:290px;height:250px;opacity:.5;pointer-events:none;background-image:radial-gradient(#8db69b 1.15px,transparent 1.15px);background-size:17px 17px;mask-image:radial-gradient(ellipse,#000 25%,transparent 72%);animation:sc-pattern 18s linear infinite}
+.orb{position:absolute;z-index:0;border-radius:50%;filter:blur(1px);pointer-events:none}
+.orb.one{width:210px;height:210px;right:13%;top:15px;background:linear-gradient(135deg,#d5f0d9aa,#b8e1d366);animation:sc-float 8s ease-in-out infinite}
+.orb.two{width:80px;height:80px;right:34%;top:180px;background:#d8f36a55;animation:sc-float 6s ease-in-out -2s infinite reverse}
+.hero .eyebrow{display:inline-flex;align-items:center;gap:9px;padding:7px 11px;border:1px solid #cfe3d4;background:#ffffffb8;border-radius:30px;color:var(--green);font-size:10px;letter-spacing:.9px}
+.hero h1{font-size:clamp(42px,6vw,68px);line-height:1.04;letter-spacing:-3.8px;max-width:720px;margin:23px 0 17px;color:var(--ink)}
+.hero h1 em{font-style:normal;color:var(--green);position:relative;white-space:nowrap}
+.hero h1 em:after{content:"";position:absolute;left:0;bottom:-5px;width:100%;height:9px;border-top:3px solid var(--lime);border-radius:50%;transform:rotate(-2deg)}
+.hero p{max-width:560px;color:#64746d;font-size:16px;line-height:1.75}
+.searchbox{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e3eae3;border-radius:17px;padding:9px 10px 9px 17px;max-width:710px;box-shadow:0 15px 38px #264b3710;transition:box-shadow .25s,border .25s}
+.searchbox:focus-within{border-color:#80b99a;box-shadow:0 0 0 4px #176b5014,0 18px 40px #264b3714}
+.search-icon{font-size:25px;color:#809087;line-height:1}
+.searchbox input{border:0!important;outline:0;min-width:0;flex:1;height:44px!important;padding:0!important;background:transparent!important;box-shadow:none!important;font-size:14px}
+.searchbox .primary{padding:13px 19px;border-radius:11px;white-space:nowrap}
+.trustline{display:flex;gap:22px;flex-wrap:wrap;margin-top:19px;color:#65766d;font-size:12px}
+.trustline span{display:flex;align-items:center;gap:7px}
+.check{color:var(--green);font-weight:900}
+.stats{margin-top:-26px}
+#explore-section .section-head{margin-top:47px}
+#explore-section .section-head h2{font-size:28px}
+#explore-section .section-head p{max-width:620px}
+.filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:transparent;border:0;padding:0;box-shadow:none}
+.filters .field{flex:1 1 210px;max-width:260px}
+.filters .field select{height:44px;border-radius:11px;background:#fff}
+.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:17px}
+.card{border-radius:19px;animation:sc-card-in .6s both;transition:transform .28s var(--ease),box-shadow .28s,border-color .28s}
+.card:nth-child(2){animation-delay:60ms}.card:nth-child(3){animation-delay:120ms}.card:nth-child(4){animation-delay:180ms}
+.card:hover{transform:translateY(-6px);box-shadow:var(--shadow)}
+.card:before{content:"";position:absolute;inset:0 0 auto;height:4px;background:linear-gradient(90deg,var(--green),#b8dc77);transform:scaleX(0);transform-origin:left;transition:transform .35s var(--ease)}
+.card:hover:before{transform:scaleX(1)}
+.motionlab{margin:54px 0 0;background:#172f27;color:#eff8f1;border-radius:24px;padding:27px 30px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:22px;flex-wrap:wrap}
+.motionlab:after{content:"";position:absolute;right:-55px;top:-100px;width:260px;height:260px;border:1px solid #a7d5b12a;border-radius:50%;box-shadow:0 0 0 22px #a7d5b10d,0 0 0 44px #a7d5b10a,0 0 0 66px #a7d5b108;pointer-events:none}
+.motion-copy,.labcontrols,.motion-status{position:relative;z-index:1}
+.motion-copy .kicker{color:#b7d5bf}
+.motionlab h3{font-size:19px;margin:4px 0;letter-spacing:-.4px}
+.motionlab p{color:#b8c9be;font-size:12px;margin:0;max-width:430px}
+.labcontrols{display:flex;gap:9px;flex-wrap:wrap}
+.labcontrols button{border:1px solid #49665a;background:#24463a;color:#e7f4e9;border-radius:10px;padding:9px 12px;font-size:11px;font-weight:750;transition:all .2s}
+.labcontrols button:hover{background:#315b49;transform:translateY(-2px)}
+.labcontrols button.on{background:var(--lime);color:#203327;border-color:var(--lime)}
+.motion-status{width:100%;font-size:11px;color:#b7d5bf;min-height:18px;margin-top:-10px}
+.footer{margin-top:34px}
+@keyframes sc-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(-13px,17px,0)}}
+@keyframes sc-pulse{0%,100%{box-shadow:0 0 0 4px #41a87922}50%{box-shadow:0 0 0 8px #41a87908}}
+@keyframes sc-pattern{to{background-position:34px 34px}}
+@keyframes sc-card-in{from{opacity:0;transform:translateY(22px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body.reduced-motion *,body.reduced-motion *:before,body.reduced-motion *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.navlinks{gap:14px}.hero{padding-top:62px}.pattern{right:-3%}}
+@media(max-width:620px){.shell{padding:0 17px}.topbar,.nav{height:65px}.navlinks{display:none}.navnote{font-size:10px}.hero{padding:52px 0 58px}.hero h1{font-size:clamp(38px,10vw,52px);letter-spacing:-2.4px}.hero p{font-size:14px}.pattern{right:-100px;top:20px}.orb.one{right:-50px}.orb.two{right:25%;top:200px}.searchbox{padding:8px 8px 8px 13px;gap:7px}.searchbox .primary{padding:11px 12px;font-size:11px}.searchbox input{font-size:13px}.trustline{gap:10px 16px;font-size:11px}.stats{margin-top:-22px}.grid{grid-template-columns:1fr}.motionlab{padding:22px 18px;display:block}.labcontrols{margin-top:17px}.motion-status{margin-top:14px}.footer{padding:22px 0}}
+@media(max-width:390px){.searchbox{flex-wrap:wrap}.searchbox input{flex-basis:calc(100% - 40px)}.searchbox .primary{width:100%}.hero h1{font-size:36px}.motionlab{border-radius:17px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.live-dot,.pulse,.pattern,.orb,.card{animation:none!important}.card,.labcontrols button{transition:none!important}}
+
 </style>
 </head>
 <body>
-<header class="topbar"><div class="shell nav"><div class="brand"><span class="brandmark">✦</span> ScholarPath <span style="color:#9bcdb2">AI</span></div><div class="navnote">Live discovery <span aria-hidden="true">·</span> Official German sources</div></div></header>
-<section class="hero"><div class="shell"><div class="eyebrow">A clearer path to your future</div><h1>Find scholarships.<br>Know where you stand.</h1><p>Search current scholarship opportunities directly on official German provider and university websites. Check the requirements before you apply. No stored scholarship catalogue, no guesswork.</p><div class="hero-tags"><span class="tag">✓ Live official German sources</span><span class="tag">✓ Eligibility requirements</span><span class="tag">✓ No stored scholarship records</span></div><a class="hero-cta" href="#explore-section">Explore live opportunities <span aria-hidden="true">↓</span></a></div></section>
+<header class="topbar"><div class="shell nav"><a class="brand" href="#" aria-label="ScholarCompass home"><span class="brandmark">✦</span> ScholarCompass</a><nav class="navlinks" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#profilePanel">Eligibility</a><a href="#motion-lab">Experience</a></nav><div class="navnote"><span class="live-dot"></span> Live official sources</div></div></header>
+<section class="hero"><div class="pattern" aria-hidden="true"></div><div class="orb one" aria-hidden="true"></div><div class="orb two" aria-hidden="true"></div><div class="shell hero-inner"><div class="eyebrow"><span class="pulse"></span> A clearer path to your future</div><h1>Find scholarships.<br><em>Know where you stand.</em></h1><p>Discover current opportunities from official German providers, understand the eligibility rules, and see what still needs checking — without guesswork.</p><div class="searchbox"><span class="search-icon" aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search by scholarship, provider or destination…" aria-label="Search scholarships"><button class="primary" id="heroSearch">Explore opportunities <span aria-hidden="true">→</span></button></div><div class="trustline"><span><b class="check">✓</b> Official-source links</span><span><b class="check">✓</b> Clear eligibility criteria</span><span><b class="check">✓</b> Verification status shown</span></div></div></section>
 <main class="shell">
 <div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Live opportunities found</span></div><div class="stat"><strong id="openCount">—</strong><span>Open according to source</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
 
@@ -406,7 +475,7 @@ button:active,.detailbtn:active,.match-button:active{transform:translateY(1px) s
   <div class="profile-field"><label>Nationality <span style="color:#a34a3c">required</span></label><input name="nationality" type="text" required maxlength="80" placeholder="e.g. Pakistani, Indian, Afghan"></div>
   <div class="profile-field"><label>Age</label><input name="age" type="number" min="13" max="100" placeholder="Your age"></div>
   <div class="profile-field"><label>Highest education completed <span style="color:#a34a3c">required</span></label><select name="current_education_level" required><option value="">Choose</option><option value="below_matric">Below Matric</option><option value="matric">Matric / SSC</option><option value="intermediate">Intermediate / HSSC</option><option value="bachelors">Bachelor's</option><option value="masters">Master's / MS / MPhil</option><option value="phd">PhD</option><option value="vocational_training">Vocational training / Ausbildung</option></select></div>
-  <div class="profile-field"><label>What do you want to study next? <span style="color:#a34a3c">required</span></label><select name="target_study_level" required><option value="">Choose</option><option value="matric">Matric / SSC</option><option value="intermediate">Intermediate / FA / FSc / ICS / ICom</option><option value="bachelors">Bachelor's / Undergraduate</option><option value="master">Master's / MS / MPhil</option><option value="phd">PhD</option></select></div>
+  <div class="profile-field"><label>What do you want to study next? <span style="color:#a34a3c">required</span></label><select name="target_study_level" required><option value="">Choose</option><option value="matric">Matric / SSC</option><option value="intermediate">Intermediate / FA / FSc / ICS / ICom</option><option value="bachelors">Bachelor's / Undergraduate</option><option value="master">Master's / MS / MPhil</option><option value="phd">PhD</option><option value="vocational_training">Vocational training / Ausbildung</option></select></div>
   <div class="profile-field"><label>Marks in your latest completed class (%) <span style="font-weight:400;color:#7b8983">optional</span></label><input name="academic_percentage" type="number" min="0" max="100" step="0.01" placeholder="e.g. 82.5"></div>
   <div class="profile-field"><label>Study group / subject <span style="font-weight:400;color:#7b8983">optional</span></label><input name="education_field" type="text" maxlength="120" placeholder="e.g. Pre-medical, ICS, Computer Science"></div>
   <div class="profile-field"><label>German language level <span style="font-weight:400;color:#7b8983">optional</span></label><select name="german_language_level"><option value="">Not assessed / choose later</option><option value="NONE">No German yet</option><option value="A1">A1</option><option value="A2">A2</option><option value="B1">B1</option><option value="B2">B2</option><option value="C1">C1</option><option value="C2">C2</option></select></div>
@@ -417,12 +486,13 @@ button:active,.detailbtn:active,.match-button:active{transform:translateY(1px) s
   </form>
  <div class="match-results" id="matchResults" aria-live="polite"></div>
 </section><section id="explore-section"><div class="section-head"><div><h2>Explore Germany scholarships</h2><p>Search opportunities from German scholarship providers, foundations and universities.</p></div></div>
-<div class="filters"><div class="field"><input id="search" type="search" placeholder="Search scholarship, provider or destination…" aria-label="Search scholarships"></div><div class="field"><select id="status" aria-label="Application status"><option value="">All application statuses</option><option value="open">Open</option><option value="upcoming">Upcoming</option><option value="closed">Closed</option><option value="unknown">Status unknown</option><option value="discontinued">Discontinued</option><option value="shortlisted_only">Shortlisted only</option></select></div><div class="field"><select id="trust" aria-label="Verification status"><option value="">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select></div></div>
+<div class="filters"><div class="field"><select id="status" aria-label="Application status"><option value="">All application statuses</option><option value="open">Open</option><option value="upcoming">Upcoming</option><option value="closed">Closed</option><option value="unknown">Status unknown</option><option value="discontinued">Discontinued</option><option value="shortlisted_only">Shortlisted only</option></select></div><div class="field"><select id="trust" aria-label="Verification status"><option value="">All verification states</option><option value="verified">Verified</option><option value="unverified">Unverified</option></select></div></div>
 <div class="resultsline"><span id="resultCount">Loading scholarships…</span><span>Only source-backed records are shown</span></div>
 <div class="grid" id="cards"><div class="loading">Loading official-source opportunities…</div></div>
 </section>
+<section class="motionlab" id="motion-lab"><div class="motion-copy"><div class="kicker">A little interaction</div><h3>Motion playground</h3><p>Explore the interface effects. These controls only change the page presentation — they never make extra API requests.</p></div><div class="labcontrols"><button type="button" id="replayMotion">↻ Replay entrance</button><button type="button" id="pauseMotion">Ⅱ Pause motion</button><button type="button" id="togglePattern">◎ Toggle pattern</button><button type="button" id="reduceMotion">◌ Reduced motion</button></div><div class="motion-status" id="motionStatus" aria-live="polite">Animations are on. Try the controls or hover over a scholarship card.</div></section>
 </main>
-<footer class="footer"><div class="shell"><span>ScholarPath AI · Scholarship discovery and eligibility</span><span>Always confirm details on the official provider page before applying.</span></div></footer>
+<footer class="footer"><div class="shell"><span>© 2026 ScholarCompass · Scholarship discovery and eligibility</span><span>Always confirm details on the official provider page before applying.</span></div></footer>
 <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Scholarship details"><section class="drawer"><div class="drawerhead"><div><div class="eyebrow" style="color:#397d60">Opportunity details</div><h2 id="detailTitle">Scholarship</h2><div id="detailProvider" class="provider"></div></div><button class="close" id="close" aria-label="Close details">×</button></div><div id="detailBody"></div></section></div>
 <script>
 const $=id=>document.getElementById(id);
@@ -641,5 +711,25 @@ function showMatchDetail(id,rows){
 })();
 
 load();
+
+/* Local motion controls; these never call the discovery or matching APIs. */
+(function initMotionPlayground(){
+ const body=document.body,pattern=document.querySelector(".pattern"),status=document.getElementById("motionStatus");
+ const pause=document.getElementById("pauseMotion"),reduce=document.getElementById("reduceMotion");
+ if(!status)return;
+ let paused=false,reduced=false,patternVisible=true;
+ const say=t=>{status.textContent=t;};
+ document.getElementById("heroSearch")?.addEventListener("click",()=>{document.getElementById("explore-section")?.scrollIntoView({behavior:reduced?"auto":"smooth"});document.getElementById("search")?.focus({preventScroll:true});render();});
+ document.getElementById("replayMotion")?.addEventListener("click",()=>{
+  body.classList.remove("replay-motion");void body.offsetWidth;body.classList.add("replay-motion");
+  document.querySelectorAll(".card").forEach(card=>{card.style.animation="none";void card.offsetWidth;card.style.animation="";});
+  say("Entrance motion replayed. Live scholarship data was not reloaded.");
+  window.setTimeout(()=>body.classList.remove("replay-motion"),900);
+ });
+ pause?.addEventListener("click",()=>{paused=!paused;body.classList.toggle("motion-paused",paused);pause.textContent=paused?"▶ Resume motion":"Ⅱ Pause motion";pause.classList.toggle("on",paused);say(paused?"Motion paused. Your search and filters still work.":"Motion resumed.");});
+ document.getElementById("togglePattern")?.addEventListener("click",()=>{patternVisible=!patternVisible;if(pattern)pattern.style.display=patternVisible?"block":"none";say(patternVisible?"Decorative dot pattern enabled.":"Decorative dot pattern hidden.");});
+ reduce?.addEventListener("click",()=>{reduced=!reduced;body.classList.toggle("reduced-motion",reduced);reduce.classList.toggle("on",reduced);reduce.textContent=reduced?"✓ Reduced motion on":"◌ Reduced motion";say(reduced?"Reduced-motion mode enabled.":"Reduced-motion mode disabled.");});
+})();
+
 </script>
 </body></html>
