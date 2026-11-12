@@ -827,6 +827,11 @@ function toggleWebsiteOriginal(){
 function refreshWebsiteTranslation(){
  if(activeSiteLanguage!=="en"&&!siteShowingOriginal)translateWholeWebsite();
 }
+const siteContentObserver=new MutationObserver(records=>{
+ const pageChanged=records.some(record=>!record.target.parentElement?.closest("[data-translation-ui]")&&!record.target.closest?.("[data-translation-ui]"));
+ if(pageChanged&&activeSiteLanguage!=="en"&&!siteShowingOriginal)refreshWebsiteTranslation();
+});
+siteContentObserver.observe(document.body,{childList:true,subtree:true});
 $("siteTranslate").addEventListener("click",translateWholeWebsite);
 $("siteOriginal").addEventListener("click",toggleWebsiteOriginal);
 $("siteLanguage").addEventListener("change",()=>{
