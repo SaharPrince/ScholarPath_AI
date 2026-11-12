@@ -2016,5 +2016,18 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertIn("1.500 Euro", page.fields.get("funding_summary", ""))
 
 
+    def test_selection_and_target_audience_are_informational_not_mandatory(self) -> None:
+        from app.extraction import _is_mandatory_criterion
+
+        for kind, wording in (
+            ("target_audience", "The programme is aimed at early-career researchers."),
+            ("selection_process", "Candidates are shortlisted by an independent panel."),
+            ("selection_criteria", "Preference is given to applicants with community involvement."),
+        ):
+            with self.subTest(kind=kind):
+                self.assertFalse(_is_mandatory_criterion(kind, wording))
+
+
+
 if __name__ == "__main__":
     unittest.main()
