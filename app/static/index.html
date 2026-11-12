@@ -755,12 +755,13 @@ function splitTranslationText(value,maxBytes=450){
 async function translatePublicText(value,target){
  const chunks=splitTranslationText(value),translated=[];
  for(const chunk of chunks){
-  const wait=Math.max(translationRateLimitedUntil,translationNextRequestAt)-Date.now();
-  if(wait>0){
-   if(translationRateLimitedUntil>Date.now())throw new Error("The free translation service is rate-limiting requests (HTTP 429). Please wait before trying again; cached translations are still available.");
-   await new Promise(resolve=>setTimeout(resolve,wait));
-  }
-  translationNextRequestAt=Date.now()+350;
+  const now=Date.now();
+  if(translationRateLimitedUntil>now)throw new Error("The free translation service is rate-limiting requests (HTTP 429). Please wait before trying again; cached translations are still available.");
+  const scheduledAt=Math.max(now,translationNextRequestAt);
+  translationNextRequestAt=scheduledAt+350;
+  if(scheduledAt>now)await new Promise(resolve=>setTimeout(resolve,scheduledAt-now));
+  // Another worker may have received HTTP 429 while this request was queued.
+  if(translationRateLimitedUntil>Date.now())throw new Error("The free translation service is rate-limiting requests (HTTP 429). Please wait before trying again; cached translations are still available.");
   const params=new URLSearchParams({q:chunk,langpair:"autodetect|"+target,mt:"1"});
   const response=await fetch("https://api.mymemory.translated.net/get?"+params.toString(),{method:"GET",mode:"cors",cache:"default"});
   if(response.status===429){
