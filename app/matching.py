@@ -497,7 +497,9 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         "vocational_training": r"\b(?:ausbildung|auszubildende|apprenticeship|vocational training)\b",
     }
     explicit_levels = {level for level, pattern in level_patterns.items() if re.search(pattern, text)}
-    if re.search(r"\b(?:promotionsstipendium|promotionsförderung|promovierende|doktorand(?:innen|en)?|doctoral|phd)\b", text):
+    if (re.search(r"\b(?:promotionsstipendium|promotionsförderung|promovierende|doktorand(?:innen|en)?|doctoral|phd)\b", text)
+            or re.search(r"promotions[-\s]*f[oö]rderung", title)):
+        explicit_levels.add("phd")
         explicit_levels.add("phd")
     if re.search(r"\b(?:ausbildung|auszubildende|ausbildungsvertrag|apprenticeship)\b", text):
         explicit_levels.add("vocational_training")
