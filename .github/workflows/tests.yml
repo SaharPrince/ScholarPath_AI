@@ -33,7 +33,9 @@ jobs:
       - name: Run complete test suite
         run: python -m unittest discover -s tests -v
 
+  # External provider checks are manual to avoid repeatedly hitting scholarship sites on every code push.
   live-official-sources:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
