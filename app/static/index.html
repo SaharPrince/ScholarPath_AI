@@ -709,8 +709,8 @@ async function translateDetailPage(){
  if(!button||!status||!language)return;
  const target=language.value;
  const labels={ur:"Urdu",ar:"Arabic",fr:"French",es:"Spanish",hi:"Hindi",bn:"Bengali"};
- const selector="h3,h4,.fact small,.fact strong,.criterion-label,.criterion-copy,.original-wording summary,.original-wording p,.criterion a,.requirements-intro,.notice";
- const nodes=Array.from($("detailBody").querySelectorAll(selector)).filter(node=>!node.closest(".translation-tools"));
+ const selector="#detailTitle,#detailProvider,h3,h4,.fact small,.fact strong,.criterion-label,.criterion-copy,.original-wording summary,.original-wording p,.criterion a,.requirements-intro,.notice";
+ const nodes=Array.from(document.querySelectorAll(selector)).filter(node=>!node.closest(".translation-tools")&&(node.id==="detailTitle"||node.id==="detailProvider"||$("detailBody").contains(node)));
  const pending=[];
  nodes.forEach(node=>{
   if(!node.hasAttribute("data-original-text"))node.setAttribute("data-original-text",node.textContent||"");
