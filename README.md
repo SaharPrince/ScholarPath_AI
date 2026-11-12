@@ -45,6 +45,20 @@ The matcher evaluates only criteria supported by the official source:
 
 Unknown must never be treated as eligible. Master's and PhD conditions are distinguished from undergraduate study so a Bachelor's applicant is not shown a graduate-only award as a match.
 
+## Translation
+
+The scholarship detail view offers on-demand machine translation into Urdu, Arabic, French, Spanish, Hindi, and Bengali.
+
+- Translation is initiated by the student; it is not run automatically during scholarship discovery.
+- The app sends only public scholarship detail text to the MyMemory translation API. Student profile answers are not included in translation requests.
+- Translated text is held in the current browser page session only. It is not saved to ScholarPath's scholarship storage.
+- Students can switch back to the original wording. Official source and application links remain unchanged.
+- Machine translation is an aid, not an official provider translation. Students must verify eligibility conditions, deadlines, and application instructions against the linked provider source.
+- The free anonymous MyMemory service publishes a 5,000-character daily allowance and a 500-byte maximum per request. ScholarPath limits one page translation attempt to approximately 4,500 UTF-8 bytes to leave room below that allowance. The service may still reject requests when its shared daily quota has already been used.
+- Translation requires an internet connection and availability of the external translation provider. If it is unavailable or the quota is reached, the original page remains usable.
+
+Provider documentation: [API specification](https://mymemory.translated.net/doc/spec.php), [usage limits](https://mymemory.translated.net/doc/usagelimits.php), and [terms of service](https://mymemory.translated.net/terms-and-conditions).
+
 ## Trust and application status
 
 These are separate concepts:
