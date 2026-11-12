@@ -13,6 +13,24 @@ from app.extraction import (
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
+    def test_villigst_faq_process_exceptions_are_not_mandatory_but_admission_is(self):
+        self.assertTrue(_is_mandatory_criterion(
+            "doctoral_admission",
+            "Applicants must provide evidence of admission to do a doctorate.",
+        ))
+        self.assertTrue(_is_mandatory_criterion(
+            "doctoral_project_stage",
+            "Applicants whose doctoral project is already in its final phase cannot be considered.",
+        ))
+        self.assertFalse(_is_mandatory_criterion(
+            "application_requirements",
+            "If you have worked on your doctoral project for longer than one year, you may still apply; explain separately why you are applying now.",
+        ))
+        self.assertFalse(_is_mandatory_criterion(
+            "application_requirements",
+            "Applicants do not have to be enrolled at the university during the doctorate.",
+        ))
+
     def test_villigst_doctoral_faq_adds_admission_exceptions_and_final_phase(self):
         parsed = ExtractedPage(
             title="Evangelisches Studienwerk Doctoral Scholarship",
