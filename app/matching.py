@@ -34,7 +34,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     if not criterion.get("is_mandatory", True):
         return _result("informational", "This is selection or programme information, not a mandatory eligibility check.")
 
-    if re.search(r"(?:not been in germany for more than|no more than)\s*15\s*months?", lower):
+    if re.search(r"(?:not have been in germany for more than|have not been in germany for more than|not been in germany for more than|no more than)\s*15\s*months?", lower):
         months = _number(profile.get("months_in_germany"))
         if months is None:
             return _result("unknown", "Add how many months you have been in Germany to check this residence-duration rule.")
