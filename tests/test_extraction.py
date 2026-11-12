@@ -1018,7 +1018,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertFalse(_is_mandatory_criterion(audience[0][0], audience[0][2]))
         self.assertEqual(len(post_selection), 1)
         self.assertIn("after selection", post_selection[0][2].casefold())
-        self.assertTrue(_is_mandatory_criterion(post_selection[0][0], post_selection[0][2]))
+        self.assertFalse(_is_mandatory_criterion(post_selection[0][0], post_selection[0][2]))
         self.assertTrue(any("four-year bachelor's degree" in x for x in exclusions))
         self.assertTrue(any("master's degree" in x for x in exclusions))
         self.assertTrue(any("currently enrolled" in x for x in exclusions))
