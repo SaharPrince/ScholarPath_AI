@@ -52,6 +52,28 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         )
         self.assertEqual(hss["source_type"], "official_index")
 
+    def test_evangelisches_student_and_doctoral_programmes_are_separate(self) -> None:
+        source = next(
+            source for source in GERMANY_SOURCES
+            if source["name"].startswith("Evangelisches Studienwerk")
+        )
+        self.assertEqual(source["source_type"], "official_index")
+        self.assertEqual(
+            source["programme_urls"],
+            (
+                "https://www.evstudienwerk.de/english/scholarship-for-students/",
+                "https://www.evstudienwerk.de/english/scholarship-for-doctoral-students/",
+            ),
+        )
+        self.assertEqual(
+            source["programme_titles"]["https://www.evstudienwerk.de/english/scholarship-for-students/"],
+            "Evangelisches Studienwerk Scholarship for Students",
+        )
+        self.assertEqual(
+            source["programme_titles"]["https://www.evstudienwerk.de/english/scholarship-for-doctoral-students/"],
+            "Evangelisches Studienwerk Doctoral Scholarship",
+        )
+
     def test_discovery_targets_belong_to_configured_sources(self) -> None:
         source_urls = {source["official_url"] for source in GERMANY_SOURCES}
         for source_url, candidate_url, title in OFFICIAL_DISCOVERY_TARGETS:
