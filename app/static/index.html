@@ -477,6 +477,16 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 .criterion>a:hover{text-decoration:underline}
 @media(max-width:620px){.criterion{padding:14px}.criterion-copy{font-size:13px}.requirements-intro{font-size:12px}}
 
+
+/* Keep the global language control usable on narrow screens. */
+.site-language{max-width:100%;min-width:0}
+.site-language select{min-width:0}
+@media(max-width:760px){
+ .nav{height:auto;min-height:76px;flex-wrap:wrap;gap:10px;padding-top:12px;padding-bottom:12px}
+ .site-language{width:100%;padding-bottom:4px}
+ .site-language select{flex:1;max-width:180px}
+ #siteTranslationStatus{flex-basis:100%}
+}
 </style>
 </head>
 <body>
