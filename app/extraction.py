@@ -352,6 +352,7 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         return False
     if criterion_type in {
         "ineligibility", "age_limit", "category_i_eligibility", "category_ii_eligibility",
+        "doctoral_admission", "doctoral_project_stage",
     }:
         # An extracted age-limit criterion is an explicit eligibility boundary,
         # even when the source phrases it as "40 years in case of..." rather
