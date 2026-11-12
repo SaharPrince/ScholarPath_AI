@@ -2029,5 +2029,43 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
 
 
 
+    def test_provider_priority_and_welcome_language_is_informational(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>International Student Scholarship</h1>
+          <p>Priority will be given to international students from DAC countries.</p>
+          <p>We particularly welcome applications from students who completed their degree abroad.</p>
+          <p>Applicants must be enrolled at a state-recognized university in Germany.</p>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        preferences = [item for item in criteria if item[0] == "selection_criteria"]
+        mandatory = [item for item in criteria if _is_mandatory_criterion(item[0], item[2])]
+        self.assertTrue(any("Priority will be given" in item[2] for item in preferences))
+        self.assertTrue(any("particularly welcome" in item[2] for item in preferences))
+        self.assertFalse(any("Priority will be given" in item[2] for item in mandatory))
+        self.assertFalse(any("particularly welcome" in item[2] for item in mandatory))
+        self.assertTrue(any("must be enrolled" in item[2] for item in mandatory))
+
+
+    def test_encouragement_to_apply_despite_formal_criteria_is_not_a_gate(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>International Scholarship</h1>
+          <p>We encourage applicants to apply even if they do not meet the formal requirements.
+             We decide on these applications on a case-by-case basis.</p>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        preference = next(
+            (item for item in criteria if "encourage applicants" in item[2].lower()),
+            None,
+        )
+        self.assertIsNotNone(preference)
+        assert preference is not None
+        self.assertEqual(preference[0], "selection_criteria")
+        self.assertFalse(_is_mandatory_criterion(preference[0], preference[2]))
+
+
 if __name__ == "__main__":
     unittest.main()
