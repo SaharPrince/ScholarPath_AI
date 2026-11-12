@@ -222,6 +222,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             "bachelors": {"bachelor", "bachelors", "undergraduate", "undergraduate degree"},
             "master": {"master", "masters", "postgraduate", "ms", "mphil"},
             "phd": {"phd", "doctoral", "doctorate"},
+        "vocational_training": {"vocational training", "ausbildung", "apprenticeship", "vocational"},
         }
         target_key = next((key for key, aliases in target_aliases.items()
                            if target in aliases), target)
@@ -461,7 +462,7 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         ),
         target,
     )
-    if target_key not in {"matric", "intermediate", "bachelors", "master", "phd"}:
+    if target_key not in {"matric", "intermediate", "bachelors", "master", "phd", "vocational_training"}:
         return None
 
     title = (scholarship.get("title") or "").lower()
@@ -493,8 +494,13 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         "bachelors": r"\b(?:bachelor|bachelors|undergraduate)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:bachelor|bachelors|undergraduate)\b",
         "master": r"\b(?:master|masters|postgraduate|ms|mphil)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:a\s+)?(?:master|masters|postgraduate|ms|mphil)\b",
         "phd": r"\b(?:phd|doctoral|doctorate)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:a\s+)?(?:phd|doctoral|doctorate)\b",
+        "vocational_training": r"\b(?:ausbildung|auszubildende|apprenticeship|vocational training)\b",
     }
     explicit_levels = {level for level, pattern in level_patterns.items() if re.search(pattern, text)}
+    if re.search(r"\b(?:promotionsstipendium|promotionsförderung|promovierende|doktorand(?:innen|en)?|doctoral|phd)\b", text):
+        explicit_levels.add("phd")
+    if re.search(r"\b(?:ausbildung|auszubildende|ausbildungsvertrag|apprenticeship)\b", text):
+        explicit_levels.add("vocational_training")
     if not explicit_levels or target_key in explicit_levels:
         return None
 
@@ -505,6 +511,7 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         "matric": "Matric", "intermediate": "Intermediate",
         "bachelors": "Bachelor's / undergraduate", "master": "Master's",
         "phd": "PhD",
+        "vocational_training": "vocational training / Ausbildung",
     }
     available = ", ".join(target_names[level] for level in sorted(explicit_levels))
     return f"This opportunity is explicitly for {available} study, not {target_names[target_key]} study."
