@@ -47,17 +47,12 @@ Unknown must never be treated as eligible. Master's and PhD conditions are disti
 
 ## Translation
 
-The scholarship detail view offers on-demand machine translation into Urdu, Arabic, French, Spanish, Hindi, and Bengali.
+ScholarPath includes a site-wide, on-demand translation control in the header. It can translate the visible interface and page content—including navigation, discovery controls, scholarship cards and details, profile questions, and dynamically rendered results—into Urdu, Arabic, French, Spanish, Hindi, and Bengali. Urdu and Arabic use right-to-left page direction.
 
-- Translation is initiated by the student; it is not run automatically during scholarship discovery.
-- The app sends only public scholarship detail text to the MyMemory translation API. Student profile answers are not included in translation requests.
-- Translated text is held in the current browser page session only. It is not saved to ScholarPath's scholarship storage.
-- Students can switch back to the original wording. Official source and application links remain unchanged.
-- Machine translation is an aid, not an official provider translation. Students must verify eligibility conditions, deadlines, and application instructions against the linked provider source.
-- The free anonymous MyMemory service publishes a 5,000-character daily allowance and a 500-byte maximum per request. ScholarPath limits one page translation attempt to approximately 4,500 UTF-8 bytes to leave room below that allowance. The service may still reject requests when its shared daily quota has already been used.
-- Translation requires an internet connection and availability of the external translation provider. If it is unavailable or the quota is reached, the original page remains usable.
+The student can switch back to the original English wording at any time. Official source and application URLs are not changed. The translation flow processes visible public page text and interface labels only; it does not read, serialize, or send values entered into student profile form controls.
 
-Provider documentation: [API specification](https://mymemory.translated.net/doc/spec.php), [usage limits](https://mymemory.translated.net/doc/usagelimits.php), and [terms of service](https://mymemory.translated.net/terms-and-conditions).
+Translations use the MyMemory public API from the browser. Its anonymous daily quota and per-request size limits apply, so a long page or repeated translations may exceed the available free allowance. When that happens, untranslated text remains in its original wording. The selected language is saved locally in the browser so it can be restored on a later visit. Machine translation is an aid, not an official provider translation; students should confirm eligibility and deadlines against the original provider source.
+
 
 ## Trust and application status
 
