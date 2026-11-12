@@ -303,3 +303,24 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
     def test_preferred_language_is_not_a_mandatory_match_failure(self):
         c = self.criterion("language_requirements", "Language", "German language skills are preferred.", mandatory=False)
         self.assertEqual(evaluate_criterion(c, {})["status"], "informational")
+
+
+class GermanStudyLevelFilteringTests(unittest.TestCase):
+    def test_master_profile_excludes_german_doctoral_scholarship(self):
+        from app.matching import match_profile_to_scholarships
+        rows = [{"id": 91, "title": "Promotionsstipendium"}]
+        criteria = {91: [self.criterion("study_level", "Academic qualification", "Promotionszulassung an einer deutschen Hochschule erforderlich.")]}
+        self.assertEqual(match_profile_to_scholarships(rows, criteria, {"target_study_level": "master"}), [])
+
+    def test_master_profile_excludes_apprenticeship_scholarship(self):
+        from app.matching import match_profile_to_scholarships
+        rows = [{"id": 92, "title": "Stipendium für Auszubildende"}]
+        criteria = {92: [self.criterion("eligibility", "Applicant type", "Applicants must have an Ausbildungsvertrag.")]}
+        self.assertEqual(match_profile_to_scholarships(rows, criteria, {"target_study_level": "master"}), [])
+
+    def test_vocational_training_profile_keeps_apprenticeship_award(self):
+        from app.matching import match_profile_to_scholarships
+        rows = [{"id": 93, "title": "Stipendium für Auszubildende"}]
+        criteria = {93: [self.criterion("eligibility", "Applicant type", "Applicants must have an Ausbildungsvertrag.")]}
+        results = match_profile_to_scholarships(rows, criteria, {"target_study_level": "vocational_training"})
+        self.assertEqual([item["id"] for item in results], [93])
