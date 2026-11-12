@@ -19,6 +19,19 @@ app = FastAPI(
     version="0.7.0",
 )
 
+
+@app.middleware("http")
+async def cache_public_scholarship_reads(request, call_next):
+    """Let the edge reuse public GET results briefly without caching profiles."""
+    response = await call_next(request)
+    path = request.url.path
+    is_scholarship_read = path == "/api/scholarships" or path.startswith("/api/scholarships/")
+    if request.method == "GET" and response.status_code == 200 and is_scholarship_read:
+        # A short edge TTL smooths cold serverless scans while keeping source data
+        # fresh. The matching POST route is deliberately never publicly cached.
+        response.headers["Cache-Control"] = "public, s-maxage=15, stale-while-revalidate=15"
+    return response
+
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
