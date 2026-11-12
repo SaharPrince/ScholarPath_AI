@@ -733,7 +733,9 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
     def test_mandatory_criteria_classification_is_conservative(self) -> None:
         self.assertTrue(_is_mandatory_criterion("eligibility", "Applicants must hold a bachelor's degree."))
         self.assertTrue(_is_mandatory_criterion("ineligibility", "Applicants with dual nationality are not eligible."))
-        self.assertTrue(_is_mandatory_criterion("required_documents", "Academic transcripts and reference letters."))
+        self.assertFalse(_is_mandatory_criterion("required_documents", "Academic transcripts and reference letters."))
+        self.assertFalse(_is_mandatory_criterion("application_requirements", "Submit the application form before the deadline."))
+        self.assertTrue(_is_mandatory_criterion("eligibility", "Applicants must hold a bachelor's degree."))
         self.assertFalse(_is_mandatory_criterion("eligibility", "Applicants with science backgrounds are particularly encouraged."))
         self.assertFalse(_is_mandatory_criterion("eligibility", "Relevant experience is preferred."))
 
