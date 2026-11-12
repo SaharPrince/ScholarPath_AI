@@ -115,7 +115,7 @@ async def list_scholarships(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
-    """Fetch and extract current opportunities on every request; never persist them."""
+    """Return a recent live-source scan; never persist scholarship results."""
     if status not in (None, "all", "unverified", "verified", "expired", "candidate", "rejected"):
         raise HTTPException(status_code=422, detail="Unsupported scholarship status")
     rows = await _live_results()
@@ -128,7 +128,7 @@ async def list_scholarships(
 
 @app.get("/api/scholarships/{scholarship_id}", tags=["scholarships"])
 async def get_scholarship(scholarship_id: int) -> dict:
-    """Refresh official sources and return the matching live opportunity."""
+    """Resolve an opportunity from the recent live-source scan."""
     rows = await _live_results()
     for row in rows:
         if row["id"] == scholarship_id:
@@ -138,7 +138,7 @@ async def get_scholarship(scholarship_id: int) -> dict:
 
 @app.post("/api/match", tags=["matching"])
 async def match_profile(profile: dict) -> dict:
-    """Match the submitted student profile against freshly fetched source criteria."""
+    """Match the submitted profile against recently fetched official-source criteria."""
     allowed = {
         "nationality", "residence_country", "dual_national", "age",
         "regular_government_employee", "public_university_faculty",
