@@ -158,10 +158,11 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         if not language or language not in levels:
             return _result("unknown", "Select your German language level to check this requirement.")
         if not required:
-            if any(term in lower for term in ("german language", "german-language", "deutschkenntnisse")):
-                return _result("pass" if levels[language] > 0 else "fail",
-                               "Your German language level is recorded." if levels[language] > 0
-                               else "The source requires German language skills.")
+            if any(term in lower for term in (
+                "german language", "german-language", "deutschkenntnisse",
+                "deutsche sprachkenntnisse", "gute deutsche sprachkenntnisse",
+            )):
+                return _result("unknown", "The source requires German skills but does not state a measurable minimum level; confirm the provider's standard.")
             return _result("unknown", "The required language or proficiency level needs manual review.")
         minimum = levels[required.group(1).upper()]
         return _result("pass" if levels[language] >= minimum else "fail",
