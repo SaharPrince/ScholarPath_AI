@@ -307,11 +307,11 @@ def _split_criteria_statements(value: str) -> list[str]:
     for statement in restored:
         if (
             merged
-            and re.search(r"\\b15\\s+months?\\b|\\b15\\s+monate?\\b", merged[-1], re.I)
+            and re.search(r"\b15\s+months?\b|\b15\s+monate?\b", merged[-1], re.I)
             and re.search(
-                r"\\b(?:unless|exception|except|ausnahme|already studied in germany|"
-                r"previously studied in germany|prepar\\w*|bereits in deutschland studiert|"
-                r"studienvorbereitung)\\b",
+                r"\b(?:unless|exception|except|ausnahme|already studied in germany|"
+                r"previously studied in germany|prepar\w*|bereits in deutschland studiert|"
+                r"studienvorbereitung)\b",
                 statement,
                 re.I,
             )
@@ -335,7 +335,7 @@ def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
         return "language_requirements", "Language requirements"
     if re.search(r"\b(above-average|academic performance|grades|gpa|school performance)\b", text):
         return "academic_requirements", "Academic requirements"
-    if re.search(r"\b(bachelor(?:'s)?|master(?:'s)?|phd|doctoral|bachelorabschluss|bachelorstudium)\b", text):
+    if re.search(r"\b(bachelor(?:'s)?|master(?:'s)?|phd|doctoral|bachelorabschluss|bachelorstudium\w*)\b", text):
         return "study_level", "Study level"
     if re.search(
         r"\b(?:full-time|part-time)\s+(?:course|study|student|degree|programme|program)\b|"
