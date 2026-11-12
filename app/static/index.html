@@ -832,12 +832,18 @@ async function translateWholeWebsite(){
   status.textContent="Page translated into "+translationLabels[target]+". Machine translation may be imperfect; check important requirements with the official provider.";
   localStorage.setItem("scholarpath-language",target);
  }catch(error){
-  items.forEach(item=>applyCachedText(item.original));
+  items.forEach(item=>{
+   const translated=translationCache.get(target+"|"+item.original);
+   if(translated!==undefined){
+    if(item.kind==="text")item.node.nodeValue=translated;
+    else item.node.setAttribute(item.name,translated);
+   }
+  });
   siteShowingOriginal=false;
   setWebsiteDirection(target);
   $("siteOriginal").hidden=false;
   $("siteOriginal").textContent="Show original";
-  status.textContent=(translationCache.size?"Partially translated into "+translationLabels[target]+". ":"Translation could not be completed. ")+error.message;
+  status.textContent=(translatedCount?"Partially translated into "+translationLabels[target]+". ":"Translation could not be completed. ")+error.message;
   if(translationCache.size)localStorage.setItem("scholarpath-language",target);
  }finally{
   language.disabled=false;siteTranslationInProgress=false;
