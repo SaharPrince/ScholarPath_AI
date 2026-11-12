@@ -333,6 +333,49 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
             "current_education_level": "bachelors",
         })["status"], "unknown")
 
+    def test_financial_need_is_not_inferred_or_requested(self):
+        c = self.criterion("eligibility", "Financial need", "Applicants must demonstrate financial need.")
+        result = evaluate_criterion(c, {})
+        self.assertEqual(result["status"], "unknown")
+        self.assertIn("does not ask for income", result["explanation"])
+
+    def test_sensitive_personal_conditions_are_left_for_private_provider_review(self):
+        examples = [
+            ("Disability", "Applicants with a disability may apply."),
+            ("Religion", "Applicants must belong to the Protestant denomination."),
+            ("Refugee status", "Applicants must have refugee status."),
+            ("Gender", "This scholarship is for women applicants."),
+            ("Care responsibilities", "Applicants caring for minor children are eligible."),
+        ]
+        for label, requirement in examples:
+            with self.subTest(label=label):
+                result = evaluate_criterion(self.criterion("eligibility", label, requirement), {})
+                self.assertEqual(result["status"], "unknown")
+                self.assertIn("does not ask you to disclose", result["explanation"])
+
+    def test_named_university_enrolment_requires_name_and_confirmation(self):
+        c = self.criterion("eligibility", "Enrolment", "Applicants must be currently enrolled at the University of Würzburg.")
+        self.assertEqual(evaluate_criterion(c, {})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(c, {"current_university_name": "University of Würzburg"})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(c, {
+            "current_university_name": "University of Würzburg",
+            "currently_enrolled_at_current_university": True,
+        })["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {
+            "current_university_name": "TU Berlin",
+            "currently_enrolled_at_current_university": True,
+        })["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {
+            "current_university_name": "University of Würzburg",
+            "currently_enrolled_at_current_university": False,
+        })["status"], "fail")
+
+    def test_university_name_without_enrolment_confirmation_remains_unknown(self):
+        c = self.criterion("institution_eligibility", "TU Berlin students", "International students enrolled at TU Berlin.")
+        self.assertEqual(evaluate_criterion(c, {
+            "current_university_name": "TU Berlin",
+        })["status"], "unknown")
+
     def test_preferred_language_is_not_a_mandatory_match_failure(self):
         c = self.criterion("language_requirements", "Language", "German language skills are preferred.", mandatory=False)
         self.assertEqual(evaluate_criterion(c, {})["status"], "informational")
