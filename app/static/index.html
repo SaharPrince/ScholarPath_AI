@@ -704,12 +704,26 @@ async function load(){
    Form control values are never read, serialized, or sent to the translation provider. */
 let translationBudgetUsed=0;
 const translationCache=new Map();
+const TRANSLATION_CACHE_KEY="scholarpath-translation-cache-v2";
+const TRANSLATION_CACHE_LIMIT=400;
+try{
+ const saved=JSON.parse(localStorage.getItem(TRANSLATION_CACHE_KEY)||"[]");
+ if(Array.isArray(saved))saved.slice(-TRANSLATION_CACHE_LIMIT).forEach(entry=>{
+  if(Array.isArray(entry)&&typeof entry[0]==="string"&&typeof entry[1]==="string")translationCache.set(entry[0],entry[1]);
+ });
+}catch(_){}
 const originalTextNodes=new WeakMap();
 const originalAttributes=new WeakMap();
 let siteShowingOriginal=true;
 let activeSiteLanguage="en";
 let siteTranslationInProgress=false;
 const translationLabels={ur:"Urdu",ar:"Arabic",fr:"French",es:"Spanish",hi:"Hindi",bn:"Bengali"};
+function persistTranslationCache(){
+ try{
+  const entries=Array.from(translationCache.entries()).slice(-TRANSLATION_CACHE_LIMIT);
+  localStorage.setItem(TRANSLATION_CACHE_KEY,JSON.stringify(entries));
+ }catch(_){}
+}
 function translationBytes(value){return new TextEncoder().encode(value).length;}
 function translationCharacters(value){return Array.from(value).length;}
 function splitTranslationText(value,maxBytes=450){
@@ -747,8 +761,7 @@ function collectWebsiteText(){
   acceptNode(node){
    const parent=node.parentElement;
    if(!parent||!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
-   if(parent.closest("script,style,noscript,textarea,input,[contenteditable='true'],[data-translation-ui]"))return NodeFilter.FILTER_REJECT;
-   if(parent.closest(".translation-tools"))return NodeFilter.FILTER_REJECT;
+   if(parent.closest("script,style,noscript,textarea,input,[contenteditable='true'],[data-translation-ui],.translation-tools"))return NodeFilter.FILTER_REJECT;
    return NodeFilter.FILTER_ACCEPT;
   }
  });
@@ -791,81 +804,82 @@ async function translateWholeWebsite(){
  applyWebsiteOriginals(items);
  siteShowingOriginal=true;
  $("siteOriginal").hidden=true;
- setWebsiteDirection("en");
  if(target==="en"){
+  setWebsiteDirection("en");
   status.textContent="Website language: English.";
   localStorage.setItem("scholarpath-language","en");
   return;
  }
- const unique=[...new Set(items.map(item=>item.original).filter(value=>value.trim()))];
- const pending=unique.filter(value=>!translationCache.has(target+"|"+value));
- const visibleOriginals=new Set();
+ // Index matching phrases once so applying a translation never rescans the entire page.
+ const nodesByOriginal=new Map();
  items.forEach(item=>{
-  const element=item.kind==="text"?item.node.parentElement:item.node;
+  let group=nodesByOriginal.get(item.original);
+  if(!group){group=[];nodesByOriginal.set(item.original,group);}
+  group.push(item);
+ });
+ const pending=[];
+ const visibleOriginals=new Set();
+ nodesByOriginal.forEach((group,original)=>{
+  if(translationCache.has(target+"|"+original))return;
+  pending.push(original);
+  const item=group[0],element=item.kind==="text"?item.node.parentElement:item.node;
   if(!element||!element.isConnected)return;
   const rect=element.getBoundingClientRect();
-  if(rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<window.innerHeight&&rect.right>0&&rect.left<window.innerWidth)visibleOriginals.add(item.original);
+  if(rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<window.innerHeight&&rect.right>0&&rect.left<window.innerWidth)visibleOriginals.add(original);
  });
- pending.sort((left,right)=>Number(visibleOriginals.has(right))-Number(visibleOriginals.has(left)));
+ pending.sort((a,b)=>Number(visibleOriginals.has(b))-Number(visibleOriginals.has(a)));
+ // Reuse cached phrases immediately, including translations saved during earlier visits.
+ nodesByOriginal.forEach((group,original)=>{
+  const translated=translationCache.get(target+"|"+original);
+  if(translated!==undefined)group.forEach(item=>{
+   if(item.kind==="text")item.node.nodeValue=translated;
+   else item.node.setAttribute(item.name,translated);
+  });
+ });
+ setWebsiteDirection(target);
+ siteShowingOriginal=false;
+ $("siteOriginal").hidden=false;
+ $("siteOriginal").textContent="Show original";
  siteTranslationInProgress=true;
  language.disabled=true;
- status.textContent="Translating visible content first into "+(translationLabels[target]||target)+"…";
- let translatedCount=0;
- let failure=null;
+ let translatedCount=0,failure=null,nextIndex=0;
+ const applyTranslated=(original,translated)=>{
+  (nodesByOriginal.get(original)||[]).forEach(item=>{
+   if(item.kind==="text")item.node.nodeValue=translated;
+   else item.node.setAttribute(item.name,translated);
+  });
+ };
+ status.textContent=pending.length
+  ?"Translating visible content first into "+(translationLabels[target]||target)+"…"
+  :"Website translated into "+translationLabels[target]+".";
  try{
-  const applyCachedText=original=>{
-   const translated=translationCache.get(target+"|"+original);
-   if(translated===undefined)return;
-   items.forEach(item=>{
-    if(item.original!==original)return;
-    if(item.kind==="text")item.node.nodeValue=translated;
-    else item.node.setAttribute(item.name,translated);
-   });
-  };
-  // Three concurrent requests reduce network waiting without overwhelming the free service.
-  let nextIndex=0;
+  // Five bounded workers shorten network wait without flooding the free translation service.
   const worker=async()=>{
    while(nextIndex<pending.length&&!failure){
     const original=pending[nextIndex++];
     const cost=translationCharacters(original);
     if(translationBudgetUsed+cost>5000){
-     failure=new Error("The free translation allowance for today has been reached. Some content may remain in English; choose English to restore the original page.");
+     failure=new Error("The free translation allowance for this page has been reached. Some content may remain in English.");
      break;
     }
-    // Reserve the allowance before yielding so concurrent workers cannot exceed it.
     translationBudgetUsed+=cost;
     try{
      const translated=await translatePublicText(original,target);
      translationCache.set(target+"|"+original,translated);
      translatedCount++;
-     applyCachedText(original);
-     status.textContent="Translating into "+translationLabels[target]+"… "+translatedCount+" of "+pending.length+" new text items";
-    }catch(error){
-     failure=error;
-    }
+     applyTranslated(original,translated);
+     if(translatedCount%12===0)persistTranslationCache();
+     status.textContent="Translating into "+translationLabels[target]+"… "+translatedCount+" of "+pending.length+" new phrases";
+    }catch(error){failure=error;}
    }
   };
-  await Promise.all(Array.from({length:Math.min(3,pending.length)},()=>worker()));
-  items.forEach(item=>applyCachedText(item.original));
-  siteShowingOriginal=false;
-  setWebsiteDirection(target);
-  $("siteOriginal").hidden=false;
-  $("siteOriginal").textContent="Show original";
+  await Promise.all(Array.from({length:Math.min(5,pending.length)},()=>worker()));
+  persistTranslationCache();
   if(failure)throw failure;
-  status.textContent="Page translated into "+translationLabels[target]+". Machine translation may be imperfect; check important requirements with the official provider.";
+  status.textContent="Page translated into "+translationLabels[target]+". Machine translation may be imperfect; verify important requirements with the official provider.";
   localStorage.setItem("scholarpath-language",target);
  }catch(error){
-  items.forEach(item=>{
-   const translated=translationCache.get(target+"|"+item.original);
-   if(translated!==undefined){
-    if(item.kind==="text")item.node.nodeValue=translated;
-    else item.node.setAttribute(item.name,translated);
-   }
-  });
-  siteShowingOriginal=false;
-  setWebsiteDirection(target);
-  $("siteOriginal").hidden=false;
-  $("siteOriginal").textContent="Show original";
+  persistTranslationCache();
   status.textContent=(translatedCount?"Partially translated into "+translationLabels[target]+". ":"Translation could not be completed. ")+error.message;
   if(translatedCount)localStorage.setItem("scholarpath-language",target);
  }finally{
