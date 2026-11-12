@@ -145,6 +145,14 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
             "German Research Foundation (DFG) – Research Funding Programmes",
             "University of Kiel – Scholarships",
         )
+        self.assertEqual(
+            sources["University of Kiel – Deutschlandstipendium"]["official_url"],
+            "https://www.uni-kiel.de/gf-praesidium/de/recht/interne-richtlinien/guidelines-of-kiel-university-for-the-award-of-deutschlandstipendium",
+        )
+        self.assertEqual(
+            sources["University of Kiel – Deutschlandstipendium"]["source_type"],
+            "official_programme",
+        )
         for name in expected_indexes:
             with self.subTest(source=name):
                 self.assertEqual(sources[name]["source_type"], "official_index")
