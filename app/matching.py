@@ -111,7 +111,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("unknown", "Add how many months you have been in Germany to check this residence-duration rule.")
         if months <= 15:
             return _result("pass", f"You reported {months:g} months in Germany; the published maximum is 15 months.")
-        if re.search(r"\b(?:unless|exception|except|already studied|previously studied|prepar\\w*)\b", lower):
+        if re.search(r"\b(?:unless|exception|except|already studied|previously studied|prepar\w*)\b", lower):
             exception = profile.get("residence_duration_exception")
             if exception == "none":
                 return _result("fail", "You reported more than 15 months in Germany and indicated that neither published exception applies.")
@@ -140,13 +140,15 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     semester_minimum = re.search(
         r"\b(?:at least|minimum of)\s*(\d+|one|two|three|four|five|six)\s+(?:full\s+)?semesters?\b.{0,100}\b(?:remaining|left)\b|"
         r"\b(\d+|one|two|three|four|five|six)\s+(?:full\s+)?(?:remaining\s+)?semesters?\b.{0,100}\b(?:remaining|left|before|until|prior to|complete|completion|finish|end)\b|"
-        r"\b(?:remaining|left)\s+(?:at least\s+)?(\d+|one|two|three|four|five|six)\s+semesters?\b",
+        r"\b(?:remaining|left)\s+(?:at least\s+)?(\d+|one|two|three|four|five|six)\s+semesters?\b|"
+        r"mindestens\s+(\d+|ein|eine|zwei|drei|vier|fünf|sechs)\s+(?:volle\s+)?semester?\s+(?:müssen\s+)?verbleib",
         lower,
     )
     if semester_minimum:
         raw_minimum = next(group for group in semester_minimum.groups() if group is not None)
         semester_words = {
-            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "ein": 1, "eine": 1, "zwei": 2, "drei": 3, "vier": 4, "fünf": 5, "sechs": 6,
+            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+            "ein": 1, "eine": 1, "zwei": 2, "drei": 3, "vier": 4, "fünf": 5, "sechs": 6,
         }
         minimum_semesters = int(raw_minimum) if raw_minimum.isdigit() else semester_words[raw_minimum]
         remaining = _number(profile.get("remaining_semesters_in_program"))
@@ -156,7 +158,11 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("fail", f"You reported {remaining:g} semesters remaining; at least {minimum_semesters} are required.")
         timing_matched = True
 
-    if re.search(r"\b(?:at least|minimum of)\s+(?:half|50\s*%)\s+(?:of\s+)?(?:the\s+)?(?:standard|regular)\s+(?:study\s+)?(?:period|duration)\s+(?:must\s+)?remain", lower):
+    if re.search(
+        r"\b(?:at least|minimum of)\s+(?:half|50\s*%)\s+(?:of\s+)?(?:the\s+)?(?:standard|regular)\s+(?:study\s+)?(?:period|duration)\s+(?:must\s+)?remain|"
+        r"mindestens\s+die\s+h[aä]lfte\s+der\s+regelstudienzeit\s+(?:muss\s+)?verbleib",
+        lower,
+    ):
         remaining = _number(profile.get("remaining_semesters_in_program"))
         standard = _number(profile.get("standard_programme_semesters"))
         if remaining is None or standard is None or standard <= 0:
@@ -166,8 +172,11 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("fail", f"You reported {remaining:g} of {standard:g} standard semesters remaining; at least half ({minimum:g}) must remain.")
         timing_matched = True
 
-    if re.search(r"\b(?:three|3)\s+semesters?\s+before\s+(?:the\s+)?(?:end|completion)\s+of\s+(?:the\s+)?(?:standard|regular)\s+(?:study\s+)?(?:period|duration)", lower) or re.search(
-        r"\b(?:until|up to|no later than)\s+(?:three|3)\s+semesters?\s+before\s+(?:the\s+)?(?:end|completion)", lower
+    if re.search(
+        r"\b(?:three|3)\s+semesters?\s+before\s+(?:the\s+)?(?:end|completion)\s+of\s+(?:the\s+)?(?:standard|regular)\s+(?:study\s+)?(?:period|duration)|"
+        r"\b(?:until|up to|no later than)\s+(?:three|3)\s+semesters?\s+before\s+(?:the\s+)?(?:end|completion)\b|"
+        r"\bbis\s+drei\s+semester\s+vor\s+ende\s+der\s+regelstudienzeit\b",
+        lower,
     ):
         remaining = _number(profile.get("remaining_semesters_in_program"))
         if remaining is None:
@@ -177,19 +186,27 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         timing_matched = True
 
     semester = _number(profile.get("current_semester_in_program"))
-    if re.search(r"\bafter\s+(?:the\s+)?first\s+semester\b", lower):
+    if re.search(r"\bafter\s+(?:the\s+)?first\s+semester\b|\bnach\s+dem\s+ersten\s+semester\b", lower):
         if semester is None:
             return _result("unknown", "Add your current semester to check whether you have completed the first semester.")
         if semester < 2:
             return _result("fail", "This application window opens after completion of the first semester.")
         timing_matched = True
-    if re.search(r"\b(?:before|prior to)\s+(?:or\s+at\s+)?(?:the\s+)?(?:beginning|start)\s+of\s+(?:the\s+)?first\s+semester\b|\bby\s+the\s+beginning\s+of\s+the\s+first\s+semester\b", lower):
+    if re.search(
+        r"\b(?:before|prior to)\s+(?:or\s+at\s+)?(?:the\s+)?(?:beginning|start)\s+of\s+(?:the\s+)?first\s+semester\b|"
+        r"\bby\s+the\s+beginning\s+of\s+the\s+first\s+semester\b|"
+        r"\bvor\s+oder\s+zu\s+beginn\s+des\s+ersten\s+(?:hochschul)?semesters\b",
+        lower,
+    ):
         if semester is None:
             return _result("unknown", "Add your current semester (0 if the programme has not started) to check this first-semester application window.")
         if semester > 1:
             return _result("fail", "This application window is limited to before or the beginning of the first semester.")
         timing_matched = True
-    if re.search(r"\bafter\s+(?:the\s+)?fourth\s+semester\b", lower) and re.search(r"\b(?:until|through|by)\s+(?:the\s+)?end\s+of\s+(?:the\s+)?sixth\s+semester\b", lower):
+    if re.search(r"\bafter\s+(?:the\s+)?fourth\s+semester\b|\bnach\s+dem\s+vierten\s+semester\b", lower) and re.search(
+        r"\b(?:until|through|by)\s+(?:the\s+)?end\s+of\s+(?:the\s+)?sixth\s+semester\b|\bbis\s+(?:zum\s+)?ende\s+des\s+sechsten\s+semesters\b",
+        lower,
+    ):
         if semester is None:
             return _result("unknown", "Add your current semester to check the medical-study application window.")
         if not 5 <= semester <= 6:
