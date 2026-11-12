@@ -329,6 +329,34 @@ async def discover_live_scholarships() -> list[dict]:
             candidate_urls: dict[str, str] = {}
             root_records: list[tuple[dict, str | None]] = []
             programme_records: list[tuple[dict, str | None]] = []
+            detail_task: asyncio.Task | None = None
+
+            async def inspect_details(detail_items: list[tuple[str, str]]) -> None:
+                if not detail_items:
+                    return
+                details = await asyncio.gather(
+                    *(inspect_page(source, url, title) for url, title in detail_items),
+                    return_exceptions=True,
+                )
+                detail_records = []
+                for item in details:
+                    if isinstance(item, Exception):
+                        logger.warning(
+                            "Official programme detail fetch failed: source=%s error=%s",
+                            source["name"],
+                            item,
+                        )
+                        continue
+                    record, _links, detail_html = item
+                    if record and not _is_generic_source_title(record):
+                        detail_records.append((record, detail_html))
+                        if _has_actionable_eligibility(record):
+                            results[record["source_url"]] = record
+                await enrich_records(detail_records)
+                for record, _detail_html in detail_records:
+                    if _has_actionable_eligibility(record):
+                        results[record["source_url"]] = record
+
             try:
                 # Consume index pages as soon as each one completes. A slow root
                 # page must not hide faster curated programme pages when the
@@ -353,8 +381,14 @@ async def discover_live_scholarships() -> list[dict]:
                     for url, title in links:
                         candidate_urls.setdefault(url, title)
 
-                # Direct programme records are kept immediately, then enriched
-                # concurrently so one secondary page cannot starve other results.
+                # Candidate detail pages and curated eligibility pages are
+                # independent requests. Start both phases together rather than
+                # waiting for one network round trip before starting the next.
+                detail_limit = 1 if source.get("programme_urls") else MAX_CANDIDATES_PER_SOURCE
+                detail_items = list(candidate_urls.items())[:detail_limit]
+                if detail_items:
+                    detail_task = asyncio.create_task(inspect_details(detail_items))
+
                 eligibility_results, _ = await asyncio.gather(
                     eligibility_task,
                     enrich_records(programme_records),
@@ -395,39 +429,22 @@ async def discover_live_scholarships() -> list[dict]:
                     if _has_actionable_eligibility(record):
                         results[record["source_url"]] = record
 
-                # Curated programme URLs already cover these providers' key
-                # awards. Follow at most one extra link per such source.
-                detail_limit = 1 if source.get("programme_urls") else MAX_CANDIDATES_PER_SOURCE
-                detail_items = list(candidate_urls.items())[:detail_limit]
-                if detail_items:
-                    details = await asyncio.gather(
-                        *(inspect_page(source, url, title) for url, title in detail_items),
-                        return_exceptions=True,
-                    )
-                    detail_records = []
-                    for item in details:
-                        if isinstance(item, Exception):
-                            logger.warning(
-                                "Official programme detail fetch failed: source=%s error=%s",
-                                source["name"],
-                                item,
-                            )
-                            continue
-                        record, _links, detail_html = item
-                        if record and not _is_generic_source_title(record):
-                            detail_records.append((record, detail_html))
-                            if _has_actionable_eligibility(record):
-                                results[record["source_url"]] = record
-                    await enrich_records(detail_records)
-                    for record, _detail_html in detail_records:
-                        if _has_actionable_eligibility(record):
-                            results[record["source_url"]] = record
+                if detail_task is not None:
+                    await detail_task
             finally:
                 for task in index_tasks:
                     if not task.done():
                         task.cancel()
                 if not eligibility_task.done():
                     eligibility_task.cancel()
+                if detail_task is not None and not detail_task.done():
+                    detail_task.cancel()
+                pending_tasks = [
+                    task for task in (eligibility_task, detail_task)
+                    if task is not None and not task.done()
+                ]
+                if pending_tasks:
+                    await asyncio.gather(*pending_tasks, return_exceptions=True)
 
 
         async def run_source_group(sources: list[dict], timeout: float) -> None:
