@@ -115,6 +115,22 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
             sources["University of Würzburg – Scholarships by Target Group"]["source_type"],
             "official_index",
         )
+        self.assertEqual(
+            sources["University of Würzburg – Oskar Karl Forster Scholarship"]["official_url"],
+            "https://www.uni-wuerzburg.de/en/stipendien/nach-zielgruppen/oskar-karl-forster-scholarship/",
+        )
+        self.assertEqual(
+            sources["University of Würzburg – Romana Schott Scholarship"]["official_url"],
+            "https://www.uni-wuerzburg.de/en/equity/wro/scholarships-and-funding-opportunities/romana-schott-scholarships/",
+        )
+        self.assertEqual(
+            sources["University of Würzburg – Oskar Karl Forster Scholarship"]["source_type"],
+            "official_programme",
+        )
+        self.assertEqual(
+            sources["University of Würzburg – Romana Schott Scholarship"]["source_type"],
+            "official_programme",
+        )
 
     def test_discovery_targets_belong_to_configured_sources(self) -> None:
         source_urls = {source["official_url"] for source in GERMANY_SOURCES}
