@@ -132,6 +132,23 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
             "official_programme",
         )
 
+
+    def test_broad_provider_and_research_funding_pages_are_indexes(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        expected_indexes = (
+            "DAAD Pakistan – Scholarship Programmes for Pakistan",
+            "German Federal Foreign Office – Scholarship Providers",
+            "Friedrich Ebert Foundation – Study Funding",
+            "Rosa Luxemburg Foundation – Scholarship Department",
+            "Catholic Academic Exchange Service (KAAD)",
+            "Alexander von Humboldt Foundation – Funding",
+            "German Research Foundation (DFG) – Research Funding Programmes",
+            "University of Kiel – Scholarships",
+        )
+        for name in expected_indexes:
+            with self.subTest(source=name):
+                self.assertEqual(sources[name]["source_type"], "official_index")
+
     def test_discovery_targets_belong_to_configured_sources(self) -> None:
         source_urls = {source["official_url"] for source in GERMANY_SOURCES}
         for source_url, candidate_url, title in OFFICIAL_DISCOVERY_TARGETS:
