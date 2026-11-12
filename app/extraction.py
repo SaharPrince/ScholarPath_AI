@@ -349,8 +349,7 @@ def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
 def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Infer mandatory status conservatively, preserving explicit preferences."""
     if re.search(
-        r"(?i)\\b(?:no|keine)\\s+(?:doctoral|doctoral-completion|promotionsabschluss)\\s+(?:completion\\s+)?scholarships?\\b|"
-        r"\\bkeine\\s+promotionsabschlussstipendien\\b",
+        r"(?i)\bno\s+doctoral\s+completion\s+scholarships?\b|\bkeine\s+promotionsabschlussstipendien\b",
         requirement_text,
     ):
         # This describes a funding type the foundation does not offer; it is
