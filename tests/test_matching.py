@@ -335,6 +335,12 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(c, {})["status"], "informational")
 
 
+    def test_unspecified_german_proficiency_remains_unknown(self):
+        c = self.criterion("language_requirements", "German language", "Applicants must have good German language skills.")
+        self.assertEqual(evaluate_criterion(c, {"german_language_level": "A1"})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(c, {"german_language_level": "C1"})["status"], "unknown")
+
+
 class GermanStudyLevelFilteringTests(unittest.TestCase):
     def criterion(self, kind, label, text, mandatory=True):
         return {
