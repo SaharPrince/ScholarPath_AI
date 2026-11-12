@@ -505,7 +505,7 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         return None
 
     # Multi-level awards (e.g. Master's and PhD) are valid for either named level.
-    if target_key in {"master", "phd"} and explicit_levels <= {"master", "phd"}:
+    if target_key in {"master", "phd"} and len(explicit_levels) > 1 and explicit_levels <= {"master", "phd"}:
         return None
     target_names = {
         "matric": "Matric", "intermediate": "Intermediate",
