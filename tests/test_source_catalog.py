@@ -59,6 +59,10 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         )
         self.assertEqual(source["source_type"], "official_index")
         self.assertEqual(
+            source["official_url"],
+            "https://www.evstudienwerk.de/english/our-mission-statement/",
+        )
+        self.assertEqual(
             source["programme_urls"],
             (
                 "https://www.evstudienwerk.de/english/scholarship-for-students/",
