@@ -708,16 +708,23 @@ async function translateDetailPage(){
  const button=$("translatePage"),status=$("translationStatus"),language=$("detailLanguage");
  if(!button||!status||!language)return;
  const target=language.value;
+ if(detailTranslationNodes.length&&!detailShowingOriginal){
+  detailTranslationNodes.forEach(node=>{node.textContent=node.getAttribute("data-original-text")||"";});
+ }
+ detailShowingOriginal=true;
+ $("detailBody").setAttribute("dir","ltr");
+ $("showOriginal").hidden=true;
  const labels={ur:"Urdu",ar:"Arabic",fr:"French",es:"Spanish",hi:"Hindi",bn:"Bengali"};
  const selector="#detailTitle,#detailProvider,h3,h4,.fact small,.fact strong,.criterion-label,.criterion-copy,.original-wording summary,.original-wording p,.criterion a,.requirements-intro,.notice";
  const nodes=Array.from(document.querySelectorAll(selector)).filter(node=>!node.closest(".translation-tools")&&(node.id==="detailTitle"||node.id==="detailProvider"||$("detailBody").contains(node)));
  const pending=[];
+ const pendingKeys=new Set();
  nodes.forEach(node=>{
   if(!node.hasAttribute("data-original-text"))node.setAttribute("data-original-text",node.textContent||"");
   const original=node.getAttribute("data-original-text")||"";
   if(!original.trim())return;
   const key=target+"|"+original;
-  if(!translationCache.has(key))pending.push({node,original,key});
+  if(!translationCache.has(key)&&!pendingKeys.has(key)){pending.push({node,original,key});pendingKeys.add(key);}
  });
  const needed=pending.reduce((sum,item)=>sum+translationBytes(item.original),0);
  if(translationBudgetUsed+needed>4500){
