@@ -658,7 +658,12 @@ async function load(){
   allScholarships=await r.json();
   const sourceResponse=await fetch("/api/sources",{cache:"no-store"});
   if(sourceResponse.ok){const sources=await sourceResponse.json();activeSourceCount=sources.length;}
-  render();\n  refreshWebsiteTranslation();
+  render();
+  const savedLanguage=localStorage.getItem("scholarpath-language");
+  if(savedLanguage&&savedLanguage!=="en"&&$("siteLanguage").querySelector('option[value="'+savedLanguage+'"]')){
+   $("siteLanguage").value=savedLanguage;
+   await translateWholeWebsite();
+  }else refreshWebsiteTranslation();
  }catch(e){
   $("cards").innerHTML='<div class="empty"><strong>Live discovery is temporarily unavailable</strong>'+esc(e.message)+' Please try again shortly.</div>';
   $("resultCount").textContent="Live scan unavailable";
@@ -677,7 +682,7 @@ let activeSiteLanguage="en";
 const translationLabels={ur:"Urdu",ar:"Arabic",fr:"French",es:"Spanish",hi:"Hindi",bn:"Bengali"};
 function translationBytes(value){return new TextEncoder().encode(value).length;}
 function splitTranslationText(value,maxBytes=450){
- const words=value.match(/\\S+\\s*/gu)||[];
+ const words=value.match(/\S+\s*/gu)||[];
  const chunks=[];let current="";
  for(const word of words){
   if(translationBytes(current+word)>maxBytes&&current){chunks.push(current.trim());current="";}
@@ -820,16 +825,7 @@ function toggleWebsiteOriginal(){
  }
 }
 function refreshWebsiteTranslation(){
- if(activeSiteLanguage!=="en"&&!siteShowingOriginal){
-  const items=collectWebsiteText();
-  items.forEach(item=>{
-   const translated=translationCache.get(activeSiteLanguage+"|"+item.original);
-   if(translated!==undefined){
-    if(item.kind==="text")item.node.nodeValue=translated;
-    else item.node.setAttribute(item.name,translated);
-   }
-  });
- }
+ if(activeSiteLanguage!=="en"&&!siteShowingOriginal)translateWholeWebsite();
 }
 $("siteTranslate").addEventListener("click",translateWholeWebsite);
 $("siteOriginal").addEventListener("click",toggleWebsiteOriginal);
@@ -850,7 +846,9 @@ async function showDetail(id){
  const facts=[["Application status",nice(x.application_status)],["Source status","Fetched live · not independently verified"],["Study destination",x.study_destination||x.country],["Deadline",x.deadline_text],["Funding",x.funding_summary],["Applicant category",nice(x.applicant_category)]];
  const criteria=x.criteria||[];
  const groups={};criteria.forEach(c=>(groups[c.criterion_type]??=[]).push(c));
- $("detailBody").innerHTML=`<div class="detailfacts">${"${facts.map(([k,v])=>`<div class=\"fact\"><small>${esc(k)}</small><strong>${esc(shortText(v))}</strong></div>`).join(\"\")}"}</div>\n <div class="links"><a href="${"${esc(x.source_url)}"}" target="_blank" rel="noopener">Official source page ↗</a>${"${x.application_url?`<a href=\"${esc(x.application_url)}\" target=\"_blank\" rel=\"noopener\">Application portal ↗</a>`:\"\"}"}</div>\n <h3>Eligibility Requirements</h3>\n ${"${renderRequirements(criteria)}"}\n <p class="notice">These details were fetched from the official source during this search and are not stored by ScholarPath. The information is not independently verified; confirm all requirements and deadlines with the provider.</p>`;
+ $("detailBody").innerHTML=`<div class="detailfacts">${"${facts.map(([k,v])=>`<div class=\"fact\"><small>${esc(k)}</small><strong>${esc(shortText(v))}</strong></div>`).join(\"\")}"}</div>
+ <div class="links"><a href="${"${esc(x.source_url)}"}" target="_blank" rel="noopener">Official source page ↗</a>${"${x.application_url?`<a href=\"${esc(x.application_url)}\" target=\"_blank\" rel=\"noopener\">Application portal ↗</a>`:\"\"}"}</div>
+ <h3>Eligibility Requirements</h3>\n ${"${renderRequirements(criteria)}"}\n <p class="notice">These details were fetched from the official source during this search and are not stored by ScholarPath. The information is not independently verified; confirm all requirements and deadlines with the provider.</p>`;
  refreshWebsiteTranslation();
 }
 function closeDetail(){$("overlay").classList.remove("show");document.body.style.overflow="";}
