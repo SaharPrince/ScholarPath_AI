@@ -57,7 +57,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                        "You confirmed current enrolment in Germany." if enrolled
                        else "This programme requires current enrolment at a German university.")
 
-    if re.search(r"(?:at least|minimum of|mindestens)\\s*6\\s*months?.{0,80}(?:remaining|left|rest|verbleib)", lower):
+    if re.search(r"(?:at least|minimum of|mindestens)\\s*(?:6|six|sechs)\\s*months?.{0,80}(?:remaining|left|rest|verbleib)", lower):
         remaining = _number(profile.get("months_remaining_in_program"))
         if remaining is None:
             return _result("unknown", "Add how many months remain in your current study programme.")
