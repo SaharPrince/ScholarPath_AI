@@ -810,6 +810,16 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertFalse(_is_mandatory_criterion("work_experience", "Relevant experience is preferred"))
         self.assertFalse(_is_mandatory_criterion("eligibility", "Priority is given to applicants from DAC countries"))
 
+    def test_absence_of_doctoral_completion_awards_is_informational(self):
+        self.assertFalse(_is_mandatory_criterion(
+            "study_level",
+            "No doctoral completion scholarships are awarded.",
+        ))
+        self.assertFalse(_is_mandatory_criterion(
+            "study_level",
+            "Keine Promotionsabschlussstipendien werden vergeben.",
+        ))
+
     def test_mandatory_criteria_classification_is_conservative(self) -> None:
         self.assertTrue(_is_mandatory_criterion("eligibility", "Applicants must hold a bachelor's degree."))
         self.assertTrue(_is_mandatory_criterion("ineligibility", "Applicants with dual nationality are not eligible."))
