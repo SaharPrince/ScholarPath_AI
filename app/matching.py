@@ -78,10 +78,21 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             r"(?i)(?:a|any|recognized|german|public|national)\s+(?:recognized\s+)?university(?:\s+in\s+germany)?",
             required_institution,
         ):
-            applicant_institution = re.sub(
-                r"[^a-z0-9]+", " ", str(profile.get("current_university_name") or "").casefold()
-            ).strip()
-            required_normalized = re.sub(r"[^a-z0-9]+", " ", required_institution.casefold()).strip()
+            def canonical_institution(value: str) -> str:
+                normalized = re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+                aliases = {
+                    "tu berlin": "technical university of berlin",
+                    "technical university berlin": "technical university of berlin",
+                    "university of wurzburg": "julius maximilians university of wurzburg",
+                    "julius maximilians universitat wurzburg": "julius maximilians university of wurzburg",
+                    "julius maximilians university wurzburg": "julius maximilians university of wurzburg",
+                }
+                return aliases.get(normalized, normalized)
+
+            applicant_institution = canonical_institution(
+                str(profile.get("current_university_name") or "")
+            )
+            required_normalized = canonical_institution(required_institution)
             enrolled_here = profile.get("currently_enrolled_at_current_university")
             if not applicant_institution:
                 return _result("unknown", "If you wish, enter the name of your current university to check this institution-specific condition.")
