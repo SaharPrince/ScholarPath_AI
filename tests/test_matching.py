@@ -301,6 +301,16 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(c, {"age": 36})["status"], "fail")
 
 
+    def test_age_over_45_with_special_application_is_not_automatic_failure(self):
+        c = self.criterion(
+            "age_limit",
+            "Age",
+            "Applicants who are older than 45 must also enclose a special application.",
+        )
+        result = evaluate_criterion(c, {"age": 52})
+        self.assertEqual(result["status"], "informational")
+        self.assertIn("not an automatic age-based rejection", result["explanation"])
+
 if __name__ == "__main__":
     unittest.main()
 
