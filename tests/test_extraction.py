@@ -757,10 +757,15 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         page = parse_scholarship_page(html, "https://example.org/scholarship")
         self.assertIsNotNone(page)
         assert page is not None
-        eligibility = [item for item in page.criteria if item[0] == "eligibility"]
-        self.assertEqual(len(eligibility), 3)
-        self.assertTrue(_is_mandatory_criterion(eligibility[0][0], eligibility[0][2]))
-        self.assertFalse(_is_mandatory_criterion(eligibility[2][0], eligibility[2][2]))
+        criteria = page.criteria
+        self.assertEqual(len(criteria), 3)
+        self.assertEqual(
+            [item[0] for item in criteria],
+            ["eligibility", "study_level", "eligibility"],
+        )
+        self.assertTrue(_is_mandatory_criterion(criteria[0][0], criteria[0][2]))
+        self.assertTrue(_is_mandatory_criterion(criteria[1][0], criteria[1][2]))
+        self.assertFalse(_is_mandatory_criterion(criteria[2][0], criteria[2][2]))
 
     def test_explicit_eligibility_heading_marks_conditions_mandatory_but_priority_informational(self) -> None:
         from app.extraction import _is_mandatory_criterion
