@@ -432,17 +432,12 @@ async def discover_live_scholarships() -> list[dict]:
                 if detail_task is not None:
                     await detail_task
             finally:
-                for task in index_tasks:
-                    if not task.done():
-                        task.cancel()
-                if not eligibility_task.done():
-                    eligibility_task.cancel()
-                if detail_task is not None and not detail_task.done():
-                    detail_task.cancel()
-                pending_tasks = [
-                    task for task in (eligibility_task, detail_task)
-                    if task is not None and not task.done()
-                ]
+                child_tasks = [*index_tasks, eligibility_task]
+                if detail_task is not None:
+                    child_tasks.append(detail_task)
+                pending_tasks = [task for task in child_tasks if not task.done()]
+                for task in pending_tasks:
+                    task.cancel()
                 if pending_tasks:
                     await asyncio.gather(*pending_tasks, return_exceptions=True)
 
