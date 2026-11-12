@@ -45,6 +45,35 @@ class PublicScholarshipCacheHeaderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.headers.get("cache-control"))
 
+    async def test_matching_accepts_optional_current_university_details(self):
+        transport = httpx.ASGITransport(app=main.app)
+        profile = {
+            "nationality": "Pakistani",
+            "current_education_level": "bachelors",
+            "target_study_level": "master",
+            "current_university_name": "Technical University of Berlin",
+            "currently_enrolled_at_current_university": True,
+        }
+        with patch.object(main, "_live_results", new=AsyncMock(return_value=[])):
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post("/api/match", json=profile)
+
+        self.assertEqual(response.status_code, 200)
+
+    async def test_matching_rejects_sensitive_personal_profile_fields(self):
+        transport = httpx.ASGITransport(app=main.app)
+        profile = {
+            "nationality": "Pakistani",
+            "current_education_level": "bachelors",
+            "target_study_level": "master",
+            "religion": "private",
+        }
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post("/api/match", json=profile)
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("Unsupported profile fields", response.json()["detail"])
+
     async def test_failed_scholarship_response_is_not_cached(self):
         transport = httpx.ASGITransport(app=main.app)
         with patch.object(main, "_live_results", new=AsyncMock(return_value=[])):
