@@ -141,7 +141,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         r"\b(?:at least|minimum of)\s*(\d+|one|two|three|four|five|six)\s+(?:full\s+)?semesters?\b.{0,100}\b(?:remaining|left)\b|"
         r"\b(\d+|one|two|three|four|five|six)\s+(?:full\s+)?(?:remaining\s+)?semesters?\b.{0,100}\b(?:remaining|left|before|until|prior to|complete|completion|finish|end)\b|"
         r"\b(?:remaining|left)\s+(?:at least\s+)?(\d+|one|two|three|four|five|six)\s+semesters?\b|"
-        r"mindestens\s+(\d+|ein|eine|zwei|drei|vier|fünf|sechs)\s+(?:volle\s+)?semester?\s+(?:müssen\s+)?verbleib",
+        r"mindestens\s+(\d+|ein|eine|zwei|drei|vier|fünf|sechs)\s+(?:volle\s+)?semester?(?:\s+der\s+regelstudienzeit)?\s+(?:müssen\s+)?verbleib",
         lower,
     )
     if semester_minimum:
