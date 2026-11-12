@@ -100,6 +100,8 @@ async def match_profile(profile: dict) -> dict:
         "education_field", "domicile_region", "years_of_education", "latest_degree_division",
         "hat_score", "hat_category", "gre_score", "university_qs_rank", "admission_confirmed",
         "german_language_level", "professional_experience_years",
+        "months_in_germany", "german_residence_permit", "currently_enrolled_in_germany",
+        "months_remaining_in_program", "apprenticeship_year", "recognized_apprenticeship", "has_training_contract",
     }
     unknown_fields = set(profile) - allowed
     if unknown_fields:
