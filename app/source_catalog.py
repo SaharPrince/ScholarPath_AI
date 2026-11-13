@@ -35,6 +35,7 @@ GERMANY_SOURCES = (
     {"name": "University of Würzburg – Scholarships by Target Group", "official_url": "https://www.uni-wuerzburg.de/en/scholarships/by-target-group/", "source_type": "official_index", "country": "Germany"},
     {"name": "University of Würzburg – Oskar Karl Forster Scholarship", "official_url": "https://www.uni-wuerzburg.de/en/stipendien/nach-zielgruppen/oskar-karl-forster-scholarship/", "source_type": "official_programme", "country": "Germany"},
     {"name": "University of Würzburg – Romana Schott Scholarship", "official_url": "https://www.uni-wuerzburg.de/en/equity/wro/scholarships-and-funding-opportunities/romana-schott-scholarships/", "source_type": "official_programme", "country": "Germany"},
+    {"name": "University of Würzburg – Amend Medical Scholarship", "official_url": "https://www.med.uni-wuerzburg.de/en/service/stipendien/", "source_type": "official_programme", "country": "Germany"},
     {"name": "University of Kiel – Scholarships", "official_url": "https://www.uni-kiel.de/en/tf/study/scholarships", "source_type": "official_index", "country": "Germany"},
     {"name": "University of Kiel – Deutschlandstipendium", "official_url": "https://deutschlandstipendium-cau-kiel.de/en/infos-fuer-stipendiatinnen/", "source_type": "official_programme", "country": "Germany"},
     {"name": "HAW Kiel – Deutschlandstipendium", "official_url": "https://www.haw-kiel.de/en/studium/studieninteressierte/studienfinanzierung-stipendien/deutschlandstipendium/stipendiatin-werden/", "source_type": "official_programme", "country": "Germany"},
