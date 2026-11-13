@@ -1808,7 +1808,7 @@ def _augment_kiel_deutschlandstipendium(
             "Applicants who already receive merit-based financial support exceeding €30 per month are not eligible for this funding period. The provider says this depends on the amount and type of funding.",
         )
 
-    if re.search(r"2026/2027.{0,100}deadline.{0,30}passed", page_text) and re.search(
+    if re.search(r"(?:deadline.{0,80}2026/2027|2026/2027.{0,80}has passed)", page_text) and re.search(
         r"2027/2028.{0,120}beginning of 2027", page_text
     ):
         add(
@@ -1824,6 +1824,15 @@ def _augment_kiel_deutschlandstipendium(
             "required_documents",
             "Application documents",
             "Prepare a curriculum vitae and a motivation letter. The provider also requests a university entrance qualification certificate; additional certificates and evidence are submitted when applicable.",
+        )
+
+    if re.search(r"special achievements, awards, prizes", page_text) and re.search(
+        r"voluntary service lasting at least two months", page_text
+    ):
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "The selection process also views recent achievements, awards or prizes, vocational training, internships or voluntary service lasting at least two months, and current extracurricular or non-academic involvement favorably. These are selection factors, not universal mandatory eligibility requirements.",
         )
 
     if re.search(r"software challenge", page_text) and re.search(
