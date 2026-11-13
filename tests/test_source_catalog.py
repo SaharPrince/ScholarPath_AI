@@ -202,6 +202,21 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         self.assertEqual(haw["official_url"], "https://www.haw-kiel.de/en/studium/studieninteressierte/studienfinanzierung-stipendien/deutschlandstipendium/stipendiatin-werden/")
         self.assertEqual(fu["official_url"], "https://www.fu-berlin.de/en/sites/deutschlandstipendium/index.html")
 
+    def test_regensburg_and_tuebingen_deutschlandstipendium_are_individual_programmes(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        regensburg = sources["University of Regensburg – Deutschlandstipendium"]
+        tuebingen = sources["University of Tübingen – Deutschlandstipendium"]
+        self.assertEqual(regensburg["source_type"], "official_programme")
+        self.assertEqual(
+            regensburg["official_url"],
+            "https://www.uni-regensburg.de/en/studies/deutschlandstipendium/information-for-students",
+        )
+        self.assertEqual(tuebingen["source_type"], "official_programme")
+        self.assertEqual(
+            tuebingen["official_url"],
+            "https://uni-tuebingen.de/en/study/student-life/student-finances/deutschlandstipendium-scholarships",
+        )
+
     def test_klu_scholarships_and_financial_aid_page_is_an_index(self) -> None:
         sources = {source["name"]: source for source in GERMANY_SOURCES}
         klu = sources["Kühne Logistics University – Scholarships and Financial Aid"]
