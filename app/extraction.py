@@ -2328,7 +2328,7 @@ def _augment_amend_medical_scholarship(
             parsed.evidence.append(evidence_item)
         parsed.evidence_sources[evidence_item] = source_url
 
-    if "2027" in page_text and "300,00" in page_text:
+    if "2027" in page_text and re.search(r"€\s*300,\s*00", page_text):
         add_field("funding_summary", "€300 per month, starting in summer semester 2027.")
         add(
             "other_information",
