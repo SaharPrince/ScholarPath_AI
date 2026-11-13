@@ -257,6 +257,8 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any(item[1] == "Master's applicants" for item in result.criteria))
         self.assertTrue(any(item[0] == "ineligibility" and "doctoral" in item[2] for item in result.criteria))
         self.assertTrue(any(item[1] == "Foreign qualifications" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Medicine and dentistry evidence routes" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Transcript validity" for item in result.criteria))
         self.assertTrue(any(item[0] == "selection_criteria" for item in result.criteria))
         self.assertTrue(any("not collected" in item[2] for item in result.criteria))
         self.assertTrue(all(result.criteria_sources[item] == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
