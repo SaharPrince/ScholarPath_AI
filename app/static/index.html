@@ -465,8 +465,8 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 .requirement-group{margin:22px 0}
 .requirement-group>h4{font-size:13px;letter-spacing:.02em;color:#244d3d;margin:0 0 10px}
 .criterion{padding:16px 17px;margin:10px 0;border:1px solid #e3ebe4;border-radius:14px;background:#fff;box-shadow:0 5px 16px #173b2807}
-.criteriontop{display:flex;flex-direction:column;align-items:flex-start;gap:7px}
-.criterion-label{font-size:10px;text-transform:uppercase;letter-spacing:.09em;font-weight:800;color:#668073}
+.criteriontop{display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px}
+.criterion-label{font-size:13px;text-transform:none;letter-spacing:0;font-weight:800;color:#244d3d}
 .criterion-copy{font-size:14px;line-height:1.65;color:#263c32;font-weight:600;overflow-wrap:anywhere}
 .original-wording{margin-top:11px;border-top:1px solid #edf1ed;padding-top:9px}
 .original-wording summary{cursor:pointer;font-size:11px;color:#527c66;font-weight:750;list-style:none}
@@ -593,7 +593,7 @@ function requirementKey(type,label,text){
  if(/\bage\b/.test(raw))return "Age";
  if(/\b(experience|employment|professional)\b/.test(raw))return "Experience";
  if(/\b(document|transcript|certificate)\b/.test(raw))return "Documents";
- if(/\b(degree|education|study level|bachelor|master|phd|enrol)\b/.test(raw))return "Education";
+ if(/\b(degree|education|study level|bachelor|master|phd|enrol)\b/.test(raw))return "Study";
  if(/\b(admission|enrolment)\b/.test(raw))return "Admission";
  if(/\b(field|subject|discipline)\b/.test(raw))return "Study field";
  if(/\b(ineligib|cannot apply|not eligible)\b/.test(raw))return "Restriction";
@@ -630,7 +630,7 @@ function renderRequirements(criteria){
     key,value,raw:c.requirement_text||"",evidence:c.evidence_url||""
    });
   }));
- const section=(title,rows)=>!rows.length?"":'<section class="requirement-group"><h4>'+title+'</h4>'+rows.map(r=>'<article class="criterion"><div class="criteriontop"><span class="criterion-label">'+esc(r.key)+'</span><span class="criterion-copy">'+esc(r.value)+'</span></div>'+(r.raw&&r.raw.trim()!==r.value.trim()?'<details class="original-wording"><summary>See original provider wording</summary><p>'+esc(r.raw)+'</p></details>':'')+(r.evidence?'<a href="'+esc(r.evidence)+'" target="_blank" rel="noopener">Check this rule on the official source ↗</a>':'<span class="trust">Source page</span>')+'</article>').join("")+'</section>';
+ const section=(title,rows)=>!rows.length?"":'<section class="requirement-group"><h4>'+title+'</h4>'+rows.map(r=>'<article class="criterion"><div class="criteriontop"><span class="criterion-label">'+esc(r.key)+':</span><span class="criterion-copy">'+esc(r.value)+'</span></div>'+(r.raw&&r.raw.trim()!==r.value.trim()?'<details class="original-wording"><summary>See original provider wording</summary><p>'+esc(r.raw)+'</p></details>':'')+(r.evidence?'<a href="'+esc(r.evidence)+'" target="_blank" rel="noopener">Check this rule on the official source ↗</a>':'<span class="trust">Source page</span>')+'</article>').join("")+'</section>';
  const total=groups["Must meet"].length+groups["Other information"].length;
  if(!total)return '<p>No clear requirements were found on the live source page. Check the official source before applying.</p>';
  return '<p class="requirements-intro">Each condition is explained in plain language. Open the original wording to compare the provider’s exact rule.</p>'+section("Mandatory requirements",groups["Must meet"])+section("Other information",groups["Other information"]);
@@ -650,7 +650,7 @@ function render(){
  <h3>${esc(x.title)}</h3><div class="provider">${esc(x.provider_name||"Provider not stated")}</div>
  <div class="meta"><span>⌖ ${esc(x.study_destination||x.country||"Destination not stated")}</span><span>◷ ${esc(x.deadline_text||"Deadline not stated")}</span></div>
  <div class="funding">${esc(x.funding_summary||"Funding details are not stated on the source page.")}</div>
- <div class="cardfoot"><span class="source" title="${esc(x.source_name)}">Source: ${esc(x.source_name)}</span><button type="button" class="detailbtn" data-id="${x.id}">Read simple requirements ↗</button></div></article>`).join(""):(allScholarships.length===0?'<div class="empty"><strong>No current opportunities found</strong>This live scan did not identify a specific opportunity. Some providers may temporarily block automated access; try again later or visit the official source list.</div>':'<div class="empty"><strong>No matching scholarships found</strong>Try changing your search or filters.</div>');
+ <div class="cardfoot"><span class="source" title="${esc(x.source_name)}">Source: ${esc(x.source_name)}</span><button type="button" class="detailbtn" data-id="${x.id}">Check requirements ↗</button></div></article>`).join(""):(allScholarships.length===0?'<div class="empty"><strong>No current opportunities found</strong>This live scan did not identify a specific opportunity. Some providers may temporarily block automated access; try again later or visit the official source list.</div>':'<div class="empty"><strong>No matching scholarships found</strong>Try changing your search or filters.</div>');
  // Card actions use one delegated listener so they keep working after live results are re-rendered.\n 
 }
 
