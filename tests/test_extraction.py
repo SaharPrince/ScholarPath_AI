@@ -30,7 +30,7 @@ import unittest
 
 from app.extraction import (
     _clean, _classify_application_status, _classify_applicant_category, _classify_eligibility_statement,
-    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, extract_criteria_from_html, parse_scholarship_page, _save_evidence, _parse_hec_knowledge_corridor, _remove_site_chrome,
+    _is_generic_title, _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, extract_criteria_from_html, parse_scholarship_page, _save_evidence, _parse_hec_knowledge_corridor, _remove_site_chrome,
 )
 
 
@@ -1085,6 +1085,10 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(_is_mandatory_criterion("eligibility", "Applicants must hold a bachelor's degree."))
         self.assertFalse(_is_mandatory_criterion("eligibility", "Applicants with science backgrounds are particularly encouraged."))
         self.assertFalse(_is_mandatory_criterion("eligibility", "Relevant experience is preferred."))
+
+    def test_klu_scholarship_overview_is_not_misclassified_as_one_award(self) -> None:
+        self.assertTrue(_is_generic_title("Scholarships & Financial Aid"))
+        self.assertTrue(_is_generic_title("KLU Scholarships & Financial Aid"))
 
     def test_deadline_only_page_is_not_promoted(self) -> None:
         html = """<html><body><main>
