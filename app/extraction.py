@@ -1746,6 +1746,79 @@ def _augment_oskar_karl_forster(parsed: ExtractedPage, html: str, source_url: st
     return parsed
 
 
+
+TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://www.tu.berlin/en/careerservice/d-stipendium/application/basic-principles"
+)
+
+
+def _augment_tu_berlin_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = TU_BERLIN_DEUTSCHSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Keep the current-student and prospective-student routes separate."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    has_current_route = (
+        re.search(r"regularly enrolled bachelor.{0,30}master.{0,30}students", page_text)
+        and re.search(r"at least two semesters remaining", page_text)
+        and re.search(r"already enrolled at tu berlin", page_text)
+    )
+    if has_current_route:
+        add(
+            "category_i_eligibility",
+            "Current TU Berlin students",
+            "Regularly enrolled Bachelor's and Master's students already enrolled at TU Berlin at the beginning of the upcoming winter-semester funding period must still have at least two semesters remaining within the standard period of study.",
+        )
+
+    has_prospective_route = (
+        re.search(r"new students who have applied", page_text)
+        and re.search(r"commence their studies at tu berlin in the winter semester", page_text)
+    )
+    if has_prospective_route:
+        add(
+            "category_ii_eligibility",
+            "Prospective TU Berlin students",
+            "Prospective students who have applied to begin their studies at TU Berlin in the upcoming winter semester may apply; TU Berlin verifies enrolment in the degree programme before awarding the scholarship.",
+        )
+
+    if re.search(r"doctoral candidates.{0,80}not eligible to apply", page_text):
+        add(
+            "ineligibility",
+            "Doctoral candidates",
+            "Doctoral candidates are not eligible to apply for the TU Berlin Deutschlandstipendium.",
+        )
+
+    if re.search(r"second degree.{0,80}eligible", page_text) and re.search(r"complementary studies.{0,40}eligible", page_text):
+        add(
+            "target_audience",
+            "Additional study routes",
+            "Students pursuing a second degree or complementary studies are also eligible, subject to the applicable student-route requirements.",
+        )
+
+    if re.search(r"international students and applicants of tu berlin can apply", page_text):
+        add(
+            "target_audience",
+            "International applicants",
+            "International students and applicants of TU Berlin may apply.",
+        )
+
+    return parsed
+
+
 def _augment_romana_schott(parsed: ExtractedPage, html: str, source_url: str = ROMANA_SCHOTT_URL) -> ExtractedPage:
     """Add nomination-process details without collecting sensitive personal data."""
     root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
@@ -2829,6 +2902,14 @@ async def extract_candidate_details(
 
             if parsed and candidate["candidate_url"].rstrip("/") == OSKAR_KARL_FORSTER_URL.rstrip("/"):
                 parsed = _augment_oskar_karl_forster(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if (
+                parsed
+                and candidate["candidate_url"].rstrip("/") == TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
+            ):
+                parsed = _augment_tu_berlin_deutschlandstipendium(
                     parsed, html or "", candidate["candidate_url"]
                 )
 
