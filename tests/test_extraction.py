@@ -173,14 +173,14 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         parsed = ExtractedPage("Amend Medical Scholarship", None, "University of Würzburg")
         html = """
         <html><body><main>
-          <p>Funding through the Amend Scholarship from summer semester 2027.</p>
-          <p>Scholarships in the amount of monthly € 300,00 are awarded.</p>
-          <p>Applicants must provide an Abitur average of at least 2,5.</p>
-          <p>The Physikum must be completed with the grade "sehr gut".</p>
-          <p>During funding, regular academic achievement records must be submitted at the end of each semester.</p>
-          <p>Funding is provided within the standard study period from the Physikum.</p>
-          <p>Application deadline: 30.11.2026.</p>
-          <p>Send your application with CV, motivation letter, Abitur certificate, proof of completed Physikum and BAföG notice if applicable.</p>
+          <p>Förderung durch Amend-Stipendium ab dem SoSe 2027.</p>
+          <p>Stipendien in Höhe von monatlich € 300,00 werden vergeben.</p>
+          <p>Abiturdurchschnitt von mindestens 2,5.</p>
+          <p>Das Physikum mit der Note "sehr gut" abgeschlossen.</p>
+          <p>Während der Förderung regelmäßige Leistungsnachweise am Ende eines Semesters vorlegen.</p>
+          <p>Förderung innerhalb der Regelstudiendauer ab Physikum.</p>
+          <p>Bewerbungsschluss: 30.11.2026.</p>
+          <p>Lebenslauf, Motivationsschreiben, Abiturzeugnis, Bescheinigung über das abgeschlossene Physikum und BAföG-Bescheid wenn Sie BAföG erhalten.</p>
           <p>The recipient must ensure that the university sets up an account for payments.</p>
           <a href="https://www.med.uni-wuerzburg.de/fileadmin/03000000/user_upload/dateien_studiendekanat/Stipendien/Foerdergrundsaetze_Studienstiftung_Amend_30.03.2015.pdf">Further information on funding principles</a>
         </main></body></html>
