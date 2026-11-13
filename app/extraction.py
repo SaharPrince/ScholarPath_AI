@@ -1782,7 +1782,7 @@ def _augment_kiel_deutschlandstipendium(
             "Applicants must meet Kiel University's admission requirements and either be preparing to start a programme at Kiel University or already be enrolled there. The scholarship is linked to studying at Kiel University.",
         )
 
-    if re.search(r"foreign university entrance qualifications", page_text) and re.search(
+    if re.search(r"university entrance qualification", page_text) and re.search(
         r"recognized for university studies at the university of kiel", page_text
     ):
         add(
