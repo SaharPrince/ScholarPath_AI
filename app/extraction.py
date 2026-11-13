@@ -1764,7 +1764,7 @@ def _augment_klu_deutschlandstipendium(
             "The published application window for the September 2026–August 2027 funding period was 27 March–31 May 2026 and has closed. The official page does not yet confirm a later application deadline.",
         )
 
-    if re.search(r"september 2026 - august 2027", page_text):
+    if re.search(r"sept(?:ember)?\\.?\\s+2026\\s*[-–]\\s*aug(?:ust)?\\.?\\s+2027", page_text):
         add(
             "other_information",
             "2026–2027 funding period",
