@@ -344,6 +344,13 @@ def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
         text,
     ):
         return "language_requirements", "Language requirements"
+    if re.search(
+        r"(?i)(?:not|is not|are not)\s+(?:a\s+)?(?:prerequisite|requirement|necessary|required)|\bnot required\b",
+        statement,
+    ) and re.search(r"(?i)academic|outstanding achievement|grade|gpa|ects", statement):
+        return "selection_criteria", "Academic assessment clarification"
+    if re.search(r"(?i)\b(?:approximately|about|around)\s+\d+\s+ects\b|\bgenerally accepted\b.{0,100}\bects\b", statement):
+        return "selection_criteria", "Academic progress guidance"
     if re.search(r"\b(above-average|academic performance|grades|gpa|school performance)\b", text):
         return "academic_requirements", "Academic requirements"
     if re.search(r"\b(bachelor(?:'s)?|master(?:'s)?|phd|doctoral|bachelorabschluss|bachelorstudium\w*)\b", text):
@@ -1664,6 +1671,130 @@ def _augment_villigst_doctoral_faq(
     return parsed
 
 
+OSKAR_KARL_FORSTER_URL = (
+    "https://www.uni-wuerzburg.de/en/stipendien/nach-zielgruppen/oskar-karl-forster-scholarship/"
+)
+ROMANA_SCHOTT_URL = (
+    "https://www.uni-wuerzburg.de/en/equity/wro/scholarships-and-funding-opportunities/romana-schott-scholarships/"
+)
+
+
+def _augment_oskar_karl_forster(parsed: ExtractedPage, html: str, source_url: str = OSKAR_KARL_FORSTER_URL) -> ExtractedPage:
+    """Preserve Oskar Karl Forster's semester exception and evidence nuances."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"from the second semester onwards", page_text):
+        add(
+            "study_level",
+            "Minimum study semester",
+            "Applicants in non-Master's programmes must be enrolled from the second semester onwards; the second-semester restriction does not apply to Master's students.",
+        )
+    if re.search(r"enrolment at the university of würzburg must be proven", page_text):
+        add(
+            "eligibility",
+            "University of Würzburg enrolment",
+            "Applicants must be currently enrolled at the University of Würzburg and provide a current certificate of enrolment with the application.",
+        )
+    if re.search(r"gifted and needy students", page_text):
+        add(
+            "eligibility",
+            "Financial need",
+            "Applicants must demonstrate financial need. Receiving BAföG is accepted as evidence; otherwise the provider assesses relevant supporting income documents.",
+        )
+    if re.search(r"particularly outstanding academic achievements are not a prerequisite", page_text):
+        add(
+            "selection_criteria",
+            "Academic performance clarification",
+            "Particularly outstanding academic achievements are not required. The provider looks for the usual academic progress for the semester reached; around 20 ECTS per semester is described as an indicator of continued progress, not a fixed minimum.",
+        )
+    if re.search(r"befürwortung einer hochschullehrerin oder eines hochschullehrers", page_text):
+        add(
+            "application_requirements",
+            "Learning-material purchase approval",
+            "For a grant to buy books or other learning materials, a full-time university lecturer must confirm that the planned purchase is appropriate and confirm the applicant's funding eligibility in light of previous study progress.",
+        )
+    if re.search(r"can only be claimed once", page_text):
+        add(
+            "application_requirements",
+            "One-time grant",
+            "The grant can generally be received only once; the recipient must later provide proof that the grant was used for the approved purchase.",
+        )
+    if re.search(r"foreign documents can only be utilised in officially certified translations or in english-language copies", page_text):
+        add(
+            "application_requirements",
+            "Foreign-language documents",
+            "Foreign documents must be submitted as officially certified translations or in English-language copies.",
+        )
+    if re.search(r"printing costs of dissertations", page_text):
+        add(
+            "application_requirements",
+            "Exceptional dissertation-printing support",
+            "In exceptional cases, a grant may be requested for dissertation printing costs; the provider applies a separate personal-income assessment to this type of support.",
+        )
+    return parsed
+
+
+def _augment_romana_schott(parsed: ExtractedPage, html: str, source_url: str = ROMANA_SCHOTT_URL) -> ExtractedPage:
+    """Add nomination-process details without collecting sensitive personal data."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"awarded to needy female students of all faculties", page_text):
+        add(
+            "eligibility",
+            "Applicant group and financial need",
+            "The fund is intended for female students of all faculties who meet its financial-need rules under BAföG. Gender and financial circumstances are not assessed by this matcher; applicants must review the official provider process privately.",
+        )
+    if re.search(r"not possible to apply for a scholarship on one's own", page_text):
+        add(
+            "application_requirements",
+            "Nomination required",
+            "Students cannot apply independently. A proposal from an eligible University of Würzburg faculty member is required, and a consultation with a staff member of the University Women's Representative is obligatory.",
+        )
+    if re.search(r"application deadline.*?march 31 and september 30", page_text):
+        add(
+            "application_requirements",
+            "Proposal deadlines",
+            "The proposal procedure has two annual deadlines: 31 March and 30 September for consideration at the next Equal Opportunities Commission meeting.",
+        )
+    if re.search(r"the justification for the proposal", page_text) and re.search(r"proposal form", page_text):
+        add(
+            "required_documents",
+            "Nomination and application documents",
+            "The proposal must include an expert justification of the student's subject and personal suitability, a brief statement from an eligible faculty body, and the student's completed proposal form with the additional requested documents.",
+        )
+    if re.search(r"no benefits will be granted if you are not in need", page_text):
+        add(
+            "eligibility",
+            "Funding during leave semesters",
+            "No benefits are paid for semesters of leave; the provider also confirms that funding is limited to applicants who meet its financial-need assessment.",
+        )
+    return parsed
+
+
 HEINRICH_BOLL_APPLICATION_URL = "https://www.boell.de/en/applying-scholarship"
 HEINRICH_BOLL_FAQ_URL = "https://www.boell.de/en/2026/03/26/frequently-asked-questions-about-application-process"
 
@@ -2695,6 +2826,16 @@ async def extract_candidate_details(
                     parsed = _augment_fes_apprenticeship_faq(
                         parsed, faq_html, FES_APPRENTICESHIP_FAQ_URL
                     )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == OSKAR_KARL_FORSTER_URL.rstrip("/"):
+                parsed = _augment_oskar_karl_forster(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == ROMANA_SCHOTT_URL.rstrip("/"):
+                parsed = _augment_romana_schott(
+                    parsed, html or "", candidate["candidate_url"]
+                )
 
             if (
                 parsed
