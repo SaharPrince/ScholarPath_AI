@@ -1655,6 +1655,93 @@ def _augment_villigst_doctoral_faq(
     return parsed
 
 
+FES_APPRENTICESHIP_FAQ_URL = (
+    "https://www.fes.de/studienfoerderung/faq/faq-fuer-bewerber-innen-der-ausbildungsfoerderung"
+)
+
+
+def _augment_fes_apprenticeship_faq(
+    parsed: ExtractedPage, html: str, faq_url: str = FES_APPRENTICESHIP_FAQ_URL
+) -> ExtractedPage:
+    """Add official FAQ clarifications to the existing FES apprenticeship award."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), faq_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        statement = _clean(statement)
+        item = (kind, label, statement)
+        if not statement or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = faq_url
+        evidence_item = ("eligibility", statement)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = faq_url
+
+    if re.search(r"duale, schulische und außerbetriebliche ausbildungsgänge", page_text):
+        add(
+            "application_requirements",
+            "Supported apprenticeship formats",
+            "The FES apprenticeship scholarship can support dual, school-based and extra-company vocational training.",
+        )
+    if re.search(r"staatlich anerkannten prüfung", page_text):
+        add(
+            "eligibility",
+            "State-recognised training qualification",
+            "The vocational training must be in a legally regulated occupation and lead to a state-recognised examination, including eligible BBiG, HwO, federally regulated healthcare or equivalent state-regulated occupations.",
+        )
+        add(
+            "ineligibility",
+            "Unregulated training",
+            "Training in an occupation that is not legally regulated, or that does not end with a state-recognised examination, is not funded.",
+        )
+    if re.search(r"zu beginn der ausbildung.{0,120}45\\. lebensjahr", page_text):
+        add(
+            "age_limit",
+            "Age at the start of training",
+            "At the start of vocational training, applicants generally must not yet have reached 45 years of age; statutory exceptions under §10 BAföG may apply.",
+        )
+    if re.search(r"§\\s*8\\s*baf[oö]g", page_text):
+        add(
+            "nationality",
+            "Eligible legal-status groups",
+            "Applicants must belong to an eligible person group under §8 BAföG. The law lists several nationality, residence and employment-related routes; check the current official rules privately.",
+        )
+    if re.search(r"nicht auf die erstausbildung beschränkt", page_text):
+        add(
+            "application_requirements",
+            "Previous education or training",
+            "The FES apprenticeship scholarship is not limited to a first vocational qualification; a previously completed or discontinued apprenticeship or study programme does not automatically exclude an applicant.",
+        )
+    if re.search(r"teilzeitberufsausbildung.{0,100}bbig", page_text):
+        add(
+            "application_requirements",
+            "Part-time vocational training",
+            "Part-time vocational training may be funded if it complies with the Vocational Training Act (BBiG).",
+        )
+    if re.search(r"nicht in der spd engagieren|kein(?:e|en)? mitgliedschaft.{0,80}spd", page_text):
+        add(
+            "application_requirements",
+            "Party membership",
+            "Membership in the Social Democratic Party (SPD) is not required.",
+        )
+
+    if re.search(r"derzeit ist keine bewerbung möglich", page_text):
+        if not parsed.fields.get("deadline_text"):
+            deadline_text = (
+                "The 2026 application window was expected from 16 March to 17 May 2026. "
+                "The official FAQ currently says applications are not possible; no later intake date is published there."
+            )
+            parsed.fields["deadline_text"] = deadline_text
+            parsed.fields["deadline_date"] = "2026-05-17"
+            parsed.evidence.append(("deadline_text", deadline_text))
+            parsed.evidence_sources[("deadline_text", deadline_text)] = faq_url
+        parsed.application_status = "closed"
+
+    return parsed
+
+
 HEC_KNOWLEDGE_CORRIDOR_BASE = (
     "https://www.hec.gov.pk/english/scholarshipsgrants/US-Pakcorridor/Pages/"
 )
@@ -2453,6 +2540,20 @@ async def extract_candidate_details(
                 )
             else:
                 parsed = parse_scholarship_page(html, candidate["candidate_url"], candidate["candidate_title"]) if html else None
+            if (
+                parsed
+                and (urlparse(candidate["candidate_url"]).hostname or "").casefold() == "www.fes.de"
+                and urlparse(candidate["candidate_url"]).path.rstrip("/").casefold()
+                == "/studienfoerderung/stipendium/stipendien-auszubildende"
+            ):
+                faq_html, _faq_error = await _fetch_page(
+                    client, FES_APPRENTICESHIP_FAQ_URL
+                )
+                if faq_html:
+                    parsed = _augment_fes_apprenticeship_faq(
+                        parsed, faq_html, FES_APPRENTICESHIP_FAQ_URL
+                    )
+
             if (
                 parsed
                 and (urlparse(candidate["candidate_url"]).hostname or "").casefold() == "www.evstudienwerk.de"
