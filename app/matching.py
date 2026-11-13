@@ -48,7 +48,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
 
     if re.search(
         r"(?i)\b(?:refugee|asylum\s+seeker|disabilit(?:y|ies)|disabled|"
-        r"chronic\s+illness|religion|religious|denomination|muslim|christian|"
+        r"chronic\s+illness|religion|religious|denomination|muslim|christian|political\s+engagement|politisch(?:es|er|e)?\s+engagement|"
         r"protestant|catholic|gender|women|woman|female|single\s+parent|"
         r"minor\s+child(?:ren)?|caregiv(?:er|ing)|care\s+responsibilit(?:y|ies)|"
         r"family\s+responsibilit(?:y|ies)|social\s+democra(?:cy|tic)|political\s+(?:beliefs?|ideolog(?:y|ies)|alignment)|gesellschaftspolitisch|werte[n]?\s+der\s+sozialen\s+demokratie)\b",
@@ -224,20 +224,37 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         return _result("pass" if remaining >= 6 else "fail",
                        f"You reported {remaining:g} months remaining; at least 6 are required.")
 
-    if re.search(r"(?:first and.*second year|beginning of the first|spätestens am anfang des zweiten|ausbildungsjahr)", lower) and re.search(r"(?:training|apprenticeship|ausbildung|ausbildungsjahr)", lower):
+    if re.search(
+        r"(?:at the beginning of the first and no later than the beginning of the second|"
+        r"first and.*second year|spätestens am anfang des zweiten|"
+        r"am anfang des ersten.*ausbildungsjahr)",
+        lower,
+    ):
         year = _number(profile.get("apprenticeship_year"))
         if year is None:
-            return _result("unknown", "Add your current apprenticeship year to check this condition.")
-        return _result("pass" if 1 <= year <= 2 else "fail",
-                       f"You reported apprenticeship year {year:g}; this award accepts the first or second year.")
+            return _result("unknown", "Add your current apprenticeship year to check this application window.")
+        if year < 1 or year > 2:
+            return _result("fail", "This FES application window closes at the beginning of the second apprenticeship year.")
+        if year == 1:
+            return _result("pass", "You reported that you are in the first apprenticeship year, within the published application window.")
+        stage = profile.get("apprenticeship_second_year_stage")
+        if stage == "beginning":
+            return _result("pass", "You reported that you are at the beginning of the second apprenticeship year.")
+        if stage == "later":
+            return _result("fail", "The FES application window closes at the beginning of the second apprenticeship year.")
+        return _result("unknown", "You reported the second apprenticeship year. Confirm whether you are still at its beginning.")
 
-    if re.search(r"(?:state[- ]recognized|state recognized|staatlich anerkannten)\s+(?:training|occupation|ausbildungsberuf)", lower):
+    if re.search(
+        r"(?:state[- ]recognized|state recognized|staatlich anerkannt|anerkannt(?:e|en|er)?\\s+(?:durch|nach)\\s+(?:das?\\s+)?(?:bbig|hwo)|"
+        r"bbig|hwo|bundesgesetzlich geregelt.{0,80}gesundheitswesen|landesrechtlich geregelt)",
+        lower,
+    ) and re.search(r"(?:training|occupation|ausbildung|ausbildungsberuf|berufsausbildung|bbig|hwo)", lower):
         recognized = profile.get("recognized_apprenticeship")
         if recognized is None:
-            return _result("unknown", "Confirm whether your apprenticeship is a state-recognized occupation.")
+            return _result("unknown", "Confirm whether your apprenticeship is recognised under the training framework listed by the provider.")
         return _result("pass" if recognized else "fail",
-                       "Your apprenticeship is marked as state-recognized." if recognized
-                       else "This award requires a state-recognized apprenticeship.")
+                       "Your apprenticeship is marked as recognised under the provider's listed framework." if recognized
+                       else "This award requires an apprenticeship recognised under the provider's listed framework.")
 
     if re.search(r"(?:training contract|contract for training|ausbildungsvertrag|written confirmation.*training place)", lower):
         contract = profile.get("has_training_contract")
@@ -348,6 +365,13 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         age = _number(profile.get("age"))
         if age is None:
             return _result("unknown", "Add your age to check the published age limit.")
+        if re.search(r"(?i)\\b(?:exceptions?|ausnahmen?)\\b", lower):
+            limits = [int(x) for x in re.findall(r"\\b(\\d{2})\\s*(?:years?|yrs?|jahre?)\\b", lower)]
+            if limits and age >= min(limits):
+                return _result(
+                    "unknown",
+                    "You are at or above the stated age guideline, but the provider describes exceptions. Review those exceptions privately with the provider; no family or personal-circumstance details are requested here.",
+                )
         range_match = re.search(r"\b(\d{2})\s*(?:-|–|to)\s*(\d{2})\s*(?:years?|yrs?)?\b", lower)
         if range_match:
             minimum, maximum = (int(range_match.group(1)), int(range_match.group(2)))
