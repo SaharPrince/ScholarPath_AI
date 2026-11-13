@@ -13,6 +13,8 @@ from app.extraction import (
     _augment_fes_apprenticeship_faq,
     TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
     _augment_tu_berlin_deutschlandstipendium,
+    KIEL_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_kiel_deutschlandstipendium,
 )
 import sqlite3
 import unittest
@@ -2326,6 +2328,63 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         assert preference is not None
         self.assertEqual(preference[0], "selection_criteria")
         self.assertFalse(_is_mandatory_criterion(preference[0], preference[2]))
+
+
+    def test_kiel_deutschlandstipendium_separates_eligibility_from_selection_and_documents(self):
+        parsed = ExtractedPage(
+            title="University of Kiel – Deutschlandstipendium",
+            description=None,
+            provider_name="Kiel University",
+        )
+        html = """
+        <html><body><main>
+          <h1>Information for scholarship recipients</h1>
+          <p>All prospective students of Kiel University as well as students of all subjects
+             who are already enrolled at Kiel University are eligible to apply.</p>
+          <p>Any university entrance qualification that is recognized for university studies
+             at the University of Kiel also entitles the holder to apply.</p>
+          <p>In addition to a first degree, second or supplementary degree programs as well as
+             Master's degree programs are generally eligible for funding.</p>
+          <p>Those who already receive merit-based financial support exceeding €30 per month
+             will not receive a Germany Scholarship during the funding period.</p>
+          <p>The application deadline for the Germany Scholarship 2026/2027 has passed.
+             The application deadline for the 2027/2028 scholarship will be published here
+             at the beginning of 2027.</p>
+          <ul><li>Curriculum vitae</li><li>Letter of motivation</li></ul>
+          <p>Applicants who have successfully participated in a Software Challenge and who
+             are applying to CAU for Computer Science must submit the scholarship certificate
+             and a recommendation letter.</p>
+          <p>Special achievements, awards and social involvement are viewed favorably.</p>
+        </main></body></html>
+        """
+        result = _augment_kiel_deutschlandstipendium(parsed, html)
+        self.assertTrue(any(item[0] == "eligibility" and "prospective students" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "application_requirements" and "foreign university entrance qualification" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "target_audience" and "second degrees" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "exceeding €30" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "application_requirements" and "beginning of 2027" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "required_documents" and "curriculum vitae" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "application_requirements" and "Software Challenge" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == KIEL_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" for item in result.criteria))
+        self.assertFalse(any(item[0] == "eligibility" and "social involvement" in item[2].lower() for item in result.criteria))
+
+    def test_kiel_deutschlandstipendium_does_not_invent_a_future_deadline(self):
+        parsed = ExtractedPage(
+            title="University of Kiel – Deutschlandstipendium",
+            description=None,
+            provider_name="Kiel University",
+        )
+        html = """
+        <html><body><main>
+          <p>The application deadline for 2026/2027 has passed.
+             The 2027/2028 deadline will be published at the beginning of 2027.</p>
+        </main></body></html>
+        """
+        result = _augment_kiel_deutschlandstipendium(parsed, html)
+        period = next(item[2] for item in result.criteria if item[1] == "Application period")
+        self.assertIn("no exact future deadline is confirmed", period)
+        self.assertFalse(re.search(r"\b\d{1,2}[./-]\d{1,2}[./-]2027\b", period))
 
 
 if __name__ == "__main__":
