@@ -37,6 +37,8 @@ GERMANY_SOURCES = (
     {"name": "University of Würzburg – Romana Schott Scholarship", "official_url": "https://www.uni-wuerzburg.de/en/equity/wro/scholarships-and-funding-opportunities/romana-schott-scholarships/", "source_type": "official_programme", "country": "Germany"},
     {"name": "University of Kiel – Scholarships", "official_url": "https://www.uni-kiel.de/en/tf/study/scholarships", "source_type": "official_index", "country": "Germany"},
     {"name": "University of Kiel – Deutschlandstipendium", "official_url": "https://deutschlandstipendium-cau-kiel.de/en/infos-fuer-stipendiatinnen/", "source_type": "official_programme", "country": "Germany"},
+    {"name": "HAW Kiel – Deutschlandstipendium", "official_url": "https://www.haw-kiel.de/en/studium/studieninteressierte/studienfinanzierung-stipendien/deutschlandstipendium/stipendiatin-werden/", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Freie Universität Berlin – Deutschlandstipendium", "official_url": "https://www.fu-berlin.de/en/sites/deutschlandstipendium/index.html", "source_type": "official_programme", "country": "Germany"},
 )
 
 
