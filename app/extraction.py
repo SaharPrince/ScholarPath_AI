@@ -1696,13 +1696,13 @@ def _augment_fes_apprenticeship_faq(
             "Unregulated training",
             "Training in an occupation that is not legally regulated, or that does not end with a state-recognised examination, is not funded.",
         )
-    if re.search(r"zu beginn der ausbildung.{0,120}45\\. lebensjahr", page_text):
+    if re.search(r"zu beginn der ausbildung.{0,120}45\.\s*lebensjahr", page_text):
         add(
             "age_limit",
             "Age at the start of training",
             "At the start of vocational training, applicants generally must not yet have reached 45 years of age; statutory exceptions under §10 BAföG may apply.",
         )
-    if re.search(r"§\\s*8\\s*baf[oö]g", page_text):
+    if re.search(r"§\s*8\s*baf[oö]g", page_text):
         add(
             "nationality",
             "Eligible legal-status groups",
