@@ -1677,6 +1677,10 @@ OSKAR_KARL_FORSTER_URL = (
 ROMANA_SCHOTT_URL = (
     "https://www.uni-wuerzburg.de/en/equity/wro/scholarships-and-funding-opportunities/romana-schott-scholarships/"
 )
+AMEND_SCHOLARSHIP_URL = "https://www.med.uni-wuerzburg.de/en/service/stipendien/"
+AMEND_FUNDING_GUIDELINES_URL = (
+    "https://www.med.uni-wuerzburg.de/fileadmin/03000000/user_upload/dateien_studiendekanat/Stipendien/Foerdergrundsaetze_Studienstiftung_Amend_30.03.2015.pdf"
+)
 
 
 KLU_DEUTSCHLANDSTIPENDIUM_URL = (
@@ -2281,6 +2285,135 @@ def _augment_romana_schott(parsed: ExtractedPage, html: str, source_url: str = R
 
 HEINRICH_BOLL_APPLICATION_URL = "https://www.boell.de/en/applying-scholarship"
 HEINRICH_BOLL_FAQ_URL = "https://www.boell.de/en/2026/03/26/frequently-asked-questions-about-application-process"
+
+
+
+def _augment_amend_medical_scholarship(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = AMEND_SCHOLARSHIP_URL,
+) -> ExtractedPage:
+    """Capture the current Amend call and its linked foundation principles."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+    linked_guidelines = any(
+        (urlparse(anchor.get("href", "")).path or "").endswith(".pdf")
+        and "foerdergrundsaetze_studienstiftung_amend" in anchor.get("href", "").casefold()
+        for anchor in root.find_all("a", href=True)
+    )
+
+    def add(
+        kind: str,
+        label: str,
+        statement: str,
+        evidence_url: str = source_url,
+    ) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = evidence_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"stipendien ab dem sose 2027", page_text) and re.search(
+        r"monatlich € 300,00", page_text
+    ):
+        add_field("funding_summary", "€300 per month, starting in summer semester 2027.")
+        add(
+            "other_information",
+            "Funding amount and start",
+            "The current call offers €300 per month starting in summer semester 2027.",
+        )
+
+    if re.search(r"bewerbungsschluss.*30\.11\.2026", page_text):
+        add_field(
+            "deadline_text",
+            "30 November 2026 (published deadline for the summer-semester 2027 call).",
+        )
+        add(
+            "application_requirements",
+            "Application deadline",
+            "The published application deadline is 30 November 2026 for funding starting in summer semester 2027.",
+        )
+
+    if re.search(r"abiturdurchschnitt von mindestens 2,5", page_text):
+        add(
+            "academic_requirements",
+            "Abitur grade",
+            "Applicants must meet the published Abitur average requirement of at least 2.5 in the German grading system.",
+        )
+
+    if re.search(r"physikum mit der note.*sehr gut", page_text):
+        add(
+            "academic_requirements",
+            "Physikum result",
+            "Applicants must have completed the Physikum with the grade 'very good'.",
+        )
+
+    if re.search(r"regelstudiendauer ab physikum", page_text):
+        add(
+            "study_level",
+            "Funding period in medical studies",
+            "Funding is provided within the standard study period counted from completion of the Physikum.",
+        )
+
+    if re.search(r"regelmäßige leistungsnachweise", page_text):
+        add(
+            "application_requirements",
+            "Ongoing academic progress",
+            "Recipients must submit copies of their academic achievement records to the foundation at the end of each semester.",
+        )
+
+    if all(
+        re.search(pattern, page_text)
+        for pattern in (
+            r"lebenslauf",
+            r"motivationsschreiben",
+            r"abiturzeugnis",
+            r"bescheinigung über das abgeschlossene physikum",
+        )
+    ):
+        add(
+            "required_documents",
+            "Application documents",
+            "The current call requests a CV, motivation letter, Abitur certificate and proof of completed Physikum. A BAföG notice should also be supplied if the applicant receives BAföG.",
+        )
+
+    if linked_guidelines:
+        add(
+            "eligibility",
+            "Medical studies and dissertation project",
+            "The linked foundation principles state that the scholarship is for medical students at Julius-Maximilians-Universität Würzburg who are preparing a dissertation leading to the Dr. med. degree. The dissertation topic and its start date are requested.",
+            AMEND_FUNDING_GUIDELINES_URL,
+        )
+        add(
+            "other_information",
+            "Possible completion extension",
+            "The linked foundation principles allow an application for up to three additional months after the State Examination to complete the dissertation, subject to the stated examination and dissertation grades.",
+            AMEND_FUNDING_GUIDELINES_URL,
+        )
+
+    if re.search(r"konto einricht", page_text):
+        add(
+            "other_information",
+            "Payment arrangements",
+            "The current call states that the recipient must arrange a university account for scholarship payments.",
+        )
+
+    return parsed
 
 
 def _augment_heinrich_boll_faq(
@@ -3354,6 +3487,11 @@ async def extract_candidate_details(
 
             if parsed and candidate["candidate_url"].rstrip("/") == ROMANA_SCHOTT_URL.rstrip("/"):
                 parsed = _augment_romana_schott(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == AMEND_SCHOLARSHIP_URL.rstrip("/"):
+                parsed = _augment_amend_medical_scholarship(
                     parsed, html or "", candidate["candidate_url"]
                 )
 
