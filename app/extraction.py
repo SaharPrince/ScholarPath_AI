@@ -1863,16 +1863,13 @@ def _augment_fu_berlin_deutschlandstipendium(
             parsed.evidence.append(evidence_item)
         parsed.evidence_sources[evidence_item] = source_url
 
-    if re.search(r"enrollment at fre ie universität berlin|enrollment at fre ie", page_text):
-        pass
-
     if re.search(r"enrollment at fre[i]?e universität berlin", page_text) or re.search(
         r"enrollment at fre ie universität berlin", page_text
     ):
         add(
             "eligibility",
             "Study at Freie Universität Berlin",
-            "Applicants must be enrolled at Freie Universität Berlin within the standard time to degree during the funding period, or hold a letter of acceptance to start a degree programme there.",
+            "Applicants must either be degree students at Freie Universität Berlin within the standard time to degree during the funding period, or hold a letter of acceptance to start a degree programme there.",
         )
 
     if re.search(r"all nations and all parts of society", page_text):
