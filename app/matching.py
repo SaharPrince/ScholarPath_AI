@@ -189,6 +189,16 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         timing_matched = True
 
     semester = _number(profile.get("current_semester_in_program"))
+    if re.search(r"from the second semester onwards|from the second semester onward", lower):
+        target_level = (profile.get("target_study_level") or "").strip().lower()
+        if re.search(r"does not apply to master's students|does not apply to master'?s students", lower) and target_level in {"master", "masters", "master's"}:
+            return _result("pass", "The provider exempts Master's students from the second-semester restriction.")
+        if semester is None:
+            return _result("unknown", "Add your current semester to check the second-semester requirement.")
+        if semester < 2:
+            return _result("fail", "This scholarship requires at least the second semester for non-Master's study programmes.")
+        return _result("pass", "You have reached the second semester required for this scholarship.")
+
     if re.search(r"\bafter\s+(?:the\s+)?first\s+semester\b|\bnach\s+dem\s+ersten\s+semester\b", lower):
         if semester is None:
             return _result("unknown", "Add your current semester to check whether you have completed the first semester.")
