@@ -244,6 +244,9 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
           <p>The application period for the upcoming procedure (summer semester 2027 and winter semester 2027/28) runs from 1.11. to 30.11.2026.</p>
           <p>Applicants with a foreign high school diploma must submit their certificate for conversion to the German grading system.</p>
           <p>Long-term extracurricular or non-subject-related activities, voluntary work, and social engagement may be included in the overall assessment.</p>
+          <p>Special case 1: Students of the medicine program submit the following proofs.</p>
+          <p>Special case 2: Students of the dentistry program submit the following proofs.</p>
+          <p>Requesting a Transcript of Records: the transcript must not be older than October 15 of the current year.</p>
           <p>When applying, you must provide your tax identification number.</p>
         </main></body></html>
         """
