@@ -457,6 +457,21 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
             "evidence_url": "https://official.example/eligibility",
         }
 
+    def test_heinrich_boll_masters_part_time_rule_does_not_reject_phd_applicants(self):
+        criterion = self.criterion(
+            "study_level",
+            "Master's study format",
+            "For Master's applicants, part-time degree programmes are not eligible for funding.",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"target_study_level": "master"})["status"],
+            "fail",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"target_study_level": "phd"})["status"],
+            "informational",
+        )
+
     def test_german_b2_language_requirement_uses_profile_level(self):
         c = self.criterion("language_requirements", "German language", "German language skills of at least level B2.")
         self.assertEqual(evaluate_criterion(c, {"german_language_level": "B2"})["status"], "pass")
