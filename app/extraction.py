@@ -2328,7 +2328,7 @@ def _augment_amend_medical_scholarship(
             parsed.evidence.append(evidence_item)
         parsed.evidence_sources[evidence_item] = source_url
 
-    if re.search(r"stipendien ab dem sose 2027", page_text) and re.search(
+    if re.search(r"(?:amend-)?stipend(?:ium|ien) ab dem sose 2027", page_text) and re.search(
         r"monat(?:i)?lich € 300,00", page_text
     ):
         add_field("funding_summary", "€300 per month, starting in summer semester 2027.")
