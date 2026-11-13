@@ -253,6 +253,16 @@ class ProfileMatchingTests(unittest.TestCase):
             "pass",
         )
 
+    def test_financial_challenges_remain_manual_provider_review(self):
+        criterion = self.criterion(
+            "eligibility",
+            "Financial circumstances",
+            "Applicants must be facing financial challenges during their studies.",
+        )
+        result = evaluate_criterion(criterion, {})
+        self.assertEqual(result["status"], "unknown")
+        self.assertIn("does not ask for income", result["explanation"])
+
     def test_two_remaining_semesters_rule_is_matched_exactly(self):
         criterion = self.criterion(
             "eligibility",
