@@ -2347,7 +2347,7 @@ def _augment_amend_medical_scholarship(
             "The published application deadline is 30 November 2026 for funding starting in summer semester 2027.",
         )
 
-    if re.search(r"abiturdurchschnitt von mindestens 2,5", page_text):
+    if re.search(r"abiturdurchschnitt von mindestens 2,\s*5", page_text):
         add(
             "academic_requirements",
             "Abitur grade",
