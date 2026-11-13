@@ -19,6 +19,8 @@ from app.extraction import (
     _augment_haw_kiel_deutschlandstipendium,
     FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
     _augment_fu_berlin_deutschlandstipendium,
+    KLU_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_klu_deutschlandstipendium,
 )
 import sqlite3
 import unittest
@@ -148,6 +150,38 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any(item[0] == "required_documents" and "expert justification" in item[2] for item in result.criteria))
         self.assertTrue(any("semesters of leave" in item[2] for item in result.criteria))
         self.assertTrue(all(result.criteria_sources[item] == ROMANA_SCHOTT_URL for item in result.criteria))
+
+    def test_klu_deutschlandstipendium_keeps_admitted_route_and_selection_factors_distinct(self):
+        parsed = ExtractedPage("KLU Deutschlandstipendium", None, "Kühne Logistics University")
+        html = """
+        <html><body><main>
+          <p>Fulfill the admission criteria for studies at KLU.</p>
+          <p>Are already enrolled in a degree program at KLU or have been admitted to KLU and are going to start soon.</p>
+          <p>The scholarship program provides 300 euros monthly for 12 months.</p>
+          <p>The application period will start on March 27 - May 31, 2026.</p>
+          <p>The scholarship period will be Sept. 2026 - Aug. 2027 (12 months).</p>
+          <p>Study starters and current KLU students will be evaluated separately.</p>
+          <p>Only students with very good grades have a chance to receive this scholarship.</p>
+          <p>Furthermore, special achievements, awards, and prizes, previous work experience and internships, voluntary work or societal, social, and political engagement, and special personal or familial circumstances will also be recognized.</p>
+          <p>Following the call for application sent out by the Dean of Programs, the application portal will be open for the mentioned application period.</p>
+        </main></body></html>
+        """
+        result = _augment_klu_deutschlandstipendium(parsed, html)
+        eligibility = next(item for item in result.criteria if item[1] == "KLU admission and study status")
+        self.assertEqual(eligibility[0], "eligibility")
+        self.assertIn("admitted and plan to start soon", eligibility[2])
+        academic = next(item for item in result.criteria if item[1] == "Academic performance")
+        self.assertEqual(academic[0], "selection_criteria")
+        self.assertIn("not a fixed minimum", academic[2])
+        additional = next(item for item in result.criteria if item[1] == "Additional selection factors")
+        self.assertEqual(additional[0], "selection_criteria")
+        self.assertFalse(_is_mandatory_criterion(academic[0], academic[2]))
+        self.assertFalse(_is_mandatory_criterion(additional[0], additional[2]))
+        self.assertEqual(result.fields["funding_summary"], "€300 per month for 12 months.")
+        self.assertIn("has closed", result.fields["deadline_text"])
+        self.assertTrue(any(item[1] == "Application process" for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == KLU_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] == KLU_DEUTSCHLANDSTIPENDIUM_URL for item in result.evidence))
 
     def test_fes_social_democratic_values_are_other_information(self):
         statement = "Wir suchen Auszubildende, die die Werte der Sozialen Demokratie teilen."
