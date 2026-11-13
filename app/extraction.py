@@ -1747,6 +1747,97 @@ def _augment_oskar_karl_forster(parsed: ExtractedPage, html: str, source_url: st
 
 
 
+KIEL_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://deutschlandstipendium-cau-kiel.de/en/infos-fuer-stipendiatinnen/"
+)
+
+
+def _augment_kiel_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = KIEL_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Add Kiel-specific routes and distinguish eligibility from selection factors."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if (
+        re.search(r"all prospective students of kiel university", page_text)
+        and re.search(r"already enrolled at kiel university", page_text)
+    ):
+        add(
+            "eligibility",
+            "Study at Kiel University",
+            "Applicants must meet Kiel University's admission requirements and either be preparing to start a programme at Kiel University or already be enrolled there. The scholarship is linked to studying at Kiel University.",
+        )
+
+    if re.search(r"foreign university entrance qualifications", page_text) and re.search(
+        r"recognized for university studies at the university of kiel", page_text
+    ):
+        add(
+            "application_requirements",
+            "Foreign qualifications",
+            "A foreign university entrance qualification is acceptable when it is recognized for university study at Kiel University.",
+        )
+
+    if (
+        re.search(r"second or supplementary degree", page_text)
+        and re.search(r"master.?s degree programs", page_text)
+    ):
+        add(
+            "target_audience",
+            "Eligible study routes",
+            "First degrees, second degrees, supplementary degree programmes and Master's programmes are generally eligible.",
+        )
+
+    if re.search(r"merit-based financial support exceeding €?30 per month", page_text):
+        add(
+            "ineligibility",
+            "Other merit-based funding",
+            "Applicants who already receive merit-based financial support exceeding €30 per month are not eligible for this funding period. The provider says this depends on the amount and type of funding.",
+        )
+
+    if re.search(r"2026/2027.{0,100}deadline.{0,30}passed", page_text) and re.search(
+        r"2027/2028.{0,120}beginning of 2027", page_text
+    ):
+        add(
+            "application_requirements",
+            "Application period",
+            "The 2026/2027 application deadline has passed. The provider says the 2027/2028 deadline will be published at the beginning of 2027; no exact future deadline is confirmed yet.",
+        )
+
+    if re.search(r"curriculum vitae", page_text) and re.search(
+        r"letter of motivation", page_text
+    ):
+        add(
+            "required_documents",
+            "Application documents",
+            "Prepare a curriculum vitae and a motivation letter. The provider also requests a university entrance qualification certificate; additional certificates and evidence are submitted when applicable.",
+        )
+
+    if re.search(r"software challenge", page_text) and re.search(
+        r"computer science", page_text
+    ):
+        add(
+            "application_requirements",
+            "Software Challenge route",
+            "Applicants using the Software Challenge route for Computer Science must submit the Software Challenge scholarship certificate and a recommendation letter from a teacher, tutor or the programme's sponsoring association.",
+        )
+
+    return parsed
+
+
 TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL = (
     "https://www.tu.berlin/en/careerservice/d-stipendium/application/basic-principles"
 )
@@ -2910,6 +3001,14 @@ async def extract_candidate_details(
                 and candidate["candidate_url"].rstrip("/") == TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
             ):
                 parsed = _augment_tu_berlin_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if (
+                parsed
+                and candidate["candidate_url"].rstrip("/") == KIEL_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
+            ):
+                parsed = _augment_kiel_deutschlandstipendium(
                     parsed, html or "", candidate["candidate_url"]
                 )
 
