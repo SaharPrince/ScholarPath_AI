@@ -174,7 +174,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         html = """
         <html><body><main>
           <p>Förderung durch Amend-Stipendium ab dem SoSe 2027.</p>
-          <p>Stipendien in Höhe von monatlich € 300,00 werden vergeben.</p>
+          <p>Stipendien in Höhe von monatilich € 300,00 werden vergeben.</p>
           <p>Abiturdurchschnitt von mindestens 2,5.</p>
           <p>Das Physikum mit der Note "sehr gut" abgeschlossen.</p>
           <p>Während der Förderung regelmäßige Leistungsnachweise am Ende eines Semesters vorlegen.</p>
