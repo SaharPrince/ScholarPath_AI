@@ -1797,6 +1797,27 @@ def _augment_oskar_karl_forster(parsed: ExtractedPage, html: str, source_url: st
             parsed.evidence.append(evidence_item)
         parsed.evidence_sources[evidence_item] = source_url
 
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"one-time grant for the purchase of books or other learning materials", page_text):
+        add_field(
+            "funding_summary",
+            "One-time grant of €100–€500 for books or other learning materials, including laptops and tablets. Dissertation-printing support is possible only in exceptional cases.",
+        )
+        add(
+            "other_information",
+            "Grant purpose and amount",
+            "This is a one-time educational-materials grant of €100–€500 for books, laptops, tablets or other learning materials—not general living-cost funding. Dissertation-printing support is possible only in exceptional cases.",
+        )
+
     if re.search(r"from the second semester onwards", page_text):
         add(
             "study_level",
@@ -1821,7 +1842,7 @@ def _augment_oskar_karl_forster(parsed: ExtractedPage, html: str, source_url: st
             "Academic performance clarification",
             "Particularly outstanding academic achievements are not required. The provider looks for the usual academic progress for the semester reached; around 20 ECTS per semester is described as an indicator of continued progress, not a fixed minimum.",
         )
-    if re.search(r"befürwortung einer hochschullehrerin oder eines hochschullehrers", page_text):
+    if re.search(r"approval of a university lecturer", page_text):
         add(
             "application_requirements",
             "Learning-material purchase approval",
@@ -1838,6 +1859,12 @@ def _augment_oskar_karl_forster(parsed: ExtractedPage, html: str, source_url: st
             "application_requirements",
             "Foreign-language documents",
             "Foreign documents must be submitted as officially certified translations or in English-language copies.",
+        )
+    if re.search(r"approval of a university lecturer", page_text):
+        add(
+            "application_requirements",
+            "Lecturer confirmation",
+            "For a books or learning-materials grant, a full-time University of Würzburg lecturer must confirm that the planned purchase is appropriate and confirm the applicant's funding eligibility in light of previous study progress.",
         )
     if re.search(r"printing costs of dissertations", page_text):
         add(
@@ -2197,12 +2224,42 @@ def _augment_romana_schott(parsed: ExtractedPage, html: str, source_url: str = R
             parsed.evidence.append(evidence_item)
         parsed.evidence_sources[evidence_item] = source_url
 
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
     if re.search(r"awarded to needy female students of all faculties", page_text):
         add(
             "eligibility",
             "Applicant group and financial need",
             "The fund is intended for female students of all faculties who meet its financial-need rules under BAföG. Gender and financial circumstances are not assessed by this matcher; applicants must review the official provider process privately.",
         )
+    if re.search(r"generally three years", page_text) and re.search(r"150\.00 € per month", page_text):
+        add_field(
+            "funding_summary",
+            "€150 per month for students without children; child supplement may apply. The current programme page and its 2026 call publish different child-supplement amounts, so applicants should confirm the applicable amount with the University before relying on it.",
+        )
+        add(
+            "other_information",
+            "Funding amount and duration",
+            "The published standard funding period is three years, with extensions possible. Students without children receive €150 per month. A child supplement is available, but the current programme page and its 2026 call list different amounts; confirm the applicable amount with the University.",
+        )
+
+    if re.search(r"first degree and study history", page_text) and re.search(
+        r"voluntary work and personal commitment", page_text
+    ):
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "The 2026 call says the selection may consider first-degree and study history, voluntary work and personal commitment, and care responsibilities. These are provider-side considerations and are not collected or inferred by the matching profile.",
+        )
+
     if re.search(r"not possible to apply for a scholarship on one's own", page_text):
         add(
             "application_requirements",
@@ -2220,6 +2277,12 @@ def _augment_romana_schott(parsed: ExtractedPage, html: str, source_url: str = R
             "required_documents",
             "Nomination and application documents",
             "The proposal must include an expert justification of the student's subject and personal suitability, a brief statement from an eligible faculty body, and the student's completed proposal form with the additional requested documents.",
+        )
+    if re.search(r"transcript of records", page_text) and re.search(r"tabular cv", page_text):
+        add(
+            "required_documents",
+            "Supporting documents",
+            "The 2026 call lists a transcript of records, a tabular CV, an academic recommendation, faculty endorsement, and evidence of financial need. Additional documents may apply where relevant; check the current call before submitting.",
         )
     if re.search(r"no benefits will be granted if you are not in need", page_text):
         add(
