@@ -2,6 +2,9 @@ from app.extraction import (
     ExtractedPage,
     VILLIGST_DOCTORAL_FAQ_URL,
     FES_APPRENTICESHIP_FAQ_URL,
+    HEINRICH_BOLL_FAQ_URL,
+    HEINRICH_BOLL_APPLICATION_URL,
+    _augment_heinrich_boll_faq,
     _augment_villigst_doctoral_faq,
     _augment_fes_apprenticeship_faq,
 )
@@ -15,6 +18,49 @@ from app.extraction import (
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
+    def test_heinrich_boll_faq_adds_shared_and_route_specific_requirements_with_provenance(self):
+        parsed = ExtractedPage(
+            title="Heinrich Böll Scholarship for International Graduates and PhD Students",
+            description=None,
+            provider_name="Heinrich Böll Foundation",
+        )
+        faq = """
+        <html><body><main>
+          <p>International students or Bildungsausländer from EU and non-EU countries can apply if they already have a first professional degree such as a Bachelor's degree.</p>
+          <p>International PhD candidates may apply after completing their graduate degree abroad, with a research topic, exposé, supervisor and initial preparatory work.</p>
+          <p>Good German language skills (DSH II or B2) are required, even for English-taught programmes.</p>
+          <p>We do not set any age limits for applicants.</p>
+          <p>Priority will be given to international students and PhD candidates from DAC countries.</p>
+          <p>We expect very good academic performance and civic engagement.</p>
+          <p>Part-time degree programs are not eligible for funding.</p>
+          <p>Any BAföG payments or funding from another institution must be discontinued prior to the start of the scholarship.</p>
+          <p>We expect application documents in German. PhD candidates must write the abstract of their exposé in German.</p>
+          <p>Only applications submitted via our online portal are accepted.</p>
+        </main></body></html>
+        """
+        application = """
+        <html><body><main>
+          <p>Students of all disciplines may apply to study full-time at a state-recognized university.</p>
+          <p>We only fund Master's programmes with a standard duration of four semesters or more.</p>
+        </main></body></html>
+        """
+        result = _augment_heinrich_boll_faq(parsed, faq, application)
+        self.assertIs(result, parsed)
+        self.assertTrue(any(item[0] == "language_requirements" and "B2 or DSH II" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "age_limit" and "no age limit" in item[2].lower() for item in result.criteria))
+        self.assertTrue(any(item[0] == "study_level" and "part-time" in item[2] for item in result.criteria))
+        self.assertTrue(any("first degree" in item[2] for item in result.criteria))
+        self.assertTrue(any("PhD applicants" in item[2] for item in result.criteria))
+        self.assertTrue(any("at least four semesters" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" and "DAC countries" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" and "no fixed minimum" in item[2] for item in result.criteria))
+        self.assertTrue(any("online application portal" in item[2] for item in result.criteria))
+        self.assertTrue(any("discontinued before this scholarship begins" in item[2] for item in result.criteria))
+        self.assertTrue(any("exposé abstract in German" in item[2] for item in result.criteria))
+        for item in result.criteria:
+            self.assertIn(result.criteria_sources[item], {HEINRICH_BOLL_FAQ_URL, HEINRICH_BOLL_APPLICATION_URL})
+        self.assertTrue(all(not _is_mandatory_criterion(kind, text) for kind, _label, text in result.criteria if kind == "selection_criteria"))
+
     def test_fes_social_democratic_values_are_other_information(self):
         statement = "Wir suchen Auszubildende, die die Werte der Sozialen Demokratie teilen."
         kind, label = _classify_eligibility_statement(statement)
