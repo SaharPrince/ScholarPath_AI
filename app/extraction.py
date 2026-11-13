@@ -1698,18 +1698,24 @@ def _augment_fes_apprenticeship_faq(
         add(
             "eligibility",
             "State-recognised training qualification",
-            "The vocational training must be in a legally regulated occupation and lead to a state-recognised examination, including eligible BBiG, HwO, federally regulated healthcare or equivalent state-regulated occupations.",
+            "The vocational training must be in a legally regulated occupation and lead to a state-recognized examination, including eligible BBiG, HwO, federally regulated healthcare or equivalent state-regulated occupations.",
         )
         add(
             "ineligibility",
             "Unregulated training",
-            "Training in an occupation that is not legally regulated, or that does not end with a state-recognised examination, is not funded.",
+            "Training in an occupation that is not legally regulated, or that does not end with a state-recognized examination, is not funded.",
         )
     if re.search(r"zu beginn der ausbildung.{0,120}45\.\s*lebensjahr", page_text):
         add(
             "age_limit",
             "Age at the start of training",
-            "At the start of vocational training, applicants generally must not yet have reached 45 years of age; statutory exceptions under §10 BAföG may apply.",
+            "At the start of vocational training, applicants generally must not yet have reached 45 years of age; statutory exceptions may apply.",
+        )
+    if re.search(r"45\\. lebensjahr", page_text):
+        add(
+            "application_requirements",
+            "Statutory age exceptions",
+            "The age guideline refers to statutory exceptions under §10 BAföG. Applicants who have reached the stated age should review the current rule privately with the provider.",
         )
     if re.search(r"§\s*8\s*baf[oö]g", page_text):
         add(
