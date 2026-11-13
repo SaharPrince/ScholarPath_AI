@@ -126,7 +126,7 @@ class DatabaseSchemaTests(unittest.TestCase):
 
         self.assertEqual(first_inserted, len(OFFICIAL_SOURCES))
         self.assertEqual(second_inserted, 0)
-        self.assertEqual(len(by_url), len(OFFICIAL_SOURCES) + 1)
+        self.assertEqual(len(by_url), len(OFFICIAL_SOURCES) + 2)
         self.assertEqual(by_url[LEGACY_HEC_URL], 0)
         self.assertEqual(by_url[LEGACY_KIEL_DEUTSCHLANDSTIPENDIUM_PDF_URL], 0)
         for source in OFFICIAL_SOURCES:
