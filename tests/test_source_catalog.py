@@ -183,6 +183,15 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         self.assertNotIn("programme_urls", humboldt)
         self.assertNotIn("programme_urls", dfg)
 
+    def test_haw_kiel_and_fu_berlin_are_separate_official_programmes(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        haw = sources["HAW Kiel – Deutschlandstipendium"]
+        fu = sources["Freie Universität Berlin – Deutschlandstipendium"]
+        self.assertEqual(haw["source_type"], "official_programme")
+        self.assertEqual(fu["source_type"], "official_programme")
+        self.assertEqual(haw["official_url"], "https://www.haw-kiel.de/en/studium/studieninteressierte/studienfinanzierung-stipendien/deutschlandstipendium/stipendiatin-werden/")
+        self.assertEqual(fu["official_url"], "https://www.fu-berlin.de/en/sites/deutschlandstipendium/index.html")
+
     def test_daad_database_source_is_included(self) -> None:
         urls = [source["official_url"] for source in GERMANY_SOURCES]
         self.assertTrue(any("daad.pk" in url and "scholarship-database" in url for url in urls))
