@@ -11,6 +11,8 @@ from app.extraction import (
     _augment_romana_schott,
     _augment_villigst_doctoral_faq,
     _augment_fes_apprenticeship_faq,
+    TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_tu_berlin_deutschlandstipendium,
 )
 import sqlite3
 import unittest
@@ -89,6 +91,36 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("certified translations" in item[2] for item in result.criteria))
         for item in result.criteria:
             self.assertEqual(result.criteria_sources[item], OSKAR_KARL_FORSTER_URL)
+
+
+    def test_tu_berlin_deutschlandstipendium_keeps_current_and_prospective_routes_separate(self):
+        parsed = ExtractedPage("TU Berlin Deutschlandstipendium", None, "TU Berlin")
+        html = """
+        <html><body><main>
+          <p>Regularly enrolled bachelor's and master's students who are already enrolled at TU Berlin at the beginning of the funding period and who are still studying within the standard period of study with at least two semesters remaining.</p>
+          <p>New students who have applied and will commence their studies at TU Berlin in the winter semester.</p>
+          <p>Students pursuing a second degree or complementary studies are also eligible.</p>
+          <p>Doctoral candidates, however, are not eligible to apply for the Deutschlandstipendium.</p>
+          <p>International students and applicants of TU Berlin can apply.</p>
+        </main></body></html>
+        """
+        result = _augment_tu_berlin_deutschlandstipendium(parsed, html)
+        current = next(item for item in result.criteria if item[0] == "category_i_eligibility")
+        prospective = next(item for item in result.criteria if item[0] == "category_ii_eligibility")
+        doctoral = next(item for item in result.criteria if item[0] == "ineligibility")
+        self.assertIn("at least two semesters remaining", current[2])
+        self.assertIn("have applied", prospective[2])
+        self.assertIn("Doctoral candidates", doctoral[2])
+        self.assertTrue(any(item[0] == "target_audience" and "second degree" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[("eligibility", item[2])] == TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+
+    def test_tu_berlin_augmentation_does_not_infer_routes_without_official_phrases(self):
+        parsed = ExtractedPage("Unrelated scholarship", None, "Example")
+        result = _augment_tu_berlin_deutschlandstipendium(
+            parsed, "<html><body><main><p>Students may apply.</p></main></body></html>"
+        )
+        self.assertEqual(result.criteria, [])
 
     def test_romana_schott_augmentation_records_nomination_process_without_personal_data(self):
         parsed = ExtractedPage("Romana Schott Scholarships", None, "University of Würzburg")
