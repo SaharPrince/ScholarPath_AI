@@ -147,7 +147,7 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         )
         self.assertEqual(
             sources["University of Kiel – Deutschlandstipendium"]["official_url"],
-            "https://www.uni-kiel.de/gf-praesidium/de/recht/interne-richtlinien/guidelines-of-kiel-university-for-the-award-of-deutschlandstipendium",
+            "https://deutschlandstipendium-cau-kiel.de/en/infos-fuer-stipendiatinnen/",
         )
         self.assertEqual(
             sources["University of Kiel – Deutschlandstipendium"]["source_type"],
