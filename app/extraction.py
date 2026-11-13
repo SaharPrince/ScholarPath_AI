@@ -1747,6 +1747,169 @@ def _augment_oskar_karl_forster(parsed: ExtractedPage, html: str, source_url: st
 
 
 
+
+HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://www.haw-kiel.de/en/studium/studieninteressierte/studienfinanzierung-stipendien/deutschlandstipendium/stipendiatin-werden/"
+)
+
+
+def _augment_haw_kiel_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Capture HAW Kiel's distinct enrolment, grade and study-progress rules."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"studying or intends to study at haw kiel", page_text) and re.search(
+        r"within the standard period of study", page_text
+    ):
+        add(
+            "eligibility",
+            "Study at HAW Kiel",
+            "At the beginning of the funding period, applicants must be studying or intend to study at HAW Kiel within the standard period of study. Applicants starting or transferring to HAW Kiel must enrol by the end of the stated enrolment period.",
+        )
+
+    if re.search(r"grade of better than 2\.0", page_text):
+        add(
+            "academic_requirements",
+            "Entry qualification grade",
+            "Applicants who are about to start at HAW Kiel or have not yet completed a semester there must have a university entrance qualification grade better than 2.0 in the German grading system.",
+        )
+
+    if re.search(r"at least half of the ects per semester", page_text):
+        add(
+            "academic_requirements",
+            "Study progress",
+            "Continuing HAW Kiel students must have completed at least half of the ECTS credits per semester required by their degree curriculum and must not have exceeded the standard period of study when the funding period begins.",
+        )
+
+    if re.search(r"top 20%", page_text) and re.search(r"master", page_text):
+        add(
+            "application_requirements",
+            "Academic ranking evidence",
+            "For applicants transferring from another university and applicants entering a Master's programme, the provider requests evidence of placement within the top 20% of the previous degree cohort. The page says currently enrolled HAW Kiel students do not need to provide this top-20% proof.",
+        )
+
+    if re.search(r"foreign universities or schools", page_text) and re.search(
+        r"grade converted by uniassist", page_text
+    ):
+        add(
+            "required_documents",
+            "Foreign qualification grade conversion",
+            "Applicants with foreign school or university certificates must submit the grade converted to the German grading system by uni-assist by the scholarship application deadline. Master's applicants must also submit cohort-ranking evidence in German or English.",
+        )
+
+    if re.search(r"current overview of grades from qis", page_text) and re.search(
+        r"current certificate of study", page_text
+    ):
+        add(
+            "required_documents",
+            "Current HAW Kiel students",
+            "Currently enrolled HAW Kiel students must provide a current grade overview from QIS and a current certificate of study. Students who have not completed a full semester at HAW Kiel must also provide their university entrance qualification certificate.",
+        )
+
+    if re.search(r"online portal", page_text) and re.search(r"applicable application deadline", page_text):
+        add(
+            "application_requirements",
+            "Application deadline",
+            "Applications are submitted through the online portal. The current deadline is stated in that portal; no fixed future deadline is confirmed on the programme information page.",
+        )
+
+    if re.search(r"special achievements, awards and prizes from the last two years", page_text):
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "The selection process may also consider awards and achievements from the last two years, previous work, internships or voluntary service lasting at least six months, and current extracurricular engagement lasting at least one year. These are additional selection factors, not universal mandatory requirements.",
+        )
+
+    return parsed
+
+
+FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://www.fu-berlin.de/en/sites/deutschlandstipendium/index.html"
+)
+
+
+def _augment_fu_berlin_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Capture Freie Universität Berlin's own award and intake conditions."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"enrollment at fre ie universität berlin|enrollment at fre ie", page_text):
+        pass
+
+    if re.search(r"enrollment at fre[i]?e universität berlin", page_text) or re.search(
+        r"enrollment at fre ie universität berlin", page_text
+    ):
+        add(
+            "eligibility",
+            "Study at Freie Universität Berlin",
+            "Applicants must be enrolled at Freie Universität Berlin within the standard time to degree during the funding period, or hold a letter of acceptance to start a degree programme there.",
+        )
+
+    if re.search(r"all nations and all parts of society", page_text):
+        add(
+            "target_audience",
+            "International applicants",
+            "Applicants from all nationalities and backgrounds may apply, subject to the programme's study and funding conditions.",
+        )
+
+    if re.search(r"always awarded for the winter semester", page_text) and re.search(
+        r"not possible to start.*summer semester", page_text
+    ):
+        add(
+            "application_requirements",
+            "Funding start",
+            "Freie Universität Berlin awards this scholarship for the winter semester only; a new award cannot start in the summer semester.",
+        )
+
+    if re.search(r"application period for the funding year 2026/2027", page_text) and re.search(
+        r"application period ended", page_text
+    ):
+        add(
+            "application_requirements",
+            "Application period",
+            "The application period for the 2026/2027 funding year has ended. The page does not confirm the next application deadline.",
+        )
+
+    if re.search(r"300 euros per month", page_text):
+        add(
+            "funding_information",
+            "Funding amount",
+            "The scholarship provides €300 per month. The programme page states a minimum funding period of two semesters starting in October; extensions are possible.",
+        )
+
+    return parsed
+
+
 KIEL_DEUTSCHLANDSTIPENDIUM_URL = (
     "https://deutschlandstipendium-cau-kiel.de/en/infos-fuer-stipendiatinnen/"
 )
@@ -3018,6 +3181,21 @@ async def extract_candidate_details(
                 and candidate["candidate_url"].rstrip("/") == KIEL_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
             ):
                 parsed = _augment_kiel_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if (
+                parsed
+                and candidate["candidate_url"].rstrip("/") == HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
+            ):
+                parsed = _augment_haw_kiel_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+            if (
+                parsed
+                and candidate["candidate_url"].rstrip("/") == FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
+            ):
+                parsed = _augment_fu_berlin_deutschlandstipendium(
                     parsed, html or "", candidate["candidate_url"]
                 )
 
