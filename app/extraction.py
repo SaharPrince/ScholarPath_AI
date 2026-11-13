@@ -1711,7 +1711,7 @@ def _augment_fes_apprenticeship_faq(
             "Age at the start of training",
             "At the start of vocational training, applicants generally must not yet have reached 45 years of age; statutory exceptions may apply.",
         )
-    if re.search(r"45\\. lebensjahr", page_text):
+    if re.search(r"45\.\s*lebensjahr", page_text):
         add(
             "application_requirements",
             "Statutory age exceptions",
