@@ -39,6 +39,7 @@ GERMANY_SOURCES = (
     {"name": "University of Kiel – Deutschlandstipendium", "official_url": "https://deutschlandstipendium-cau-kiel.de/en/infos-fuer-stipendiatinnen/", "source_type": "official_programme", "country": "Germany"},
     {"name": "HAW Kiel – Deutschlandstipendium", "official_url": "https://www.haw-kiel.de/en/studium/studieninteressierte/studienfinanzierung-stipendien/deutschlandstipendium/stipendiatin-werden/", "source_type": "official_programme", "country": "Germany"},
     {"name": "Freie Universität Berlin – Deutschlandstipendium", "official_url": "https://www.fu-berlin.de/en/sites/deutschlandstipendium/index.html", "source_type": "official_programme", "country": "Germany"},
+    {"name": "Kühne Logistics University – Deutschlandstipendium", "official_url": "https://www.klu.org/about-klu/student-services/scholarships/deutschlandstipendium", "source_type": "official_programme", "country": "Germany"},
 )
 
 
