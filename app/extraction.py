@@ -36,7 +36,7 @@ GENERIC_PAGE_TERMS = (
     "scholarship database", "funding partners", "application guide",
     "step by step guide", "scholarship applicants", "find funding",
     "scholarship programmes for", "scholarship programs for",
-    "all scholarships", "scholarship index",
+    "all scholarships", "scholarship index", "scholarships & financial aid",
     "promoting mutual understanding through exchanges",
 )
 OPPORTUNITY_TERMS = ("scholarship", "fellowship", "grant", "studentship", "award", "programme", "program", "ugrad", "fulbright", "humphrey", "flta", "epos")
