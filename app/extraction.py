@@ -1762,6 +1762,19 @@ def _augment_klu_deutschlandstipendium(
             "deadline_text",
             "27 March–31 May 2026 (the published 2026 application window has closed; no later date is confirmed on this page).",
         )
+        add_field("deadline_date", "2026-05-31")
+        # The generic parser runs before this provider-specific augmentation;
+        # set the persisted status from the exact dates on KLU's official page.
+        today = datetime.now(timezone.utc).date()
+        application_start = datetime(2026, 3, 27).date()
+        application_end = datetime(2026, 5, 31).date()
+        if today < application_start:
+            parsed.application_status = "upcoming"
+        elif today <= application_end:
+            parsed.application_status = "open"
+        else:
+            parsed.application_status = "closed"
+        add_field("application_status", parsed.application_status)
         add(
             "application_requirements",
             "Published application window",
