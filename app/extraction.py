@@ -2329,7 +2329,7 @@ def _augment_amend_medical_scholarship(
         parsed.evidence_sources[evidence_item] = source_url
 
     if re.search(r"stipendien ab dem sose 2027", page_text) and re.search(
-        r"monatlich € 300,00", page_text
+        r"monat(?:i)?lich € 300,00", page_text
     ):
         add_field("funding_summary", "€300 per month, starting in summer semester 2027.")
         add(
@@ -2353,7 +2353,7 @@ def _augment_amend_medical_scholarship(
         add(
             "academic_requirements",
             "Abitur grade",
-            "Applicants must meet the published Abitur average requirement of at least 2.5 in the German grading system.",
+            "Applicants must meet the published Abitur average requirement of 2.5 or better in the German grading system.",
         )
 
     if re.search(r"physikum mit der note.*sehr gut", page_text):
