@@ -136,7 +136,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("fail", "This programme requires current enrolment at a German university.")
         # Some providers combine current-enrolment and minimum-remaining-duration
         # conditions in one bullet. Do not let enrolment alone bypass the duration check.
-        if not re.search(r"(?:at least|minimum of|mindestens)\\s*(?:6|six|sechs)\\s*months?.{0,80}(?:remaining|left|rest|verbleib)", lower):
+        if not re.search(r"(?:at least|minimum of|mindestens)\s*(?:6|six|sechs)\s*months?.{0,80}(?:remaining|left|rest|verbleib)", lower):
             return _result("pass", "You confirmed current enrolment in Germany.")
 
     timing_matched = False
