@@ -1878,6 +1878,18 @@ def _augment_tuebingen_deutschlandstipendium(
             "Additional selection factors",
             "Awards, special achievements, long-term extracurricular activity and voluntary work may strengthen an application. Personal or family circumstances may also be considered by the university, but are not universal mandatory requirements and are not collected by the matcher.",
         )
+    if "requesting a transcript of records" in page_text and "must not be older than october 15" in page_text:
+        add(
+            "required_documents",
+            "Transcript validity",
+            "The current transcript must show the calculated grade average and ECTS credits and carry the examination office's stamp and signature. The university says it must not be older than 15 October of the application year.",
+        )
+    if "special case 1: students of the medicine program" in page_text and "special case 2: students of the dentistry program" in page_text:
+        add(
+            "other_information",
+            "Medicine and dentistry evidence routes",
+            "Medicine and dentistry applicants have programme-stage-specific evidence rules. Medicine applicants submit the relevant preclinical grade overview or a Physikum/clinical-section grade average of 1.40 or better. Dentistry applicants follow separate evidence rules under the applicable examination regulations, including grade 1.0 thresholds at specified examination stages. Applicants should check the current university instructions for the exact stage-specific document.",
+        )
     if "tax identification number" in page_text:
         add(
             "application_requirements",
