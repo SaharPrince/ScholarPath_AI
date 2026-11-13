@@ -13,6 +13,13 @@ from app.extraction import (
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
+    def test_fes_social_democratic_values_are_other_information(self):
+        statement = "Wir suchen Auszubildende, die die Werte der Sozialen Demokratie teilen."
+        kind, label = _classify_eligibility_statement(statement)
+        self.assertEqual(kind, "selection_criteria")
+        self.assertEqual(label, "Programme fit and selection expectations")
+        self.assertFalse(_is_mandatory_criterion(kind, statement))
+
     def test_bachelor_qualification_statements_get_study_level_type(self):
         self.assertEqual(
             _classify_eligibility_statement("Proof of a completed Bachelor's degree is required."),
