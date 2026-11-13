@@ -1826,8 +1826,8 @@ def _augment_kiel_deutschlandstipendium(
             "Prepare a curriculum vitae and a motivation letter. The provider also requests a university entrance qualification certificate; additional certificates and evidence are submitted when applicable.",
         )
 
-    if re.search(r"special achievements, awards, prizes", page_text) and re.search(
-        r"voluntary service lasting at least two months", page_text
+    if re.search(r"special achievements, awards", page_text) and re.search(
+        r"viewed favorably", page_text
     ):
         add(
             "selection_criteria",
