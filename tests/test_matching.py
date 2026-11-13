@@ -473,6 +473,10 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
             "pass",
         )
         self.assertEqual(
+            evaluate_criterion(criterion, {"current_semester_in_program": 2})["status"],
+            "unknown",
+        )
+        self.assertEqual(
             evaluate_criterion(criterion, {"target_study_level": "master"})["status"],
             "pass",
         )
