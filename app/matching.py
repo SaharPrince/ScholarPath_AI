@@ -38,7 +38,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     if re.search(
         r"(?i)financial(?:ly)?\s+(?:need|needy|disadvantaged|hardship)|"
         r"financial\s+(?:circumstances|situation|hardship|challenges?)|"
-        household\s+income|"
+        r"household\s+income|"
         r"parent(?:s|al)?\s+income|baf[oö]g|income\s+assessment",
         lower,
     ):
