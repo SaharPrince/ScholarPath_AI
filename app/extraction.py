@@ -1683,6 +1683,210 @@ AMEND_FUNDING_GUIDELINES_URL = (
 )
 
 
+REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://www.uni-regensburg.de/en/studies/deutschlandstipendium/information-for-students"
+)
+
+
+def _augment_regensburg_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Capture Regensburg's current call, study-stage rules and supporting evidence."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if "you are enrolled on a degree programme at the university of regensburg" in page_text:
+        add(
+            "eligibility",
+            "Study at the University of Regensburg",
+            "Applicants must be enrolled on a degree programme at the University of Regensburg. Prospective students may participate in the selection process, but can receive funding only if they actually start the Regensburg degree programme.",
+        )
+    if "within the standard period of study" in page_text:
+        add(
+            "eligibility",
+            "Study duration",
+            "Applicants must be studying within the standard period of study for their degree programme.",
+        )
+    if "students on doctoral programmes are not eligible" in page_text:
+        add(
+            "ineligibility",
+            "Doctoral students",
+            "Students enrolled on doctoral programmes are not eligible for this scholarship.",
+        )
+    if "students of all degree programmes" in page_text:
+        add(
+            "other_information",
+            "Eligible subject areas",
+            "The university awards scholarships across degree programmes, including both unrestricted awards and some subject-specific awards. The current page lists Computer Science, Data Science, Business Administration, Economics, Law, Dentistry, Physics and other subjects; availability depends on the funded places in each call.",
+        )
+    if "300.00 eur per month" in page_text:
+        add_field("funding_summary", "€300 per month, initially for one year.")
+        add(
+            "other_information",
+            "Funding amount and duration",
+            "The scholarship provides €300 per month and is initially awarded for one year, within the standard period of study. Funding depends on available funds.",
+        )
+    if "start of the application period" in page_text and "2 november 2026" in page_text and "15 november 2026" in page_text:
+        add_field("deadline_text", "2–15 November 2026 (applications close on 15 November 2026).")
+        add_field("deadline_date", "2026-11-15")
+        today = datetime.now(timezone.utc).date()
+        start = datetime(2026, 11, 2).date()
+        end = datetime(2026, 11, 15).date()
+        parsed.application_status = "upcoming" if today < start else ("open" if today <= end else "closed")
+        add_field("application_status", parsed.application_status)
+        add(
+            "application_requirements",
+            "2027 funding round",
+            "The application period for the summer semester 2027 and winter semester 2027–28 is 2–15 November 2026. The university plans to award scholarships from April 2027.",
+        )
+    if "valid" in page_text and "studiennachweis" in page_text and "certificate of higher education entrance qualification" in page_text:
+        add(
+            "required_documents",
+            "Application documents",
+            "For the winter 2026/27 application round, the university lists a valid Studiennachweis (not an Immatrikulationsbescheinigung), higher-education entrance qualification certificate, previous academic records where available, and applicable evidence of previous degrees, academic commitment and extracurricular activities. The online form gives the current round-specific instructions.",
+        )
+    if "society commitment" in page_text and "willingness to take on responsibility" in page_text:
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "Selection considers talent and academic performance. Documented social commitment, willingness to take responsibility, achievements and relevant personal or educational circumstances may also be considered; these are selection factors, not universal mandatory gates.",
+        )
+    return parsed
+
+
+TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://uni-tuebingen.de/en/study/student-life/student-finances/deutschlandstipendium-scholarships"
+)
+
+
+def _augment_tuebingen_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Keep Tübingen's grade routes, exclusions and live annual deadline distinct."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if "students in their first semester" in page_text and "not poorer than 1.40" in page_text:
+        add(
+            "category_i_eligibility",
+            "First-semester applicants",
+            "Students beginning their first semester in winter semester 2026/27 must be enrolled in their major degree programme at the University of Tübingen and have a German university-entrance qualification average of 1.40 or better.",
+        )
+    if "students in their second semester" in page_text and "average grade of studies to date 1.40 or better" in page_text:
+        add(
+            "category_ii_eligibility",
+            "Continuing students",
+            "Students from their second semester onward must have a current average grade of 1.40 or better in their studies to date; Law students may qualify with at least 9 points. The required transcript must show the calculated average and earned ECTS credits.",
+        )
+    if "students doing higher degrees (master)" in page_text and "average grade of 1.40 or better in your first degree" in page_text:
+        add(
+            "category_iii_eligibility",
+            "Master's applicants",
+            "Master's applicants must have achieved an average grade of 1.40 or better in their first degree. Applicants who have already completed coursework in the Master's programme must also provide a current official transcript showing the grade average and ECTS credits.",
+        )
+    if "foreign high school diploma" in page_text and "conversion to the german grading system" in page_text:
+        add(
+            "application_requirements",
+            "Foreign qualifications",
+            "Applicants with foreign university-entrance or Bachelor's qualifications must have their grades converted to the German grading system. The university states that applications using an unconverted foreign average grade will not be considered.",
+        )
+    exclusions = []
+    for phrase, label in (
+        ("does not support doctoral students", "doctoral students"),
+        ("part-time students", "part-time students"),
+        ("come-to-prepare students", "Come-to-Prepare students"),
+        ("students at the leibniz kolleg", "students at Leibniz Kolleg"),
+        ("guest students", "guest students"),
+    ):
+        if phrase in page_text:
+            exclusions.append(label)
+    if exclusions:
+        add(
+            "ineligibility",
+            "Excluded study categories",
+            "The scholarship does not support " + ", ".join(exclusions) + ".",
+        )
+    if "300 euros per month" in page_text and "one year at a time" in page_text:
+        add_field("funding_summary", "€300 per month for one year.")
+        add(
+            "other_information",
+            "Funding amount and duration",
+            "The scholarship provides €300 per month for one year at a time. Funding is independent of income and can be combined with BAföG; the maximum funding period is generally tied to the standard period of study.",
+        )
+    if "1.11. to 30.11.2026" in page_text:
+        add_field("deadline_text", "1–30 November 2026 (applications close on 30 November 2026).")
+        add_field("deadline_date", "2026-11-30")
+        today = datetime.now(timezone.utc).date()
+        start = datetime(2026, 11, 1).date()
+        end = datetime(2026, 11, 30).date()
+        parsed.application_status = "upcoming" if today < start else ("open" if today <= end else "closed")
+        add_field("application_status", parsed.application_status)
+        add(
+            "application_requirements",
+            "2027 funding round",
+            "The application period for summer semester 2027 and winter semester 2027/28 is 1–30 November 2026. Applications are submitted through the university's online portal.",
+        )
+    if "long-term extracurricular" in page_text and "voluntary work" in page_text:
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "Awards, special achievements, long-term extracurricular activity and voluntary work may strengthen an application. Personal or family circumstances may also be considered by the university, but are not universal mandatory requirements and are not collected by the matcher.",
+        )
+    if "tax identification number" in page_text:
+        add(
+            "application_requirements",
+            "Application administration",
+            "The university asks applicants to provide a tax identification number in the online application. This is an application-administration detail and is not collected in the ScholarPath profile.",
+        )
+    return parsed
+
+
 KLU_DEUTSCHLANDSTIPENDIUM_URL = (
     "https://www.klu.org/about-klu/student-services/scholarships/deutschlandstipendium"
 )
@@ -3454,6 +3658,16 @@ async def extract_candidate_details(
                     parsed = _augment_fes_apprenticeship_faq(
                         parsed, faq_html, FES_APPRENTICESHIP_FAQ_URL
                     )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
+                parsed = _augment_regensburg_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
+                parsed = _augment_tuebingen_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
 
             if parsed and candidate["candidate_url"].rstrip("/") == KLU_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
                 parsed = _augment_klu_deutschlandstipendium(
