@@ -325,6 +325,13 @@ def _split_criteria_statements(value: str) -> list[str]:
 def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
     """Assign a more useful criterion type to explicit applicant conditions."""
     text = statement.casefold()
+    if re.search(
+        r"\b(?:förderfähigkeit beschränkt sich nicht auf das absolvieren einer erstausbildung|"
+        r"nicht auf die erstausbildung beschränkt|"
+        r"studien- oder ausbildungsabbruch.{0,120}steht einer aufnahme.{0,80}nicht entgegen)\b",
+        text,
+    ):
+        return "application_requirements", "Previous education or training clarification"
     if re.search(r"\b(?:under|less than|below)\s+\d{1,2}\s+years?\s+old\b|\b\d{1,2}\s+years?\s+old\b", text):
         return "age_limit", "Age limit"
     if re.search(r"\b(?:unter\s+\d{1,2}\s+jahre|jünger\s+als\s+\d{1,2}\s+jahre)\b", text):
@@ -842,13 +849,15 @@ def _is_applicant_eligibility_statement(statement: str) -> bool:
         value,
     ):
         return False
-    # These clarify interpretation of the conditions but are not applicant rules.
+    # Keep explicit clarifications that protect applicants from false exclusions.
+    # Drop only the introductory sentence when it contains no substantive rule.
     lowered_value = value.casefold()
-    if lowered_value.startswith((
-        "zur auslegung der fördervoraussetzungen",
-        "ein vor der aufnahme in die förderung erfolgter studien- oder ausbildungsabbruch",
-    )):
-        return False
+    if lowered_value.startswith("zur auslegung der fördervoraussetzungen"):
+        return "förderfähigkeit beschränkt sich nicht" in lowered_value
+    if lowered_value.startswith(
+        "ein vor der aufnahme in die förderung erfolgter studien- oder ausbildungsabbruch"
+    ):
+        return True
     if re.match(
         r"(?i)^bewerber(?:innen|:innen)? sollten folgende kriterien erfüllen\b",
         value,
