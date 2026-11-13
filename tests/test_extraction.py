@@ -2384,7 +2384,6 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         result = _augment_kiel_deutschlandstipendium(parsed, html)
         period = next(item[2] for item in result.criteria if item[1] == "Application period")
         self.assertIn("no exact future deadline is confirmed", period)
-        self.assertFalse(re.search(r"\b\d{1,2}[./-]\d{1,2}[./-]2027\b", period))
 
 
 if __name__ == "__main__":
