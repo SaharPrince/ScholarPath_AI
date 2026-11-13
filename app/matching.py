@@ -245,7 +245,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         return _result("unknown", "You reported the second apprenticeship year. Confirm whether you are still at its beginning.")
 
     if re.search(
-        r"(?:state[- ]recognized|state recognized|staatlich anerkannt|anerkannt(?:e|en|er)?\\s+(?:durch|nach)\\s+(?:das?\\s+)?(?:bbig|hwo)|"
+        r"(?:state[- ]recognized|state recognized|staatlich anerkannt|anerkannt(?:e|en|er)?\s+(?:durch|nach)\s+(?:das?\s+)?(?:bbig|hwo)|"
         r"bbig|hwo|bundesgesetzlich geregelt.{0,80}gesundheitswesen|landesrechtlich geregelt)",
         lower,
     ) and re.search(r"(?:training|occupation|ausbildung|ausbildungsberuf|berufsausbildung|bbig|hwo)", lower):
@@ -365,8 +365,8 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         age = _number(profile.get("age"))
         if age is None:
             return _result("unknown", "Add your age to check the published age limit.")
-        if re.search(r"(?i)\\b(?:exceptions?|ausnahmen?)\\b", lower):
-            limits = [int(x) for x in re.findall(r"\\b(\\d{2})\\s*(?:years?|yrs?|jahre?)\\b", lower)]
+        if re.search(r"(?i)\b(?:exceptions?|ausnahmen?)\b", lower):
+            limits = [int(x) for x in re.findall(r"\b(\d{2})\s*(?:years?|yrs?|jahre?)\b", lower)]
             if limits and age >= min(limits):
                 return _result(
                     "unknown",
