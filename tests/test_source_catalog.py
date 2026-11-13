@@ -171,6 +171,18 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         keys = [(source_url, candidate_url) for source_url, candidate_url, _ in OFFICIAL_DISCOVERY_TARGETS]
         self.assertEqual(len(keys), len(set(keys)))
 
+    def test_daad_database_and_research_funding_indexes_are_not_awards(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        daad = sources["DAAD Pakistan – Scholarship Database"]
+        self.assertEqual(daad["source_type"], "official_database")
+        self.assertNotIn("programme_urls", daad)
+        humboldt = sources["Alexander von Humboldt Foundation – Funding"]
+        dfg = sources["German Research Foundation (DFG) – Research Funding Programmes"]
+        self.assertEqual(humboldt["source_type"], "official_index")
+        self.assertEqual(dfg["source_type"], "official_index")
+        self.assertNotIn("programme_urls", humboldt)
+        self.assertNotIn("programme_urls", dfg)
+
     def test_daad_database_source_is_included(self) -> None:
         urls = [source["official_url"] for source in GERMANY_SOURCES]
         self.assertTrue(any("daad.pk" in url and "scholarship-database" in url for url in urls))
