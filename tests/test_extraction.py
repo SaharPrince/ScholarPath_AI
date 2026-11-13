@@ -1,7 +1,9 @@
 from app.extraction import (
     ExtractedPage,
     VILLIGST_DOCTORAL_FAQ_URL,
+    FES_APPRENTICESHIP_FAQ_URL,
     _augment_villigst_doctoral_faq,
+    _augment_fes_apprenticeship_faq,
 )
 import sqlite3
 import unittest
@@ -19,6 +21,35 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertEqual(kind, "selection_criteria")
         self.assertEqual(label, "Programme fit and selection expectations")
         self.assertFalse(_is_mandatory_criterion(kind, statement))
+
+    def test_fes_apprenticeship_faq_augments_same_award_with_evidence(self):
+        parsed = ExtractedPage(
+            title="FES Scholarship for Apprentices",
+            description=None,
+            provider_name="Friedrich Ebert Foundation",
+        )
+        html = """
+        <html><body><main>
+          <p>Der Ausbildungsgang muss mit einer staatlich anerkannten Prüfung abschließen.</p>
+          <p>Zu Beginn der Ausbildung darf die Bewerberin oder der Bewerber das 45. Lebensjahr noch nicht vollendet haben.</p>
+          <p>§8 BAföG lists eligible person groups.</p>
+          <p>Die Stipendien für Auszubildende sind nicht auf die Erstausbildung beschränkt.</p>
+          <p>Teilzeitberufsausbildungen sind möglich, wenn sie den Vorgaben des BBiG entsprechen.</p>
+          <p>Nein, Sie müssen sich nicht in der SPD engagieren oder Mitglied sein.</p>
+          <p>Derzeit ist keine Bewerbung möglich. Für die Auswahlrunde 2026 wird das Bewerbungsportal voraussichtlich vom 16. März bis 17. Mai geöffnet.</p>
+        </main></body></html>
+        """
+        result = _augment_fes_apprenticeship_faq(parsed, html)
+        self.assertIs(result, parsed)
+        self.assertEqual(result.fields["deadline_date"], "2026-05-17")
+        self.assertEqual(result.application_status, "closed")
+        self.assertTrue(any("state-recognised examination" in item[2] for item in result.criteria))
+        self.assertTrue(any("under 45" in item[2] or "45 years" in item[2] for item in result.criteria))
+        self.assertTrue(any("not limited to a first vocational qualification" in item[2] for item in result.criteria))
+        self.assertTrue(any("Part-time vocational training" in item[2] for item in result.criteria))
+        self.assertTrue(any("Membership in the Social Democratic Party" in item[2] for item in result.criteria))
+        for item in result.criteria:
+            self.assertEqual(result.criteria_sources[item], FES_APPRENTICESHIP_FAQ_URL)
 
     def test_bachelor_qualification_statements_get_study_level_type(self):
         self.assertEqual(
