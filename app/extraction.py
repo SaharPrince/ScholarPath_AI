@@ -1755,7 +1755,7 @@ TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL = (
 def _augment_tu_berlin_deutschlandstipendium(
     parsed: ExtractedPage,
     html: str,
-    source_url: str = TU_BERLIN_DEUTSCHSTIPENDIUM_URL,
+    source_url: str = TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
 ) -> ExtractedPage:
     """Keep the current-student and prospective-student routes separate."""
     root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
