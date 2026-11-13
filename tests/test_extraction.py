@@ -5,6 +5,10 @@ from app.extraction import (
     HEINRICH_BOLL_FAQ_URL,
     HEINRICH_BOLL_APPLICATION_URL,
     _augment_heinrich_boll_faq,
+    OSKAR_KARL_FORSTER_URL,
+    ROMANA_SCHOTT_URL,
+    _augment_oskar_karl_forster,
+    _augment_romana_schott,
     _augment_villigst_doctoral_faq,
     _augment_fes_apprenticeship_faq,
 )
@@ -60,6 +64,52 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         for item in result.criteria:
             self.assertIn(result.criteria_sources[item], {HEINRICH_BOLL_FAQ_URL, HEINRICH_BOLL_APPLICATION_URL})
         self.assertTrue(all(not _is_mandatory_criterion(kind, text) for kind, _label, text in result.criteria if kind == "selection_criteria"))
+
+    def test_oskar_karl_forster_augmentation_preserves_master_semester_exception_and_other_information(self):
+        parsed = ExtractedPage("Oskar Karl Forster Scholarship", None, "University of Würzburg")
+        html = """
+        <html><body><main>
+          <p>Enrolled gifted and needy students from the second semester onwards.</p>
+          <p>The restrictive requirement of 2nd semester does not apply to students in Master's degree programmes.</p>
+          <p>Enrolment at the University of Würzburg must be proven by presenting a current certificate of enrolment.</p>
+          <p>Particularly outstanding academic achievements are NOT a prerequisite here.</p>
+          <p>In principle, approximately 20 ECTS points per semester indicate continued successful study progress.</p>
+          <p>The grant can only be claimed once.</p>
+          <p>Foreign documents can only be utilised in officially certified translations or in English-language copies.</p>
+        </main></body></html>
+        """
+        result = _augment_oskar_karl_forster(parsed, html)
+        self.assertTrue(any("second semester onwards" in item[2] and "Master's students" in item[2] for item in result.criteria))
+        self.assertTrue(any("University of Würzburg" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "eligibility" and "financial need" in item[2].lower() for item in result.criteria))
+        academic = next(item for item in result.criteria if item[1] == "Academic performance clarification")
+        self.assertEqual(academic[0], "selection_criteria")
+        self.assertFalse(_is_mandatory_criterion(academic[0], academic[2]))
+        self.assertTrue(any("only once" in item[2] for item in result.criteria))
+        self.assertTrue(any("certified translations" in item[2] for item in result.criteria))
+        for item in result.criteria:
+            self.assertEqual(result.criteria_sources[item], OSKAR_KARL_FORSTER_URL)
+
+    def test_romana_schott_augmentation_records_nomination_process_without_personal_data(self):
+        parsed = ExtractedPage("Romana Schott Scholarships", None, "University of Würzburg")
+        html = """
+        <html><body><main>
+          <p>Scholarships are awarded to needy female students of all faculties.</p>
+          <p>It is not possible to apply for a scholarship on one's own.</p>
+          <p>Consultation between the student and a UFB staff member is obligatory.</p>
+          <p>The application deadline is March 31 and September 30 of each year.</p>
+          <p>The justification for the proposal must comment on suitability.</p>
+          <p>The proposal form must be completed by the student.</p>
+          <p>No benefits will be granted if you are not in need. No benefits will be paid for semesters of leave either.</p>
+        </main></body></html>
+        """
+        result = _augment_romana_schott(parsed, html)
+        self.assertTrue(any("female students" in item[2] and "financial-need" in item[2] for item in result.criteria))
+        self.assertTrue(any("cannot apply independently" in item[2] for item in result.criteria))
+        self.assertTrue(any("31 March and 30 September" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "required_documents" and "expert justification" in item[2] for item in result.criteria))
+        self.assertTrue(any("semesters of leave" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == ROMANA_SCHOTT_URL for item in result.criteria))
 
     def test_fes_social_democratic_values_are_other_information(self):
         statement = "Wir suchen Auszubildende, die die Werte der Sozialen Demokratie teilen."
