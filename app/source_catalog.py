@@ -34,7 +34,7 @@ GERMANY_SOURCES = (
     {"name": "University of Würzburg – Oskar Karl Forster Scholarship", "official_url": "https://www.uni-wuerzburg.de/en/stipendien/nach-zielgruppen/oskar-karl-forster-scholarship/", "source_type": "official_programme", "country": "Germany"},
     {"name": "University of Würzburg – Romana Schott Scholarship", "official_url": "https://www.uni-wuerzburg.de/en/equity/wro/scholarships-and-funding-opportunities/romana-schott-scholarships/", "source_type": "official_programme", "country": "Germany"},
     {"name": "University of Kiel – Scholarships", "official_url": "https://www.uni-kiel.de/en/tf/study/scholarships", "source_type": "official_index", "country": "Germany"},
-    {"name": "University of Kiel – Deutschlandstipendium", "official_url": "https://www.uni-kiel.de/gf-praesidium/de/recht/interne-richtlinien/guidelines-of-kiel-university-for-the-award-of-deutschlandstipendium", "source_type": "official_programme", "country": "Germany"},
+    {"name": "University of Kiel – Deutschlandstipendium", "official_url": "https://deutschlandstipendium-cau-kiel.de/en/infos-fuer-stipendiatinnen/", "source_type": "official_programme", "country": "Germany"},
 )
 
 
