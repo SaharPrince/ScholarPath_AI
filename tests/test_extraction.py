@@ -86,6 +86,9 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
           <p>In principle, approximately 20 ECTS points per semester indicate continued successful study progress.</p>
           <p>The grant can only be claimed once.</p>
           <p>Foreign documents can only be utilised in officially certified translations or in English-language copies.</p>
+          <p>As a rule, a one-time grant for the purchase of books or other learning materials in the amount of at least €100 to a maximum of €500 is awarded.</p>
+          <p>In the case of an application for a grant for the purchase of books or other learning materials, the approval of a university lecturer regarding the appropriateness of the planned purchase is required.</p>
+          <p>In exceptional cases, a grant for the printing costs of dissertations can be applied for.</p>
         </main></body></html>
         """
         result = _augment_oskar_karl_forster(parsed, html)
@@ -97,6 +100,10 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertFalse(_is_mandatory_criterion(academic[0], academic[2]))
         self.assertTrue(any("only once" in item[2] for item in result.criteria))
         self.assertTrue(any("certified translations" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "other_information" and "€100–€500" in item[2] and "not general living-cost funding" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Lecturer confirmation" for item in result.criteria))
+        self.assertIn("One-time grant of €100–€500", result.fields["funding_summary"])
+        self.assertTrue(all(result.evidence_sources[item] == OSKAR_KARL_FORSTER_URL for item in result.evidence))
         for item in result.criteria:
             self.assertEqual(result.criteria_sources[item], OSKAR_KARL_FORSTER_URL)
 
@@ -141,6 +148,10 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
           <p>The justification for the proposal must comment on suitability.</p>
           <p>The proposal form must be completed by the student.</p>
           <p>No benefits will be granted if you are not in need. No benefits will be paid for semesters of leave either.</p>
+          <p>The duration of the sponsorship is generally three years. An application for an extension can be made.</p>
+          <p>Female students without children receive 150.00 € per month.</p>
+          <p>The following additional criteria are taken into account: first degree and study history, care responsibilities, voluntary work and personal commitment.</p>
+          <p>Required documents include a transcript of records, a tabular CV, an academic recommendation and a faculty endorsement.</p>
         </main></body></html>
         """
         result = _augment_romana_schott(parsed, html)
@@ -149,7 +160,14 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("31 March and 30 September" in item[2] for item in result.criteria))
         self.assertTrue(any(item[0] == "required_documents" and "expert justification" in item[2] for item in result.criteria))
         self.assertTrue(any("semesters of leave" in item[2] for item in result.criteria))
+        factors = next(item for item in result.criteria if item[1] == "Additional selection factors")
+        self.assertEqual(factors[0], "selection_criteria")
+        self.assertFalse(_is_mandatory_criterion(factors[0], factors[2]))
+        self.assertTrue(any(item[0] == "other_information" and "three years" in item[2] for item in result.criteria))
+        self.assertIn("€150 per month", result.fields["funding_summary"])
+        self.assertTrue(any(item[1] == "Supporting documents" for item in result.criteria))
         self.assertTrue(all(result.criteria_sources[item] == ROMANA_SCHOTT_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] == ROMANA_SCHOTT_URL for item in result.evidence))
 
     def test_klu_deutschlandstipendium_keeps_admitted_route_and_selection_factors_distinct(self):
         parsed = ExtractedPage("KLU Deutschlandstipendium", None, "Kühne Logistics University")
