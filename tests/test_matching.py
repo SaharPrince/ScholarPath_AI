@@ -253,6 +253,69 @@ class ProfileMatchingTests(unittest.TestCase):
             "pass",
         )
 
+
+    def test_tu_berlin_current_student_route_checks_university_and_two_semesters(self):
+        criterion = self.criterion(
+            "category_i_eligibility",
+            "Current TU Berlin students",
+            "Regularly enrolled Bachelor's and Master's students already enrolled at TU Berlin at the beginning of the upcoming winter-semester funding period must still have at least two semesters remaining within the standard period of study.",
+        )
+        self.assertEqual(evaluate_criterion(criterion, {})["status"], "unknown")
+        base = {
+            "current_university_name": "TU Berlin",
+            "currently_enrolled_at_current_university": True,
+        }
+        self.assertEqual(evaluate_criterion(criterion, base)["status"], "unknown")
+        self.assertEqual(
+            evaluate_criterion(criterion, {**base, "remaining_semesters_in_program": 1})["status"],
+            "fail",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {**base, "remaining_semesters_in_program": 2})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {
+                **base, "remaining_semesters_in_program": 2, "current_university_name": "University of Kiel"
+            })["status"],
+            "fail",
+        )
+
+    def test_tu_berlin_prospective_student_route_uses_application_not_enrolment(self):
+        criterion = self.criterion(
+            "category_ii_eligibility",
+            "Prospective TU Berlin students",
+            "Prospective students who have applied to begin their studies at TU Berlin in the upcoming winter semester may apply; TU Berlin verifies enrolment in the degree programme before awarding the scholarship.",
+        )
+        self.assertEqual(evaluate_criterion(criterion, {})["status"], "unknown")
+        self.assertEqual(
+            evaluate_criterion(criterion, {"applied_to_current_university": True})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"applied_to_current_university": False})["status"],
+            "fail",
+        )
+
+    def test_tu_berlin_current_and_prospective_routes_are_alternatives(self):
+        from app.matching import match_scholarship
+        current = self.criterion(
+            "category_i_eligibility", "Current students",
+            "Already enrolled at TU Berlin with at least two semesters remaining."
+        )
+        prospective = self.criterion(
+            "category_ii_eligibility", "Prospective students",
+            "Have applied to begin studies at TU Berlin in the upcoming winter semester."
+        )
+        result = match_scholarship(
+            {"id": 77, "title": "TU Berlin Deutschlandstipendium"},
+            [current, prospective],
+            {"applied_to_current_university": True},
+        )
+        self.assertEqual(result["match_status"], "likely_eligible")
+        self.assertEqual(result["checks"][0]["status"], "informational")
+        self.assertEqual(result["checks"][1]["status"], "pass")
+
     def test_financial_challenges_remain_manual_provider_review(self):
         criterion = self.criterion(
             "eligibility",
