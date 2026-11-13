@@ -1842,12 +1842,6 @@ def _augment_oskar_karl_forster(parsed: ExtractedPage, html: str, source_url: st
             "Academic performance clarification",
             "Particularly outstanding academic achievements are not required. The provider looks for the usual academic progress for the semester reached; around 20 ECTS per semester is described as an indicator of continued progress, not a fixed minimum.",
         )
-    if re.search(r"approval of a university lecturer", page_text):
-        add(
-            "application_requirements",
-            "Learning-material purchase approval",
-            "For a grant to buy books or other learning materials, a full-time university lecturer must confirm that the planned purchase is appropriate and confirm the applicant's funding eligibility in light of previous study progress.",
-        )
     if re.search(r"can only be claimed once", page_text):
         add(
             "application_requirements",
@@ -2251,13 +2245,11 @@ def _augment_romana_schott(parsed: ExtractedPage, html: str, source_url: str = R
             "The published standard funding period is three years, with extensions possible. Students without children receive €150 per month. A child supplement is available, but the current programme page and its 2026 call list different amounts; confirm the applicable amount with the University.",
         )
 
-    if re.search(r"first degree and study history", page_text) and re.search(
-        r"voluntary work and personal commitment", page_text
-    ):
+    if re.search(r"despite obstacles", page_text):
         add(
-            "selection_criteria",
-            "Additional selection factors",
-            "The 2026 call says the selection may consider first-degree and study history, voluntary work and personal commitment, and care responsibilities. These are provider-side considerations and are not collected or inferred by the matching profile.",
+            "other_information",
+            "Programme focus",
+            "The fund supports female students who have overcome obstacles in pursuing university studies; the University particularly highlights support for students with children. This is programme information, not a request for personal profile data.",
         )
 
     if re.search(r"not possible to apply for a scholarship on one's own", page_text):
@@ -2277,12 +2269,6 @@ def _augment_romana_schott(parsed: ExtractedPage, html: str, source_url: str = R
             "required_documents",
             "Nomination and application documents",
             "The proposal must include an expert justification of the student's subject and personal suitability, a brief statement from an eligible faculty body, and the student's completed proposal form with the additional requested documents.",
-        )
-    if re.search(r"transcript of records", page_text) and re.search(r"tabular cv", page_text):
-        add(
-            "required_documents",
-            "Supporting documents",
-            "The 2026 call lists a transcript of records, a tabular CV, an academic recommendation, faculty endorsement, and evidence of financial need. Additional documents may apply where relevant; check the current call before submitting.",
         )
     if re.search(r"no benefits will be granted if you are not in need", page_text):
         add(
