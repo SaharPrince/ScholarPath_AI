@@ -1664,6 +1664,129 @@ def _augment_villigst_doctoral_faq(
     return parsed
 
 
+HEINRICH_BOLL_APPLICATION_URL = "https://www.boell.de/en/applying-scholarship"
+HEINRICH_BOLL_FAQ_URL = "https://www.boell.de/en/2026/03/26/frequently-asked-questions-about-application-process"
+
+
+def _augment_heinrich_boll_faq(
+    parsed: ExtractedPage,
+    faq_html: str,
+    application_html: str = "",
+    faq_url: str = HEINRICH_BOLL_FAQ_URL,
+    application_url: str = HEINRICH_BOLL_APPLICATION_URL,
+) -> ExtractedPage:
+    """Attach official FAQ and application-page clarifications to the same HBS award."""
+    faq_root = _remove_site_chrome(BeautifulSoup(faq_html, "html.parser"), faq_url)
+    faq_text = _clean(faq_root.get_text(" ", strip=True)).casefold()
+    application_text = ""
+    if application_html:
+        application_root = _remove_site_chrome(
+            BeautifulSoup(application_html, "html.parser"), application_url
+        )
+        application_text = _clean(application_root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str, source_url: str = faq_url) -> None:
+        statement = _clean(statement)
+        item = (kind, label, statement)
+        if not statement or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", statement)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"(?:level b2 or dsh ii|dsh ii or b2)", faq_text):
+        add(
+            "language_requirements",
+            "German language proficiency",
+            "International applicants must provide proof of German language proficiency at B2 or DSH II, even when their degree programme is taught in English.",
+        )
+
+    if re.search(r"we do not set any age limits", faq_text):
+        add(
+            "age_limit",
+            "Age limit clarification",
+            "The Foundation sets no age limit for international graduate and PhD applicants; applicants educated in Germany are subject to BAföG age rules.",
+        )
+
+    if re.search(r"priority will be given to international students and phd candidates from dac countries", faq_text):
+        add(
+            "selection_criteria",
+            "Priority applicant groups",
+            "Applicants from DAC countries are prioritised, particularly those who have completed their previous degree abroad and have not yet moved to Germany; this is a preference, not an exclusive nationality requirement.",
+        )
+
+    if re.search(r"very good academic performance", faq_text) and re.search(r"civic engagement", faq_text):
+        add(
+            "selection_criteria",
+            "Academic and civic profile",
+            "Selection considers academic performance, civic engagement, political interest and fit with the Foundation's aims; no fixed minimum grade-point average is published.",
+        )
+
+    if re.search(r"only accept applications submitted via our online portal", application_text) or re.search(
+        r"only accept applications submitted via our online portal", faq_text
+    ):
+        add(
+            "application_requirements",
+            "Application submission",
+            "Applications must be submitted through the Foundation's online application portal; applications by post are not accepted.",
+        )
+
+    if re.search(r"part-time degree programs are not eligible for funding", faq_text):
+        add(
+            "study_level",
+            "Master's study format",
+            "For Master's applicants, part-time degree programmes are not eligible for funding.",
+        )
+
+    if re.search(r"completed their first degree abroad", faq_text):
+        add(
+            "study_level",
+            "Master's entry route",
+            "For international Master's applicants, a first degree such as a Bachelor's degree must be completed abroad before starting the Master's programme in Germany.",
+        )
+
+    if re.search(r"completed their graduate degree abroad", faq_text):
+        add(
+            "study_level",
+            "Doctoral entry route",
+            "For international PhD applicants, the previous graduate degree must have been completed abroad and the intended doctoral programme must be in Germany.",
+        )
+
+    if re.search(r"have identified a supervisor", faq_text) and re.search(r"completed initial preparatory work", faq_text):
+        add(
+            "application_requirements",
+            "Doctoral application preparation",
+            "PhD applicants should have a defined research topic, a prepared exposé, an identified supervisor and completed initial preparatory work; proof of doctoral admission or a supervisor's confirmation is required, but the formal university confirmation may follow later in the selection process.",
+        )
+
+    if re.search(r"standard duration of four semesters or more", application_text):
+        add(
+            "study_level",
+            "Master's programme duration and format",
+            "For international Master's applicants, the programme must be full-time at a state-recognised university in Germany and have a standard duration of at least four semesters.",
+            application_url,
+        )
+
+    if re.search(r"any bafög payments or funding from another institution.*?must be discontinued prior to the start", faq_text):
+        add(
+            "application_requirements",
+            "Other funding",
+            "BAföG payments or funding from another institution for the same purpose must be discontinued before this scholarship begins; previous funding periods may count towards the maximum PhD funding period.",
+        )
+
+    if re.search(r"documents in german", faq_text) and re.search(r"phd candidates must write the abstract", faq_text):
+        add(
+            "application_requirements",
+            "Application language",
+            "Application documents are expected in German; references, expert reports and translations may be in English. PhD applicants must write the exposé abstract in German, while the exposé itself may be in English.",
+        )
+
+    return parsed
+
+
 FES_APPRENTICESHIP_FAQ_URL = (
     "https://www.fes.de/studienfoerderung/faq/faq-fuer-bewerber-innen-der-ausbildungsfoerderung"
 )
@@ -2567,6 +2690,25 @@ async def extract_candidate_details(
                 if faq_html:
                     parsed = _augment_fes_apprenticeship_faq(
                         parsed, faq_html, FES_APPRENTICESHIP_FAQ_URL
+                    )
+
+            if (
+                parsed
+                and (urlparse(candidate["candidate_url"]).hostname or "").casefold() == "www.boell.de"
+                and urlparse(candidate["candidate_url"]).path.rstrip("/").casefold()
+                == "/en/scholarships"
+            ):
+                faq_html, _faq_error = await _fetch_page(client, HEINRICH_BOLL_FAQ_URL)
+                application_html, _application_error = await _fetch_page(
+                    client, HEINRICH_BOLL_APPLICATION_URL
+                )
+                if faq_html:
+                    parsed = _augment_heinrich_boll_faq(
+                        parsed,
+                        faq_html,
+                        application_html or "",
+                        HEINRICH_BOLL_FAQ_URL,
+                        HEINRICH_BOLL_APPLICATION_URL,
                     )
 
             if (
