@@ -191,8 +191,11 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     semester = _number(profile.get("current_semester_in_program"))
     if re.search(r"from the second semester onwards|from the second semester onward", lower):
         target_level = (profile.get("target_study_level") or "").strip().lower()
-        if re.search(r"does not apply to master's students|does not apply to master'?s students", lower) and target_level in {"master", "masters", "master's"}:
-            return _result("pass", "The provider exempts Master's students from the second-semester restriction.")
+        if re.search(r"does not apply to master's students|does not apply to master'?s students", lower):
+            if target_level in {"master", "masters", "master's"}:
+                return _result("pass", "The provider exempts Master's students from the second-semester restriction.")
+            if not target_level:
+                return _result("unknown", "Choose your intended study level to check whether the Master's exemption applies.")
         if semester is None:
             return _result("unknown", "Add your current semester to check the second-semester requirement.")
         if semester < 2:
