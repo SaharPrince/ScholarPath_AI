@@ -2358,7 +2358,7 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         </main></body></html>
         """
         result = _augment_kiel_deutschlandstipendium(parsed, html)
-        self.assertTrue(any(item[0] == "eligibility" and "prospective students" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "eligibility" and "preparing to start" in item[2] for item in result.criteria))
         self.assertTrue(any(item[0] == "application_requirements" and "foreign university entrance qualification" in item[2] for item in result.criteria))
         self.assertTrue(any(item[0] == "target_audience" and "second degrees" in item[2] for item in result.criteria))
         self.assertTrue(any(item[0] == "ineligibility" and "exceeding €30" in item[2] for item in result.criteria))
