@@ -202,6 +202,15 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         self.assertEqual(haw["official_url"], "https://www.haw-kiel.de/en/studium/studieninteressierte/studienfinanzierung-stipendien/deutschlandstipendium/stipendiatin-werden/")
         self.assertEqual(fu["official_url"], "https://www.fu-berlin.de/en/sites/deutschlandstipendium/index.html")
 
+    def test_klu_scholarships_and_financial_aid_page_is_an_index(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        klu = sources["Kühne Logistics University – Scholarships and Financial Aid"]
+        self.assertEqual(klu["source_type"], "official_index")
+        self.assertEqual(
+            klu["official_url"],
+            "https://www.klu.org/student-life/student-services/scholarships-financial-aid",
+        )
+
     def test_klu_deutschlandstipendium_is_a_separate_official_programme(self) -> None:
         sources = {source["name"]: source for source in GERMANY_SOURCES}
         klu = sources["Kühne Logistics University – Deutschlandstipendium"]
