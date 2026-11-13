@@ -24,6 +24,10 @@ from app.extraction import (
     _augment_fu_berlin_deutschlandstipendium,
     KLU_DEUTSCHLANDSTIPENDIUM_URL,
     _augment_klu_deutschlandstipendium,
+    REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_regensburg_deutschlandstipendium,
+    TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_tuebingen_deutschlandstipendium,
 )
 import sqlite3
 import unittest
@@ -197,6 +201,66 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         evidence = ("eligibility", dissertation[2])
         self.assertEqual(result.evidence_sources[evidence], AMEND_FUNDING_GUIDELINES_URL)
         self.assertTrue(all(result.criteria_sources[item] == AMEND_SCHOLARSHIP_URL for item in result.criteria))
+
+    def test_regensburg_deutschlandstipendium_extracts_current_call_and_study_rules(self):
+        parsed = ExtractedPage("Regensburg Deutschlandstipendium", None, "University of Regensburg")
+        html = """
+        <html><body><main>
+          <p>The selection process for the Deutschlandstipendium at the University of Regensburg for the funding period covering the summer semester 2027 and the winter semester 2027–28 will take place during the winter semester 2026–27.</p>
+          <p>Start of the application period | 2 November 2026</p>
+          <p>Application deadline | 15 November 2026</p>
+          <p>You are enrolled on a degree programme at the University of Regensburg.</p>
+          <p>Students on doctoral programmes are not eligible for funding.</p>
+          <p>You are studying within the standard period of study.</p>
+          <p>If you are about to start a degree programme at the University of Regensburg, you can take part in the selection procedure. However, you can only be funded if you actually take up this degree programme.</p>
+          <p>The amount of the scholarship is 300.00 Eur per month.</p>
+          <p>Scholarships are initially awarded for one year.</p>
+          <p>Selection considers society commitment and willingness to take on responsibility.</p>
+          <p>Required file attachments: valid Studiennachweis, certificate of higher education entrance qualification, proof of previous academic achievements.</p>
+        </main></body></html>
+        """
+        result = _augment_regensburg_deutschlandstipendium(parsed, html)
+        self.assertEqual(result.fields["deadline_date"], "2026-11-15")
+        self.assertEqual(result.fields["application_status"], "open")
+        self.assertEqual(result.application_status, "open")
+        self.assertIn("€300 per month", result.fields["funding_summary"])
+        self.assertTrue(any(item[1] == "Study at the University of Regensburg" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Study duration" for item in result.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "doctoral" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" for item in result.criteria))
+        self.assertTrue(any(item[0] == "required_documents" for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] == REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL for item in result.evidence))
+
+    def test_tuebingen_deutschlandstipendium_keeps_grade_routes_and_exclusions_separate(self):
+        parsed = ExtractedPage("Tübingen Deutschlandstipendium", None, "University of Tübingen")
+        html = """
+        <html><body><main>
+          <p>Students in their first semester (Start WiSe 2026/27) with an outstanding average in their final year of school and university entrance qualification (not poorer than 1.40 in the German Abitur).</p>
+          <p>Students in their second semester (Start SoSe 2026 or earlier) who have obtained outstanding results during their studies (average grade of studies to date 1.40 or better, in Law: at least 9 points).</p>
+          <p>Students doing higher degrees (Master): You must show an average grade of 1.40 or better in your first degree.</p>
+          <p>The Germany Scholarship does not support doctoral students, part-time students, Come-to-Prepare students, students at the Leibniz Kolleg or guest students.</p>
+          <p>The scholarship amounts to 300 euros per month. The scholarships are awarded for one year at a time.</p>
+          <p>The application period for the upcoming procedure (summer semester 2027 and winter semester 2027/28) runs from 1.11. to 30.11.2026.</p>
+          <p>Applicants with a foreign high school diploma must submit their certificate for conversion to the German grading system.</p>
+          <p>Long-term extracurricular or non-subject-related activities, voluntary work, and social engagement may be included in the overall assessment.</p>
+          <p>When applying, you must provide your tax identification number.</p>
+        </main></body></html>
+        """
+        result = _augment_tuebingen_deutschlandstipendium(parsed, html)
+        self.assertEqual(result.fields["deadline_date"], "2026-11-30")
+        self.assertEqual(result.fields["application_status"], "open")
+        self.assertEqual(result.application_status, "open")
+        self.assertIn("€300 per month", result.fields["funding_summary"])
+        self.assertTrue(any(item[1] == "First-semester applicants" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Continuing students" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Master's applicants" for item in result.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "doctoral" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Foreign qualifications" for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" for item in result.criteria))
+        self.assertTrue(any("not collected" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL for item in result.evidence))
 
     def test_klu_deutschlandstipendium_keeps_admitted_route_and_selection_factors_distinct(self):
         parsed = ExtractedPage("KLU Deutschlandstipendium", None, "Kühne Logistics University")
