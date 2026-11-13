@@ -2368,7 +2368,7 @@ def _augment_amend_medical_scholarship(
             "Funding is provided within the standard study period counted from completion of the Physikum.",
         )
 
-    if re.search(r"regelmäßige leistungsnachweise", page_text):
+    if re.search(r"leistungsnachweise", page_text):
         add(
             "application_requirements",
             "Ongoing academic progress",
