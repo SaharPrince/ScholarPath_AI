@@ -43,7 +43,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertIs(result, parsed)
         self.assertEqual(result.fields["deadline_date"], "2026-05-17")
         self.assertEqual(result.application_status, "closed")
-        self.assertTrue(any("state-recognised examination" in item[2] for item in result.criteria))
+        self.assertTrue(any("state-recognized examination" in item[2] for item in result.criteria))
         self.assertTrue(any("under 45" in item[2] or "45 years" in item[2] for item in result.criteria))
         self.assertTrue(any("not limited to a first vocational qualification" in item[2] for item in result.criteria))
         self.assertTrue(any("Part-time vocational training" in item[2] for item in result.criteria))
