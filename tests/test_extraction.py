@@ -9,6 +9,9 @@ from app.extraction import (
     ROMANA_SCHOTT_URL,
     _augment_oskar_karl_forster,
     _augment_romana_schott,
+    AMEND_SCHOLARSHIP_URL,
+    AMEND_FUNDING_GUIDELINES_URL,
+    _augment_amend_medical_scholarship,
     _augment_villigst_doctoral_faq,
     _augment_fes_apprenticeship_faq,
     TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
@@ -164,6 +167,36 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertIn("€150 per month", result.fields["funding_summary"])
         self.assertTrue(all(result.criteria_sources[item] == ROMANA_SCHOTT_URL for item in result.criteria))
         self.assertTrue(all(result.evidence_sources[item] == ROMANA_SCHOTT_URL for item in result.evidence))
+
+
+    def test_amend_medical_scholarship_extracts_current_deadline_and_linked_foundation_rules(self):
+        parsed = ExtractedPage("Amend Medical Scholarship", None, "University of Würzburg")
+        html = """
+        <html><body><main>
+          <p>Funding through the Amend Scholarship from summer semester 2027.</p>
+          <p>Scholarships in the amount of monthly € 300,00 are awarded.</p>
+          <p>Applicants must provide an Abitur average of at least 2,5.</p>
+          <p>The Physikum must be completed with the grade "sehr gut".</p>
+          <p>During funding, regular academic achievement records must be submitted at the end of each semester.</p>
+          <p>Funding is provided within the standard study period from the Physikum.</p>
+          <p>Application deadline: 30.11.2026.</p>
+          <p>Send your application with CV, motivation letter, Abitur certificate, proof of completed Physikum and BAföG notice if applicable.</p>
+          <p>The recipient must ensure that the university sets up an account for payments.</p>
+          <a href="https://www.med.uni-wuerzburg.de/fileadmin/03000000/user_upload/dateien_studiendekanat/Stipendien/Foerdergrundsaetze_Studienstiftung_Amend_30.03.2015.pdf">Further information on funding principles</a>
+        </main></body></html>
+        """
+        result = _augment_amend_medical_scholarship(parsed, html)
+        self.assertIn("€300 per month", result.fields["funding_summary"])
+        self.assertIn("30 November 2026", result.fields["deadline_text"])
+        self.assertTrue(any(item[1] == "Abitur grade" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Physikum result" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Medical studies and dissertation project" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Ongoing academic progress" for item in result.criteria))
+        self.assertTrue(any(item[0] == "required_documents" for item in result.criteria))
+        dissertation = next(item for item in result.criteria if item[1] == "Medical studies and dissertation project")
+        evidence = ("eligibility", dissertation[2])
+        self.assertEqual(result.evidence_sources[evidence], AMEND_FUNDING_GUIDELINES_URL)
+        self.assertTrue(all(result.criteria_sources[item] == AMEND_SCHOLARSHIP_URL for item in result.criteria))
 
     def test_klu_deutschlandstipendium_keeps_admitted_route_and_selection_factors_distinct(self):
         parsed = ExtractedPage("KLU Deutschlandstipendium", None, "Kühne Logistics University")
