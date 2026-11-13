@@ -2079,14 +2079,17 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         """
         criteria = extract_criteria_from_html(html)
         texts = [item[2] for item in criteria]
-        self.assertEqual(len(texts), 3)
+        self.assertEqual(len(texts), 5)
         self.assertTrue(any("anerkannten Ausbildungsberuf" in item for item in texts))
         self.assertTrue(any("§ 8 des Berufsausbildungsgesetzes" in item for item in texts))
         self.assertTrue(any("§ 10 BAföG" in item for item in texts))
         self.assertFalse(any("BIBB" in item for item in texts))
         self.assertFalse(any("abschließend" in item for item in texts))
-        self.assertFalse(any("Erstausbildung" in item for item in texts))
-        self.assertFalse(any("Ausbildungsabbruch" in item for item in texts))
+        clarifications = [item for item in criteria if item[0] == "application_requirements"]
+        self.assertEqual(len(clarifications), 2)
+        self.assertTrue(any("Erstausbildung" in item[2] for item in clarifications))
+        self.assertTrue(any("Ausbildungsabbruch" in item[2] for item in clarifications))
+        self.assertTrue(all(not _is_mandatory_criterion(item[0], item[2]) for item in clarifications))
 
 
     def test_accepts_german_hss_scholarship_landing_page(self) -> None:
