@@ -9,6 +9,8 @@ from app.database import get_connection
 
 LEGACY_HEC_URL = "https://www.hec.gov.pk/Site/Scholarship/default.aspx"
 
+LEGACY_KIEL_DEUTSCHLANDSTIPENDIUM_PDF_URL = "https://www.uni-kiel.de/gf-praesidium/de/recht/interne-richtlinien/guidelines-of-kiel-university-for-the-award-of-deutschlandstipendium"
+
 GERMANY_SOURCES = (
     {"name": "DAAD Pakistan – Scholarship Programmes for Pakistan", "official_url": "https://www.daad.pk/en/find-funding/daad-scholarship-programmes-for-pakistan/", "source_type": "official_index", "country": "Germany"},
     {"name": "DAAD Pakistan – Scholarship Database", "official_url": "https://www.daad.pk/en/find-funding/scholarship-database/?intention=&onlydaad=0&origin=194&pg=1&q=&status=0&subject=0&tab=&target=194&type=a", "source_type": "official_database", "country": "Germany"},
@@ -62,6 +64,14 @@ def seed_official_sources() -> int:
                 "INSERT INTO app_migrations (name) VALUES (?)",
                 ("germany_catalog_reset_v1",),
             )
+
+        # The old source pointed directly to a PDF, which the HTML-only
+        # discovery fetcher cannot process. The current English programme page
+        # is now the active source; keep the historical PDF row inactive.
+        connection.execute(
+            "UPDATE sources SET is_active = 0 WHERE official_url = ?",
+            (LEGACY_KIEL_DEUTSCHLANDSTIPENDIUM_PDF_URL,),
+        )
 
         for source in GERMANY_SOURCES:
             already_exists = connection.execute(
