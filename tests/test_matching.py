@@ -296,7 +296,7 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(age, {"age": 40})["status"], "pass")
         self.assertEqual(evaluate_criterion(age, {"age": 46})["status"], "unknown")
 
-    def test_apprenticeship_recognition_accepts_bb ig_and_state_regulated_wording(self):
+    def test_apprenticeship_recognition_accepts_bbig_and_state_regulated_wording(self):
         for wording in (
             "Eine Ausbildung nach BBiG oder HwO absolvieren.",
             "Eine bundesgesetzlich geregelte Fachausbildung im Gesundheitswesen absolvieren.",
