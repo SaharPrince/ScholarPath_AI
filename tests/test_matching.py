@@ -457,6 +457,26 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
             "evidence_url": "https://official.example/eligibility",
         }
 
+    def test_oskar_karl_forster_second_semester_rule_exempts_masters(self):
+        criterion = self.criterion(
+            "study_level",
+            "Minimum study semester",
+            "Applicants in non-Master's programmes must be enrolled from the second semester onwards; the second-semester restriction does not apply to Master's students.",
+        )
+        self.assertEqual(evaluate_criterion(criterion, {})["status"], "unknown")
+        self.assertEqual(
+            evaluate_criterion(criterion, {"target_study_level": "bachelors", "current_semester_in_program": 1})["status"],
+            "fail",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"target_study_level": "bachelors", "current_semester_in_program": 2})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"target_study_level": "master"})["status"],
+            "pass",
+        )
+
     def test_heinrich_boll_masters_part_time_rule_does_not_reject_phd_applicants(self):
         criterion = self.criterion(
             "study_level",
