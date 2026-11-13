@@ -106,8 +106,8 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             # If the same source criterion also specifies remaining semesters,
             # continue so both the institution and duration conditions are checked.
             if not re.search(
-                r"\\b(?:at least|minimum of)\\s*(?:\\d+|one|two|three|four|five|six)\\s+(?:full\\s+)?semesters?\\b.{0,100}\\b(?:remaining|left)\\b|"
-                r"\\b(?:remaining|left)\\s+(?:at least\\s+)?(?:\\d+|one|two|three|four|five|six)\\s+semesters?\\b",
+                r"\b(?:at least|minimum of)\s*(?:\d+|one|two|three|four|five|six)\s+(?:full\s+)?semesters?\b.{0,100}\b(?:remaining|left)\b|"
+                r"\b(?:remaining|left)\s+(?:at least\s+)?(?:\d+|one|two|three|four|five|six)\s+semesters?\b",
                 lower,
             ):
                 return _result("pass", f"You confirmed current enrolment at {required_institution}.")
