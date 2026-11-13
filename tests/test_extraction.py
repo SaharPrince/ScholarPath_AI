@@ -15,6 +15,10 @@ from app.extraction import (
     _augment_tu_berlin_deutschlandstipendium,
     KIEL_DEUTSCHLANDSTIPENDIUM_URL,
     _augment_kiel_deutschlandstipendium,
+    HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_haw_kiel_deutschlandstipendium,
+    FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_fu_berlin_deutschlandstipendium,
 )
 import sqlite3
 import unittest
@@ -2384,6 +2388,59 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         result = _augment_kiel_deutschlandstipendium(parsed, html)
         period = next(item[2] for item in result.criteria if item[1] == "Application period")
         self.assertIn("no exact future deadline is confirmed", period)
+
+
+    def test_haw_kiel_deutschlandstipendium_keeps_entry_and_continuing_student_rules_distinct(self):
+        parsed = ExtractedPage(
+            title="HAW Kiel Deutschlandstipendium",
+            description=None,
+            provider_name="HAW Kiel",
+        )
+        html = """
+        <html><body><main>
+          <p>Anyone who is studying or intends to study at HAW Kiel within the standard period of study at the beginning of the funding period can apply.</p>
+          <p>If you are about to start studying at HAW Kiel or have not yet completed a semester at HAW Kiel, you must have a grade of better than 2.0 in your university entrance qualification.</p>
+          <p>All other students must have completed at least half of the ECTS per semester as stipulated in the respective curriculum of the degree program.</p>
+          <p>Applicants must not have exceeded the standard period of study for their degree program at the start of the funding period.</p>
+          <p>For Bachelor's graduates transferring to a Master's degree course, the grade of the degree qualifying for the Master's degree is decisive. Students must also prove that they are among the top 20% of the respective cohort.</p>
+          <p>Applicants with certificates from foreign universities or schools: only the grade converted by uniassist for the German grading system is decisive.</p>
+          <p>Applications can only be submitted via the online portal. The applicable application deadline is also stated there.</p>
+          <p>Special achievements, awards and prizes from the last two years, previous professional activity, internships or voluntary services of a duration of at least six months.</p>
+          <p>Current extracurricular commitment of at least one year.</p>
+        </main></body></html>
+        """
+        result = _augment_haw_kiel_deutschlandstipendium(parsed, html)
+        self.assertTrue(any(item[1] == "Study at HAW Kiel" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Entry qualification grade" and "better than 2.0" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Study progress" and "half of the ECTS" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Academic ranking evidence" and "top 20%" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Foreign qualification grade conversion" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Application deadline" and "stated in that portal" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" and "six months" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+
+    def test_fu_berlin_deutschlandstipendium_captures_winter_only_and_acceptance_route(self):
+        parsed = ExtractedPage(
+            title="Freie Universität Berlin Deutschlandstipendium",
+            description=None,
+            provider_name="Freie Universität Berlin",
+        )
+        html = """
+        <html><body><main>
+          <p>The Deutschlandstipendium scholarship allows students at Freie Universität Berlin of all nations and all parts of society to apply.</p>
+          <p>Requirements: enrollment at Freie Universität Berlin within the standard time to degree during the funding period or a letter of acceptance to start a degree program at Freie Universität Berlin.</p>
+          <p>300 euros per month for a minimum of two semesters starting in October, extensions are possible.</p>
+          <p>Scholarships are always awarded for the winter semester. It is not possible to start the scholarship program in the summer semester.</p>
+          <p>Application period for the funding year 2026/2027: The application period ended.</p>
+        </main></body></html>
+        """
+        result = _augment_fu_berlin_deutschlandstipendium(parsed, html)
+        self.assertTrue(any(item[1] == "Study at Freie Universität Berlin" for item in result.criteria))
+        self.assertTrue(any(item[1] == "International applicants" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Funding start" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Application period" and "next application deadline" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Funding amount" and "€300 per month" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
 
 
 if __name__ == "__main__":
