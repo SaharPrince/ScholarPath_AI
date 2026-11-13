@@ -2354,7 +2354,7 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
           <p>Applicants who have successfully participated in a Software Challenge and who
              are applying to CAU for Computer Science must submit the scholarship certificate
              and a recommendation letter.</p>
-          <p>Special achievements, awards and social involvement are viewed favorably.</p>
+          <p>The following criteria are viewed favorably: special achievements, awards and prizes from the last two years, prior vocational training, internships or voluntary service lasting at least two months.</p>
         </main></body></html>
         """
         result = _augment_kiel_deutschlandstipendium(parsed, html)
