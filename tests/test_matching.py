@@ -271,12 +271,47 @@ class ProfileMatchingTests(unittest.TestCase):
 
     def test_apprenticeship_specific_conditions_are_matched(self):
         year = self.criterion("eligibility", "Training year", "Be at the beginning of the first and no later than the beginning of the second Ausbildungsjahr.")
-        self.assertEqual(evaluate_criterion(year, {"apprenticeship_year": 2})["status"], "pass")
+        self.assertEqual(evaluate_criterion(year, {"apprenticeship_year": 1})["status"], "pass")
+        self.assertEqual(evaluate_criterion(year, {"apprenticeship_year": 2})["status"], "unknown")
+        self.assertEqual(
+            evaluate_criterion(year, {"apprenticeship_year": 2, "apprenticeship_second_year_stage": "beginning"})["status"],
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_criterion(year, {"apprenticeship_year": 2, "apprenticeship_second_year_stage": "later"})["status"],
+            "fail",
+        )
         self.assertEqual(evaluate_criterion(year, {"apprenticeship_year": 3})["status"], "fail")
         recognized = self.criterion("eligibility", "Recognized occupation", "Learn a staatlich anerkannten Ausbildungsberuf.")
         self.assertEqual(evaluate_criterion(recognized, {"recognized_apprenticeship": True})["status"], "pass")
         contract = self.criterion("eligibility", "Training contract", "Have an Ausbildungsvertrag or written confirmation of a training place.")
         self.assertEqual(evaluate_criterion(contract, {"has_training_contract": False})["status"], "fail")
+
+    def test_rosa_apprenticeship_age_exception_is_not_an_automatic_rejection(self):
+        age = self.criterion(
+            "age_limit",
+            "Age",
+            "Du bist jünger als 45 Jahre. Manchmal gibt es Ausnahmen, zum Beispiel bei einer Zweitausbildung.",
+        )
+        self.assertEqual(evaluate_criterion(age, {"age": 40})["status"], "pass")
+        self.assertEqual(evaluate_criterion(age, {"age": 46})["status"], "unknown")
+
+    def test_apprenticeship_recognition_accepts_bb ig_and_state_regulated_wording(self):
+        for wording in (
+            "Eine Ausbildung nach BBiG oder HwO absolvieren.",
+            "Eine bundesgesetzlich geregelte Fachausbildung im Gesundheitswesen absolvieren.",
+            "An equivalent state-regulated vocational occupation absolvieren.",
+        ):
+            with self.subTest(wording=wording):
+                c = self.criterion("eligibility", "Recognised training", wording)
+                self.assertEqual(
+                    evaluate_criterion(c, {"recognized_apprenticeship": True})["status"],
+                    "pass",
+                )
+
+    def test_political_engagement_is_not_requested_in_profile(self):
+        c = self.criterion("eligibility", "Engagement", "Applicants demonstrate social or political engagement.")
+        self.assertEqual(evaluate_criterion(c, {})["status"], "unknown")
 
     def test_no_structured_criteria_never_means_eligible(self):
         scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
