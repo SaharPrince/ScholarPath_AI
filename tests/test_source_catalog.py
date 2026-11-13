@@ -133,6 +133,16 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         )
 
 
+
+    def test_wuerzburg_amend_scholarship_is_a_separate_official_programme(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        amend = sources["University of Würzburg – Amend Medical Scholarship"]
+        self.assertEqual(amend["source_type"], "official_programme")
+        self.assertEqual(
+            amend["official_url"],
+            "https://www.med.uni-wuerzburg.de/en/service/stipendien/",
+        )
+
     def test_broad_provider_and_research_funding_pages_are_indexes(self) -> None:
         sources = {source["name"]: source for source in GERMANY_SOURCES}
         expected_indexes = (
