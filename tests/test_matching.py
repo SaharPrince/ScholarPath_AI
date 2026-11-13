@@ -229,6 +229,30 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(remaining, {"months_remaining_in_program": 8})["status"], "pass")
         self.assertEqual(evaluate_criterion(remaining, {"months_remaining_in_program": 4})["status"], "fail")
 
+    def test_kaad_combined_enrolment_and_six_months_rule_checks_both_conditions(self):
+        criterion = self.criterion(
+            "eligibility",
+            "Current study and remaining duration",
+            "You are already studying in Germany and have at least six months remaining in your programme.",
+        )
+        self.assertEqual(evaluate_criterion(criterion, {})["status"], "unknown")
+        self.assertEqual(
+            evaluate_criterion(criterion, {"currently_enrolled_in_germany": False, "months_remaining_in_program": 8})["status"],
+            "fail",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"currently_enrolled_in_germany": True})["status"],
+            "unknown",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"currently_enrolled_in_germany": True, "months_remaining_in_program": 5})["status"],
+            "fail",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"currently_enrolled_in_germany": True, "months_remaining_in_program": 6})["status"],
+            "pass",
+        )
+
     def test_two_remaining_semesters_rule_is_matched_exactly(self):
         criterion = self.criterion(
             "eligibility",
