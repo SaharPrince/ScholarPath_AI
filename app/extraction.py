@@ -1679,6 +1679,108 @@ ROMANA_SCHOTT_URL = (
 )
 
 
+KLU_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://www.klu.org/about-klu/student-services/scholarships/deutschlandstipendium"
+)
+
+
+def _augment_klu_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = KLU_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Preserve KLU's prospective-student route and distinguish selection from gates."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        statement = _clean(statement)
+        item = (kind, label, statement)
+        if not statement or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", statement)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"fulfill the admission criteria for studies at klu", page_text) and re.search(
+        r"already enrolled in a degree program at klu or have been admitted to klu", page_text
+    ):
+        add(
+            "eligibility",
+            "KLU admission and study status",
+            "Applicants must meet the admission requirements for their KLU degree programme and either already be enrolled in a KLU degree programme or have been admitted and plan to start soon.",
+        )
+
+    if re.search(r"very good grades", page_text) and re.search(
+        r"study starters and current klu students will be evaluated separately", page_text
+    ):
+        add(
+            "selection_criteria",
+            "Academic performance",
+            "Selection is merit-based and prioritises very good grades. Applicants who have not started at KLU are assessed mainly on their university entrance qualification or latest degree; current KLU students are assessed mainly on their verified KLU GPA, including consideration of exam grades not yet recorded. KLU says successful applicants typically have a GPA of 1.7 or better, but does not publish this as a fixed minimum eligibility threshold.",
+        )
+
+    if re.search(r"special achievements, awards, and prizes", page_text) and re.search(
+        r"voluntary work or societal, social, and political engagement", page_text
+    ):
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "Where the applicant's GPA is good to very good, selection may also consider awards and special achievements, previous work experience or internships, voluntary and other societal engagement, and relevant personal or family circumstances. These are selection considerations, not universal mandatory requirements.",
+        )
+
+    if re.search(r"300 euros monthly for 12 months", page_text):
+        add_field(
+            "funding_summary",
+            "€300 per month for 12 months.",
+        )
+        add(
+            "other_information",
+            "Funding amount and duration",
+            "The scholarship provides €300 per month for a one-year funding period.",
+        )
+
+    if re.search(r"march 27 - may 31, 2026", page_text):
+        add_field(
+            "deadline_text",
+            "27 March–31 May 2026 (the published 2026 application window has closed; no later date is confirmed on this page).",
+        )
+        add(
+            "application_requirements",
+            "Published application window",
+            "The published application window for the September 2026–August 2027 funding period was 27 March–31 May 2026 and has closed. The official page does not yet confirm a later application deadline.",
+        )
+
+    if re.search(r"september 2026 - august 2027", page_text):
+        add(
+            "other_information",
+            "2026–2027 funding period",
+            "The published funding period for this round is September 2026 to August 2027.",
+        )
+
+    if re.search(r"following the call for application sent out by the dean of programs", page_text):
+        add(
+            "application_requirements",
+            "Application process",
+            "KLU opens the application portal after the Dean of Programs issues a call for applications. Applicants submit information and supporting documentation relevant to the published selection criteria.",
+        )
+
+    return parsed
+
+
 def _augment_oskar_karl_forster(parsed: ExtractedPage, html: str, source_url: str = OSKAR_KARL_FORSTER_URL) -> ExtractedPage:
     """Preserve Oskar Karl Forster's semester exception and evidence nuances."""
     root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
@@ -3159,6 +3261,11 @@ async def extract_candidate_details(
                     parsed = _augment_fes_apprenticeship_faq(
                         parsed, faq_html, FES_APPRENTICESHIP_FAQ_URL
                     )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == KLU_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
+                parsed = _augment_klu_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
 
             if parsed and candidate["candidate_url"].rstrip("/") == OSKAR_KARL_FORSTER_URL.rstrip("/"):
                 parsed = _augment_oskar_karl_forster(
