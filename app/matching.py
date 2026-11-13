@@ -103,8 +103,25 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 return _result("fail", "This opportunity requires current enrolment at the named university.")
             if required_normalized not in applicant_institution and applicant_institution not in required_normalized:
                 return _result("fail", f"The published condition requires enrolment at {required_institution}.")
-            return _result("pass", f"You confirmed current enrolment at {required_institution}.")
+            # If the same source criterion also specifies remaining semesters,
+            # continue so both the institution and duration conditions are checked.
+            if not re.search(
+                r"\\b(?:at least|minimum of)\\s*(?:\\d+|one|two|three|four|five|six)\\s+(?:full\\s+)?semesters?\\b.{0,100}\\b(?:remaining|left)\\b|"
+                r"\\b(?:remaining|left)\\s+(?:at least\\s+)?(?:\\d+|one|two|three|four|five|six)\\s+semesters?\\b",
+                lower,
+            ):
+                return _result("pass", f"You confirmed current enrolment at {required_institution}.")
 
+
+    if kind == "category_ii_eligibility" and re.search(r"applied to begin.*?tu berlin|applied.*?tu berlin", lower):
+        applied = profile.get("applied_to_current_university")
+        if applied is None:
+            return _result("unknown", "Confirm whether you have applied to start a programme at TU Berlin in the upcoming winter semester.")
+        return _result(
+            "pass" if applied else "fail",
+            "You confirmed that you have applied to start a programme at TU Berlin in the upcoming winter semester."
+            if applied else "This route requires an application to begin studies at TU Berlin in the upcoming winter semester.",
+        )
 
     if re.search(r"(?:not have been in germany for more than|have not been in germany for more than|not been in germany for more than|no more than)\s*15\s*months?|(?:nicht länger als|nicht mehr als|höchstens)\s*15\s*monate?", lower):
         months = _number(profile.get("months_in_germany"))
