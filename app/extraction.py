@@ -1725,8 +1725,12 @@ def _augment_heinrich_boll_faq(
             "Selection considers academic performance, civic engagement, political interest and fit with the Foundation's aims; no fixed minimum grade-point average is published.",
         )
 
-    if re.search(r"only accept applications submitted via our online portal", application_text) or re.search(
-        r"only accept applications submitted via our online portal", faq_text
+    if re.search(
+        r"(?:only accept applications submitted via our online portal|only applications submitted via our online portal are accepted)",
+        application_text,
+    ) or re.search(
+        r"(?:only accept applications submitted via our online portal|only applications submitted via our online portal are accepted)",
+        faq_text,
     ):
         add(
             "application_requirements",
