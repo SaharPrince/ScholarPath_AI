@@ -1741,7 +1741,7 @@ def _augment_heinrich_boll_faq(
             "For Master's applicants, part-time degree programmes are not eligible for funding.",
         )
 
-    if re.search(r"completed their first degree abroad", faq_text):
+    if re.search(r"(?:completed their first degree abroad|already have a first professional degree)", faq_text):
         add(
             "study_level",
             "Master's entry route",
