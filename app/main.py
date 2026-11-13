@@ -150,6 +150,7 @@ async def match_profile(profile: dict) -> dict:
         "months_in_germany", "residence_duration_exception", "first_semester_timing", "german_residence_permit", "currently_enrolled_in_germany",
         "months_remaining_in_program", "remaining_semesters_in_program", "current_semester_in_program", "standard_programme_semesters", "apprenticeship_year", "apprenticeship_second_year_stage", "recognized_apprenticeship", "has_training_contract",
         "current_university_name", "currently_enrolled_at_current_university",
+        "applied_to_current_university",
         "doctoral_admission_confirmed", "doctoral_project_final_phase",
     }
     unknown_fields = set(profile) - allowed
