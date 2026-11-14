@@ -30,6 +30,10 @@ from app.extraction import (
     _augment_tuebingen_deutschlandstipendium,
     GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL,
     _augment_goettingen_niedersachsenstipendium,
+
+    GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL,
+    GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL,
+    _augment_goettingen_deutschlandstipendium,
 )
 import sqlite3
 import unittest
@@ -268,6 +272,62 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("not collected" in item[2] for item in result.criteria))
         self.assertTrue(all(result.criteria_sources[item] == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
         self.assertTrue(all(result.evidence_sources[item] == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL for item in result.evidence))
+
+    def test_goettingen_deutschlandstipendium_extracts_full_rules_and_2027_deadline(self):
+        from datetime import datetime, timezone
+
+        parsed = ExtractedPage("Information for Students", None, "University of Göttingen")
+        html = """
+        <html><body><main>
+          <h1>The Germany Scholarship: Recognition and support for outstanding achievements and special commitment</h1>
+          <p>The Germany Scholarships at University of Göttingen support gifted students and applicants from all nations irrespective of income.</p>
+          <p>All students regularly enrolled at the University of Göttingen can apply. Doctoral students and exchange students are excluded.</p>
+          <p>Applicants who are not yet enrolled must be enrolled and have a student account before applying.</p>
+          <p>The funding period is from 1 October of the year of grant to 30 September of the following year.</p>
+          <p>The next application period will be held from 1st September 2027 to 30th September 2027.</p>
+          <p>The scholarship amount is usually 300 euros per month as a non-repayable grant. Scholarships are awarded for one year.</p>
+          <p>Applicants must fulfil the admission requirements for their degree programme and be about to start studying at the University of Göttingen or already enrolled there.</p>
+          <p>Students of any subject who have not exceeded the standard period of study may apply.</p>
+          <p>Applicants must not be on leave of absence at the beginning of the grant period.</p>
+          <p>Selection combines talent and performance with special activities, social engagement and special circumstances.</p>
+          <p>Evidence may include the university entrance qualification, passed coursework or examinations, degrees, awards, previous professional activity, internships and extracurricular involvement.</p>
+          <p>Documents in a language other than German or English must be submitted in a certified German translation.</p>
+          <p>The application must be submitted through the online portal with a signed cover sheet and complete supporting documents.</p>
+          <p>No CV, motivation letter or recommendation letter is required.</p>
+          <p>BAföG recipients can also be supported by the Deutschlandstipendium.</p>
+        </main></body></html>
+        """
+        result = _augment_goettingen_deutschlandstipendium(parsed, html)
+        self.assertEqual(result.title, "Deutschlandstipendium – University of Göttingen")
+        self.assertEqual(result.provider_name, "University of Göttingen")
+        self.assertEqual(result.fields["funding_summary"], "€300 per month as a non-repayable grant for one year.")
+        self.assertEqual(result.fields["deadline_date"], "2027-09-30")
+        self.assertEqual(result.fields["deadline_text"], "1–30 September 2027 for the winter semester 2027/28; the 2026–27 application round has ended.")
+        self.assertEqual(result.fields["application_url"], "https://ecampus.uni-goettingen.de/")
+        today = datetime.now(timezone.utc).date()
+        expected_status = "upcoming" if today < datetime(2027, 9, 1).date() else ("open" if today <= datetime(2027, 9, 30).date() else "closed")
+        self.assertEqual(result.application_status, expected_status)
+        self.assertEqual(result.fields["application_status"], expected_status)
+        self.assertTrue(any(item[1] == "University of Göttingen study and admission" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Eligible subject areas" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Study duration" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Enrolment at the start of funding" for item in result.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "doctoral" in item[2].lower() and "exchange" in item[2].lower() for item in result.criteria))
+        self.assertTrue(any(item[1] == "Nationality and income" and "all nationalities" in item[2] for item in result.criteria))
+        academic = next(item for item in result.criteria if item[1] == "Academic performance")
+        self.assertEqual(academic[0], "selection_criteria")
+        self.assertIn("no single universal GPA cutoff", academic[2])
+        self.assertFalse(_is_mandatory_criterion(academic[0], academic[2]))
+        sensitive = next(item for item in result.criteria if item[1] == "Special personal circumstances")
+        self.assertIn("does not request or infer them", sensitive[2])
+        self.assertFalse(_is_mandatory_criterion(sensitive[0], sensitive[2]))
+        self.assertTrue(any(item[1] == "Academic records" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Document language" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Online application and signed cover sheet" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Motivation and recommendation letters" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Other funding" and "BAföG" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] in {GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL} for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] in {GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL} for item in result.evidence))
 
     def test_goettingen_niedersachsenstipendium_extracts_current_call_and_keeps_sensitive_factors_manual(self):
         parsed = ExtractedPage("Landesstipendium Niedersachsen", None, "University of Göttingen")
