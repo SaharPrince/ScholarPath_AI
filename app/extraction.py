@@ -1995,6 +1995,160 @@ def _augment_goettingen_niedersachsenstipendium(
     return parsed
 
 
+GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://uni-goettingen.de/en/218535.html"
+)
+GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL = (
+    "https://www.uni-goettingen.de/de/document/download/b65629c7b10e4a6216bc47550a07878f-en.pdf/Richtlinie%20zum%20Deutschlandstipendium_Fassung%20vom%2020.08.2025%20-%20EN.pdf"
+)
+
+
+def _augment_goettingen_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Capture Göttingen's Germany Scholarship, keeping programme gates and selection factors distinct."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+    parsed.title = "Deutschlandstipendium – University of Göttingen"
+    parsed.provider_name = "University of Göttingen"
+
+    def add(
+        kind: str,
+        label: str,
+        statement: str,
+        evidence_url: str = GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL,
+    ) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = evidence_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = evidence_url
+
+    def add_field(
+        name: str,
+        value: str,
+        evidence_url: str = source_url,
+    ) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = evidence_url
+
+    add(
+        "eligibility",
+        "University of Göttingen study and admission",
+        "Applicants must meet the admission requirements for their intended degree programme and be about to start studying at the University of Göttingen or already be enrolled there. Enrolment and a Göttingen student account are required before the application is submitted.",
+    )
+    add(
+        "eligibility",
+        "Eligible subject areas",
+        "The scholarship is open to students of any subject at the University of Göttingen. Awards may be allocated separately by faculty, degree programme or subject area.",
+    )
+    add(
+        "eligibility",
+        "Study duration",
+        "At the time of application, applicants must not have exceeded the standard period of study for the degree programme. The guideline permits an extension of up to two subject semesters for specified important reasons, subject to provider review and supporting evidence.",
+    )
+    add(
+        "eligibility",
+        "Enrolment at the start of funding",
+        "Applicants must not be on a leave of absence at the beginning of the funding period. Payment also requires continued enrolment at the University of Göttingen.",
+    )
+    add(
+        "ineligibility",
+        "Doctoral and exchange students",
+        "Doctoral students and exchange students are not eligible for the Göttingen Deutschlandstipendium.",
+        source_url,
+    )
+    add(
+        "other_information",
+        "Nationality and income",
+        "Applicants of all nationalities may apply. The scholarship is awarded irrespective of income; financial need is not an eligibility requirement.",
+        source_url,
+    )
+    add(
+        "selection_criteria",
+        "Academic performance",
+        "Selection combines talent and academic performance. The initial academic score is calculated according to the applicant's degree type and study stage using the applicable entrance-qualification grades, degree grades and/or completed coursework. The university guideline contains separate rules by programme and semester; there is no single universal GPA cutoff for every applicant.",
+    )
+    add(
+        "selection_criteria",
+        "Achievements and engagement",
+        "Additional selection factors include awards and prizes, previous professional activity or internships, and extracurricular voluntary, social, university, political or community engagement. Motivation and readiness to accept responsibility may also be considered.",
+        source_url,
+    )
+    add(
+        "selection_criteria",
+        "Special personal circumstances",
+        "The university may consider documented special personal or family circumstances as part of selection. These circumstances are sensitive and are reviewed by the provider; ScholarPath does not request or infer them for automatic matching.",
+    )
+    add(
+        "required_documents",
+        "Academic records",
+        "Applicants may need to provide their university entrance qualification, passed coursework and examination records, and completed degree certificates relevant to their degree type and current study stage.",
+    )
+    add(
+        "required_documents",
+        "Achievements and engagement evidence",
+        "Applicants should provide supporting evidence for any awards, prizes, previous professional activity, internships or extracurricular engagement claimed in the application. Only documented criteria can be considered.",
+    )
+    add(
+        "required_documents",
+        "Document language",
+        "Documents in a language other than German or English must be submitted with a certified German translation. The university may request original evidence.",
+    )
+    add(
+        "application_requirements",
+        "Online application and signed cover sheet",
+        "Applications are submitted through the university's eCampus application portal. After submitting the online form, applicants must upload the generated signed cover sheet and all required supporting documents to the university's upload portal by the deadline. Incomplete or late applications are excluded.",
+        source_url,
+    )
+    add(
+        "other_information",
+        "Motivation and recommendation letters",
+        "The university states that a CV, motivation letter and recommendation letter are not required and are not positively considered when submitted.",
+        source_url,
+    )
+    add(
+        "other_information",
+        "Other funding",
+        "The Deutschlandstipendium can generally be received alongside BAföG. Other talent- and performance-related material funding may be restricted under the scholarship rules and must be checked with the university.",
+    )
+
+    add_field("funding_summary", "€300 per month as a non-repayable grant for one year.")
+    add_field("deadline_text", "1–30 September 2027 for the winter semester 2027/28; the 2026–27 application round has ended.")
+    add_field("deadline_date", "2027-09-30")
+    add_field("application_url", "https://ecampus.uni-goettingen.de/")
+    today = datetime.now(timezone.utc).date()
+    start = datetime(2027, 9, 1).date()
+    end = datetime(2027, 9, 30).date()
+    parsed.application_status = "upcoming" if today < start else ("open" if today <= end else "closed")
+    add_field("application_status", parsed.application_status)
+    add(
+        "other_information",
+        "Funding period",
+        "The scholarship is normally paid for one year, from 1 October of the award year to 30 September of the following year.",
+        source_url,
+    )
+    add(
+        "application_requirements",
+        "Next application round",
+        "The university's current German-language programme information gives 1–30 September 2027 as the next application period for the winter semester 2027/28. The 2026–27 round has ended; applicants should recheck the university announcement before the next call opens.",
+        "https://www.uni-goettingen.de/de/218535.html",
+    )
+    return parsed
+
+
 KLU_DEUTSCHLANDSTIPENDIUM_URL = (
     "https://www.klu.org/about-klu/student-services/scholarships/deutschlandstipendium"
 )
@@ -3769,6 +3923,11 @@ async def extract_candidate_details(
 
             if parsed and candidate["candidate_url"].rstrip("/") == REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
                 parsed = _augment_regensburg_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
+                parsed = _augment_goettingen_deutschlandstipendium(
                     parsed, html or "", candidate["candidate_url"]
                 )
 
