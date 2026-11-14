@@ -46,6 +46,7 @@ GERMANY_SOURCES = (
     {"name": "University of Tübingen – DAAD STIBET Grants", "official_url": "https://uni-tuebingen.de/en/international/study-in-tuebingen/degree-seeking-students/getting-started-and-orientation-for-international-students/stibet-grants/", "source_type": "official_index", "country": "Germany"},
     {"name": "University of Göttingen – Scholarships and Funding for International Students", "official_url": "https://uni-goettingen.de/en/575849.html", "source_type": "official_index", "country": "Germany"},
     {"name": "University of Göttingen – Niedersachsenstipendium", "official_url": "https://uni-goettingen.de/en/306042.html", "source_type": "official_programme", "country": "Germany"},
+    {"name": "University of Göttingen – Deutschlandstipendium", "official_url": "https://uni-goettingen.de/en/218535.html", "source_type": "official_programme", "country": "Germany"},
     {"name": "University of Göttingen – DAAD Award and Scholarship for Exceptional Commitment", "official_url": "https://uni-goettingen.de/en/689526.html", "source_type": "official_index", "country": "Germany"},
     {"name": "Kühne Logistics University – Scholarships and Financial Aid", "official_url": "https://www.klu.org/student-life/student-services/scholarships-financial-aid", "source_type": "official_index", "country": "Germany"},
     {"name": "Kühne Logistics University – Deutschlandstipendium", "official_url": "https://www.klu.org/about-klu/student-services/scholarships/deutschlandstipendium", "source_type": "official_programme", "country": "Germany"},
