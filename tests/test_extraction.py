@@ -28,6 +28,8 @@ from app.extraction import (
     _augment_regensburg_deutschlandstipendium,
     TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL,
     _augment_tuebingen_deutschlandstipendium,
+    GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL,
+    _augment_goettingen_niedersachsenstipendium,
 )
 import sqlite3
 import unittest
@@ -266,6 +268,44 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("not collected" in item[2] for item in result.criteria))
         self.assertTrue(all(result.criteria_sources[item] == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
         self.assertTrue(all(result.evidence_sources[item] == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL for item in result.evidence))
+
+    def test_goettingen_niedersachsenstipendium_extracts_current_call_and_keeps_sensitive_factors_manual(self):
+        parsed = ExtractedPage("Landesstipendium Niedersachsen", None, "University of Göttingen")
+        html = """
+        <html><body><main>
+          <h1>Landesstipendium Niedersachsen</h1>
+          <p>The application portal was open from 1 September 2026 to 30 September 2026!</p>
+          <p>The next award round for the Lower Saxony State Scholarship will take place for the winter semester 2026/27.</p>
+          <p>The Niedersachsen scholarships are awarded on the grounds of special achievements or outstanding ability as a one-off grant of 500 euros.</p>
+          <p>Anyone is eligible to apply who is already enrolled at Göttingen University.</p>
+          <p>An enrolled student must not be on leave of absence at the beginning of the funding period.</p>
+          <p>Applicants who have the university entrance qualifications required for studying and will start a course of studies at Göttingen University in the near future may apply. Enrolment and setting up of the student account is an absolute prerequisite.</p>
+          <p>The funds are designed for exceptionally gifted students from educationally disadvantaged backgrounds and for first-generation students, as well as students who had to overcome migration caused difficulties.</p>
+          <p>Special personal circumstances and outstanding voluntary work can also be considered.</p>
+          <p>Doctoral/phd students are not eligible.</p>
+          <p>There is no need for letters of motivation or recommendation, nor are these considered positively if submitted.</p>
+          <p>The application portal is accessed through the university's eCampus student portal. Complete uploaded application documents are required.</p>
+          <p>The next application period will probably be possible from 1 September to 30 September 2025.</p>
+        </main></body></html>
+        """
+        result = _augment_goettingen_niedersachsenstipendium(parsed, html)
+        self.assertEqual(result.title, "Lower Saxony Scholarship (Niedersachsenstipendium)")
+        self.assertEqual(result.provider_name, "University of Göttingen")
+        self.assertEqual(result.fields["funding_summary"], "One-time grant of €500.")
+        self.assertEqual(result.fields["deadline_date"], "2026-09-30")
+        self.assertEqual(result.fields["application_status"], "closed")
+        self.assertTrue(any(item[1] == "University of Göttingen enrolment" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Prospective students" for item in result.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "doctoral" in item[2].lower() for item in result.criteria))
+        priority = next(item for item in result.criteria if item[1] == "Priority and selection considerations")
+        self.assertEqual(priority[0], "selection_criteria")
+        self.assertFalse(_is_mandatory_criterion(priority[0], priority[2]))
+        self.assertIn("does not infer or request sensitive personal circumstances", priority[2])
+        self.assertTrue(any(item[1] == "Application submission" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Motivation and recommendation letters" for item in result.criteria))
+        self.assertNotIn("2025", result.fields["deadline_text"])
+        self.assertTrue(all(result.criteria_sources[item] == GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] == GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL for item in result.evidence))
 
     def test_klu_deutschlandstipendium_keeps_admitted_route_and_selection_factors_distinct(self):
         parsed = ExtractedPage("KLU Deutschlandstipendium", None, "Kühne Logistics University")
