@@ -255,6 +255,29 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
                 self.assertEqual(sources[name]["source_type"], source_type)
                 self.assertEqual(sources[name]["official_url"], url)
 
+    def test_goettingen_individual_funding_programmes_are_separate_sources(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        expected = {
+            "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027": (
+                "https://uni-goettingen.de/en/707360.html",
+            ),
+            "University of Göttingen – Academic Degree Bursaries for International Students": (
+                "https://www.uni-goettingen.de/en/516679.html",
+            ),
+            "University of Göttingen – Emergency Grants for Students in Financial Difficulty": (
+                "https://www.uni-goettingen.de/en/516678.html",
+            ),
+        }
+        for name, (url,) in expected.items():
+            with self.subTest(source=name):
+                self.assertEqual(sources[name]["source_type"], "official_programme")
+                self.assertEqual(sources[name]["official_url"], url)
+
+    def test_goettingen_outgoing_promos_and_dead_funding_page_are_not_added(self) -> None:
+        urls = {source["official_url"] for source in GERMANY_SOURCES}
+        self.assertNotIn("https://www.uni-goettingen.de/en/164293.html", urls)
+        self.assertNotIn("https://www.uni-goettingen.de/en/408359.html", urls)
+
     def test_klu_scholarships_and_financial_aid_page_is_an_index(self) -> None:
         sources = {source["name"]: source for source in GERMANY_SOURCES}
         klu = sources["Kühne Logistics University – Scholarships and Financial Aid"]
