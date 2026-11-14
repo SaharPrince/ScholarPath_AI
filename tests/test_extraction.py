@@ -278,7 +278,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
           <p>The next award round for the Lower Saxony State Scholarship will take place for the winter semester 2026/27.</p>
           <p>The Niedersachsen scholarships are awarded on the grounds of special achievements or outstanding ability as a one-off grant of 500 euros.</p>
           <p>Anyone is eligible to apply who is already enrolled at Göttingen University.</p>
-          <p>An enrolled student must not be on leave of absence at the beginning of the funding period.</p>
+          <p>An enrolled student is not on leave of absence at the beginning of the funding period.</p>
           <p>Applicants who have the university entrance qualifications required for studying and will start a course of studies at Göttingen University in the near future may apply. Enrolment and setting up of the student account is an absolute prerequisite.</p>
           <p>The funds are designed for exceptionally gifted students from educationally disadvantaged backgrounds and for first-generation students, as well as students who had to overcome migration caused difficulties.</p>
           <p>Special personal circumstances and outstanding voluntary work can also be considered.</p>
