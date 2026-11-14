@@ -217,6 +217,35 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
             "https://uni-tuebingen.de/en/study/student-life/student-finances/deutschlandstipendium-scholarships",
         )
 
+    def test_new_german_university_funding_pages_are_classified_without_merging_awards(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        expected = {
+            "University of Regensburg – International Office Study Grant and Funding": (
+                "official_index",
+                "https://www.uni-regensburg.de/en/international/coming-to-regensburg/pursuing-a-degree-program/funding",
+            ),
+            "University of Tübingen – DAAD STIBET Grants": (
+                "official_index",
+                "https://uni-tuebingen.de/en/international/study-in-tuebingen/degree-seeking-students/getting-started-and-orientation-for-international-students/stibet-grants/",
+            ),
+            "University of Göttingen – Scholarships and Funding for International Students": (
+                "official_index",
+                "https://uni-goettingen.de/en/575849.html",
+            ),
+            "University of Göttingen – Niedersachsenstipendium": (
+                "official_programme",
+                "https://uni-goettingen.de/en/306042.html",
+            ),
+            "University of Göttingen – DAAD Award and Scholarship for Exceptional Commitment": (
+                "official_index",
+                "https://uni-goettingen.de/en/689526.html",
+            ),
+        }
+        for name, (source_type, url) in expected.items():
+            with self.subTest(source=name):
+                self.assertEqual(sources[name]["source_type"], source_type)
+                self.assertEqual(sources[name]["official_url"], url)
+
     def test_klu_scholarships_and_financial_aid_page_is_an_index(self) -> None:
         sources = {source["name"]: source for source in GERMANY_SOURCES}
         klu = sources["Kühne Logistics University – Scholarships and Financial Aid"]
