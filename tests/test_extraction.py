@@ -33,6 +33,7 @@ from app.extraction import (
 
     GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL,
     GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL,
+    GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GERMAN_URL,
     _augment_goettingen_deutschlandstipendium,
 )
 import sqlite3
@@ -326,8 +327,8 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any(item[1] == "Online application and signed cover sheet" for item in result.criteria))
         self.assertTrue(any(item[1] == "Motivation and recommendation letters" for item in result.criteria))
         self.assertTrue(any(item[1] == "Other funding" and "BAföG" in item[2] for item in result.criteria))
-        self.assertTrue(all(result.criteria_sources[item] in {GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL} for item in result.criteria))
-        self.assertTrue(all(result.evidence_sources[item] in {GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL} for item in result.evidence))
+        self.assertTrue(all(result.criteria_sources[item] in {GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GERMAN_URL} for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] in {GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GERMAN_URL} for item in result.evidence))
 
     def test_goettingen_niedersachsenstipendium_extracts_current_call_and_keeps_sensitive_factors_manual(self):
         parsed = ExtractedPage("Landesstipendium Niedersachsen", None, "University of Göttingen")
