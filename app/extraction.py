@@ -1986,7 +1986,7 @@ def _augment_goettingen_niedersachsenstipendium(
             "Motivation and recommendation letters",
             "The university states that motivation letters and recommendation letters are not required and are not considered positively for this application.",
         )
-    if ("e-campus" in page_text or "ecampus" in page_text) and "complete uploaded application documents" in page_text:
+    if "application portal" in page_text and "student portal" in page_text:
         add(
             "application_requirements",
             "Application submission",
