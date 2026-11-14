@@ -1,13 +1,454 @@
+from app.extraction import (
+    ExtractedPage,
+    VILLIGST_DOCTORAL_FAQ_URL,
+    FES_APPRENTICESHIP_FAQ_URL,
+    HEINRICH_BOLL_FAQ_URL,
+    HEINRICH_BOLL_APPLICATION_URL,
+    _augment_heinrich_boll_faq,
+    OSKAR_KARL_FORSTER_URL,
+    ROMANA_SCHOTT_URL,
+    _augment_oskar_karl_forster,
+    _augment_romana_schott,
+    AMEND_SCHOLARSHIP_URL,
+    AMEND_FUNDING_GUIDELINES_URL,
+    _augment_amend_medical_scholarship,
+    _augment_villigst_doctoral_faq,
+    _augment_fes_apprenticeship_faq,
+    TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_tu_berlin_deutschlandstipendium,
+    KIEL_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_kiel_deutschlandstipendium,
+    HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_haw_kiel_deutschlandstipendium,
+    FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_fu_berlin_deutschlandstipendium,
+    KLU_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_klu_deutschlandstipendium,
+    REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_regensburg_deutschlandstipendium,
+    TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL,
+    _augment_tuebingen_deutschlandstipendium,
+    GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL,
+    _augment_goettingen_niedersachsenstipendium,
+)
 import sqlite3
 import unittest
 
 from app.extraction import (
-    _clean, _classify_application_status, _classify_applicant_category,
-    _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, parse_scholarship_page, _save_evidence, _parse_hec_knowledge_corridor, _remove_site_chrome,
+    _clean, _classify_application_status, _classify_applicant_category, _classify_eligibility_statement,
+    _is_generic_title, _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, extract_criteria_from_html, parse_scholarship_page, _save_evidence, _parse_hec_knowledge_corridor, _remove_site_chrome,
 )
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
+    def test_heinrich_boll_faq_adds_shared_and_route_specific_requirements_with_provenance(self):
+        parsed = ExtractedPage(
+            title="Heinrich Böll Scholarship for International Graduates and PhD Students",
+            description=None,
+            provider_name="Heinrich Böll Foundation",
+        )
+        faq = """
+        <html><body><main>
+          <p>International students or Bildungsausländer from EU and non-EU countries can apply if they already have a first professional degree such as a Bachelor's degree.</p>
+          <p>International PhD candidates may apply after completing their graduate degree abroad, with a research topic, exposé, supervisor and initial preparatory work.</p>
+          <p>Good German language skills (DSH II or B2) are required, even for English-taught programmes.</p>
+          <p>We do not set any age limits for applicants.</p>
+          <p>Priority will be given to international students and PhD candidates from DAC countries.</p>
+          <p>We expect very good academic performance and civic engagement.</p>
+          <p>Part-time degree programs are not eligible for funding.</p>
+          <p>Any BAföG payments or funding from another institution must be discontinued prior to the start of the scholarship.</p>
+          <p>We expect application documents in German. PhD candidates must write the abstract of their exposé in German.</p>
+          <p>Only applications submitted via our online portal are accepted.</p>
+        </main></body></html>
+        """
+        application = """
+        <html><body><main>
+          <p>Students of all disciplines may apply to study full-time at a state-recognized university.</p>
+          <p>We only fund Master's programmes with a standard duration of four semesters or more.</p>
+        </main></body></html>
+        """
+        result = _augment_heinrich_boll_faq(parsed, faq, application)
+        self.assertIs(result, parsed)
+        self.assertTrue(any(item[0] == "language_requirements" and "B2 or DSH II" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "age_limit" and "no age limit" in item[2].lower() for item in result.criteria))
+        self.assertTrue(any(item[0] == "study_level" and "part-time" in item[2] for item in result.criteria))
+        self.assertTrue(any("first degree" in item[2] for item in result.criteria))
+        self.assertTrue(any("PhD applicants" in item[2] for item in result.criteria))
+        self.assertTrue(any("at least four semesters" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" and "DAC countries" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" and "no fixed minimum" in item[2] for item in result.criteria))
+        self.assertTrue(any("online application portal" in item[2] for item in result.criteria))
+        self.assertTrue(any("discontinued before this scholarship begins" in item[2] for item in result.criteria))
+        self.assertTrue(any("exposé abstract in German" in item[2] for item in result.criteria))
+        for item in result.criteria:
+            self.assertIn(result.criteria_sources[item], {HEINRICH_BOLL_FAQ_URL, HEINRICH_BOLL_APPLICATION_URL})
+        self.assertTrue(all(not _is_mandatory_criterion(kind, text) for kind, _label, text in result.criteria if kind == "selection_criteria"))
+
+    def test_oskar_karl_forster_augmentation_preserves_master_semester_exception_and_other_information(self):
+        parsed = ExtractedPage("Oskar Karl Forster Scholarship", None, "University of Würzburg")
+        html = """
+        <html><body><main>
+          <p>Enrolled gifted and needy students from the second semester onwards.</p>
+          <p>The restrictive requirement of 2nd semester does not apply to students in Master's degree programmes.</p>
+          <p>Enrolment at the University of Würzburg must be proven by presenting a current certificate of enrolment.</p>
+          <p>Particularly outstanding academic achievements are NOT a prerequisite here.</p>
+          <p>In principle, approximately 20 ECTS points per semester indicate continued successful study progress.</p>
+          <p>The grant can only be claimed once.</p>
+          <p>Foreign documents can only be utilised in officially certified translations or in English-language copies.</p>
+          <p>As a rule, a one-time grant for the purchase of books or other learning materials in the amount of at least €100 to a maximum of €500 is awarded.</p>
+          <p>In the case of an application for a grant for the purchase of books or other learning materials, the approval of a university lecturer regarding the appropriateness of the planned purchase is required.</p>
+          <p>In exceptional cases, a grant for the printing costs of dissertations can be applied for.</p>
+        </main></body></html>
+        """
+        result = _augment_oskar_karl_forster(parsed, html)
+        self.assertTrue(any("second semester onwards" in item[2] and "Master's students" in item[2] for item in result.criteria))
+        self.assertTrue(any("University of Würzburg" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "eligibility" and "financial need" in item[2].lower() for item in result.criteria))
+        academic = next(item for item in result.criteria if item[1] == "Academic performance clarification")
+        self.assertEqual(academic[0], "selection_criteria")
+        self.assertFalse(_is_mandatory_criterion(academic[0], academic[2]))
+        self.assertTrue(any("only once" in item[2] for item in result.criteria))
+        self.assertTrue(any("certified translations" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "other_information" and "€100–€500" in item[2] and "not general living-cost funding" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Lecturer confirmation" for item in result.criteria))
+        self.assertIn("One-time grant of €100–€500", result.fields["funding_summary"])
+        self.assertTrue(all(result.evidence_sources[item] == OSKAR_KARL_FORSTER_URL for item in result.evidence))
+        for item in result.criteria:
+            self.assertEqual(result.criteria_sources[item], OSKAR_KARL_FORSTER_URL)
+
+
+    def test_tu_berlin_deutschlandstipendium_keeps_current_and_prospective_routes_separate(self):
+        parsed = ExtractedPage("TU Berlin Deutschlandstipendium", None, "TU Berlin")
+        html = """
+        <html><body><main>
+          <p>Regularly enrolled bachelor's and master's students who are already enrolled at TU Berlin at the beginning of the funding period and who are still studying within the standard period of study with at least two semesters remaining.</p>
+          <p>New students who have applied and will commence their studies at TU Berlin in the winter semester.</p>
+          <p>Students pursuing a second degree or complementary studies are also eligible.</p>
+          <p>Doctoral candidates, however, are not eligible to apply for the Deutschlandstipendium.</p>
+          <p>International students and applicants of TU Berlin can apply.</p>
+        </main></body></html>
+        """
+        result = _augment_tu_berlin_deutschlandstipendium(parsed, html)
+        current = next(item for item in result.criteria if item[0] == "category_i_eligibility")
+        prospective = next(item for item in result.criteria if item[0] == "category_ii_eligibility")
+        doctoral = next(item for item in result.criteria if item[0] == "ineligibility")
+        self.assertIn("at least two semesters remaining", current[2])
+        self.assertIn("have applied", prospective[2])
+        self.assertIn("Doctoral candidates", doctoral[2])
+        self.assertTrue(any(item[0] == "target_audience" and "second degree" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[("eligibility", item[2])] == TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+
+    def test_tu_berlin_augmentation_does_not_infer_routes_without_official_phrases(self):
+        parsed = ExtractedPage("Unrelated scholarship", None, "Example")
+        result = _augment_tu_berlin_deutschlandstipendium(
+            parsed, "<html><body><main><p>Students may apply.</p></main></body></html>"
+        )
+        self.assertEqual(result.criteria, [])
+
+    def test_romana_schott_augmentation_records_nomination_process_without_personal_data(self):
+        parsed = ExtractedPage("Romana Schott Scholarships", None, "University of Würzburg")
+        html = """
+        <html><body><main>
+          <p>Scholarships are awarded to needy female students of all faculties.</p>
+          <p>It is not possible to apply for a scholarship on one's own.</p>
+          <p>Consultation between the student and a UFB staff member is obligatory.</p>
+          <p>The application deadline is March 31 and September 30 of each year.</p>
+          <p>The justification for the proposal must comment on suitability.</p>
+          <p>The proposal form must be completed by the student.</p>
+          <p>No benefits will be granted if you are not in need. No benefits will be paid for semesters of leave either.</p>
+          <p>The duration of the sponsorship is generally three years. An application for an extension can be made.</p>
+          <p>Female students without children receive 150.00 € per month.</p>
+          <p>The funding is aimed at female students who, despite obstacles, have not been dissuaded from taking up a course of studies.</p>
+        </main></body></html>
+        """
+        result = _augment_romana_schott(parsed, html)
+        self.assertTrue(any("female students" in item[2] and "financial-need" in item[2] for item in result.criteria))
+        self.assertTrue(any("cannot apply independently" in item[2] for item in result.criteria))
+        self.assertTrue(any("31 March and 30 September" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "required_documents" and "expert justification" in item[2] for item in result.criteria))
+        self.assertTrue(any("semesters of leave" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "other_information" and item[1] == "Programme focus" for item in result.criteria))
+        self.assertTrue(any(item[0] == "other_information" and "three years" in item[2] for item in result.criteria))
+        self.assertIn("€150 per month", result.fields["funding_summary"])
+        self.assertTrue(all(result.criteria_sources[item] == ROMANA_SCHOTT_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] == ROMANA_SCHOTT_URL for item in result.evidence))
+
+
+    def test_amend_medical_scholarship_extracts_current_deadline_and_linked_foundation_rules(self):
+        parsed = ExtractedPage("Amend Medical Scholarship", None, "University of Würzburg")
+        html = """
+        <html><body><main>
+          <p>Förderung durch Amend-Stipendium ab dem SoSe 2027.</p>
+          <p>Stipendien in Höhe von monatilich € 300,00 werden vergeben.</p>
+          <p>Abiturdurchschnitt von mindestens 2,5.</p>
+          <p>Das Physikum mit der Note "sehr gut" abgeschlossen.</p>
+          <p>Während der Förderung regelmäßige Leistungsnachweise am Ende eines Semesters vorlegen.</p>
+          <p>Förderung innerhalb der Regelstudiendauer ab Physikum.</p>
+          <p>Bewerbungsschluss: 30.11.2026.</p>
+          <p>Lebenslauf, Motivationsschreiben, Abiturzeugnis, Bescheinigung über das abgeschlossene Physikum und BAföG-Bescheid wenn Sie BAföG erhalten.</p>
+          <p>The recipient must ensure that the university sets up an account for payments.</p>
+          <a href="https://www.med.uni-wuerzburg.de/fileadmin/03000000/user_upload/dateien_studiendekanat/Stipendien/Foerdergrundsaetze_Studienstiftung_Amend_30.03.2015.pdf">Further information on funding principles</a>
+        </main></body></html>
+        """
+        result = _augment_amend_medical_scholarship(parsed, html)
+        self.assertIn("€300 per month", result.fields["funding_summary"])
+        self.assertIn("30 November 2026", result.fields["deadline_text"])
+        self.assertTrue(any(item[1] == "Abitur grade" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Physikum result" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Medical studies and dissertation project" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Ongoing academic progress" for item in result.criteria))
+        self.assertTrue(any(item[0] == "required_documents" for item in result.criteria))
+        dissertation = next(item for item in result.criteria if item[1] == "Medical studies and dissertation project")
+        evidence = ("eligibility", dissertation[2])
+        self.assertEqual(result.evidence_sources[evidence], AMEND_FUNDING_GUIDELINES_URL)
+        self.assertTrue(all(result.criteria_sources[item] == AMEND_SCHOLARSHIP_URL for item in result.criteria))
+
+    def test_regensburg_deutschlandstipendium_extracts_current_call_and_study_rules(self):
+        parsed = ExtractedPage("Regensburg Deutschlandstipendium", None, "University of Regensburg")
+        html = """
+        <html><body><main>
+          <p>The selection process for the Deutschlandstipendium at the University of Regensburg for the funding period covering the summer semester 2027 and the winter semester 2027–28 will take place during the winter semester 2026–27.</p>
+          <p>Start of the application period | 2 November 2026</p>
+          <p>Application deadline | 15 November 2026</p>
+          <p>You are enrolled on a degree programme at the University of Regensburg.</p>
+          <p>Students on doctoral programmes are not eligible for funding.</p>
+          <p>You are studying within the standard period of study.</p>
+          <p>If you are about to start a degree programme at the University of Regensburg, you can take part in the selection procedure. However, you can only be funded if you actually take up this degree programme.</p>
+          <p>The amount of the scholarship is 300.00 Eur per month.</p>
+          <p>Scholarships are initially awarded for one year.</p>
+          <p>Selection considers society commitment and willingness to take on responsibility.</p>
+          <p>Required file attachments: valid Studiennachweis, certificate of higher education entrance qualification, proof of previous academic achievements.</p>
+        </main></body></html>
+        """
+        result = _augment_regensburg_deutschlandstipendium(parsed, html)
+        self.assertEqual(result.fields["deadline_date"], "2026-11-15")
+        self.assertEqual(result.fields["application_status"], "open")
+        self.assertEqual(result.application_status, "open")
+        self.assertIn("€300 per month", result.fields["funding_summary"])
+        self.assertTrue(any(item[1] == "Study at the University of Regensburg" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Study duration" for item in result.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "doctoral" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" for item in result.criteria))
+        self.assertTrue(any(item[0] == "required_documents" for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] == REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL for item in result.evidence))
+
+    def test_tuebingen_deutschlandstipendium_keeps_grade_routes_and_exclusions_separate(self):
+        parsed = ExtractedPage("Tübingen Deutschlandstipendium", None, "University of Tübingen")
+        html = """
+        <html><body><main>
+          <p>Students in their first semester (Start WiSe 2026/27) with an outstanding average in their final year of school and university entrance qualification (not poorer than 1.40 in the German Abitur).</p>
+          <p>Students in their second semester (Start SoSe 2026 or earlier) who have obtained outstanding results during their studies (average grade of studies to date 1.40 or better, in Law: at least 9 points).</p>
+          <p>Students doing higher degrees (Master): You must show an average grade of 1.40 or better in your first degree.</p>
+          <p>The Germany Scholarship does not support doctoral students, part-time students, Come-to-Prepare students, students at the Leibniz Kolleg or guest students.</p>
+          <p>The scholarship amounts to 300 euros per month. The scholarships are awarded for one year at a time.</p>
+          <p>The application period for the upcoming procedure (summer semester 2027 and winter semester 2027/28) runs from 1.11. to 30.11.2026.</p>
+          <p>Applicants with a foreign high school diploma must submit their certificate for conversion to the German grading system.</p>
+          <p>Long-term extracurricular or non-subject-related activities, voluntary work, and social engagement may be included in the overall assessment.</p>
+          <p>Special case 1: Students of the medicine program submit the following proofs.</p>
+          <p>Special case 2: Students of the dentistry program submit the following proofs.</p>
+          <p>Requesting a Transcript of Records: the transcript must not be older than October 15 of the current year.</p>
+          <p>When applying, you must provide your tax identification number.</p>
+        </main></body></html>
+        """
+        result = _augment_tuebingen_deutschlandstipendium(parsed, html)
+        self.assertEqual(result.fields["deadline_date"], "2026-11-30")
+        self.assertEqual(result.fields["application_status"], "open")
+        self.assertEqual(result.application_status, "open")
+        self.assertIn("€300 per month", result.fields["funding_summary"])
+        self.assertTrue(any(item[1] == "First-semester applicants" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Continuing students" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Master's applicants" for item in result.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "doctoral" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Foreign qualifications" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Medicine and dentistry evidence routes" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Transcript validity" for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" for item in result.criteria))
+        self.assertTrue(any("not collected" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL for item in result.evidence))
+
+    def test_goettingen_niedersachsenstipendium_extracts_current_call_and_keeps_sensitive_factors_manual(self):
+        parsed = ExtractedPage("Landesstipendium Niedersachsen", None, "University of Göttingen")
+        html = """
+        <html><body><main>
+          <h1>Landesstipendium Niedersachsen</h1>
+          <p>The application portal was open from 1 September 2026 to 30 September 2026!</p>
+          <p>The next award round for the Lower Saxony State Scholarship will take place for the winter semester 2026/27.</p>
+          <p>The Niedersachsen scholarships are awarded on the grounds of special achievements or outstanding ability as a one-off grant of 500 euros.</p>
+          <p>Anyone is eligible to apply who is already enrolled at Göttingen University.</p>
+          <p>An enrolled student is not on leave of absence at the beginning of the funding period.</p>
+          <p>Applicants who have the university entrance qualifications required for studying and will start a course of studies at Göttingen University in the near future may apply. Enrolment and setting up of the student account is an absolute prerequisite.</p>
+          <p>The funds are designed for exceptionally gifted students from educationally disadvantaged backgrounds and for first-generation students, as well as students who had to overcome migration caused difficulties.</p>
+          <p>Special personal circumstances and outstanding voluntary work can also be considered.</p>
+          <p>Doctoral/phd students are not eligible.</p>
+          <p>There is no need for letters of motivation or recommendation, nor are these considered positively if submitted.</p>
+          <p>The application portal is accessed through the university's eCampus student portal. Complete uploaded application documents are required.</p>
+          <p>The next application period will probably be possible from 1 September to 30 September 2025.</p>
+        </main></body></html>
+        """
+        result = _augment_goettingen_niedersachsenstipendium(parsed, html)
+        self.assertEqual(result.title, "Lower Saxony Scholarship (Niedersachsenstipendium)")
+        self.assertEqual(result.provider_name, "University of Göttingen")
+        self.assertEqual(result.fields["funding_summary"], "One-time grant of €500.")
+        self.assertEqual(result.fields["deadline_date"], "2026-09-30")
+        self.assertEqual(result.fields["application_status"], "closed")
+        self.assertTrue(any(item[1] == "University of Göttingen enrolment" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Prospective students" for item in result.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "doctoral" in item[2].lower() for item in result.criteria))
+        priority = next(item for item in result.criteria if item[1] == "Priority and selection considerations")
+        self.assertEqual(priority[0], "selection_criteria")
+        self.assertFalse(_is_mandatory_criterion(priority[0], priority[2]))
+        self.assertIn("does not infer or request sensitive personal circumstances", priority[2])
+        self.assertTrue(any(item[1] == "Application submission" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Motivation and recommendation letters" for item in result.criteria))
+        self.assertNotIn("2025", result.fields["deadline_text"])
+        self.assertTrue(all(result.criteria_sources[item] == GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] == GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL for item in result.evidence))
+
+    def test_klu_deutschlandstipendium_keeps_admitted_route_and_selection_factors_distinct(self):
+        parsed = ExtractedPage("KLU Deutschlandstipendium", None, "Kühne Logistics University")
+        html = """
+        <html><body><main>
+          <p>Fulfill the admission criteria for studies at KLU.</p>
+          <p>Are already enrolled in a degree program at KLU or have been admitted to KLU and are going to start soon.</p>
+          <p>The scholarship program provides 300 euros monthly for 12 months.</p>
+          <p>The application period will start on March 27 - May 31, 2026.</p>
+          <p>The scholarship period will be Sept. 2026 - Aug. 2027 (12 months).</p>
+          <p>Study starters and current KLU students will be evaluated separately.</p>
+          <p>Only students with very good grades have a chance to receive this scholarship.</p>
+          <p>Furthermore, special achievements, awards, and prizes, previous work experience and internships, voluntary work or societal, social, and political engagement, and special personal or familial circumstances will also be recognized.</p>
+          <p>Following the call for application sent out by the Dean of Programs, the application portal will be open for the mentioned application period.</p>
+        </main></body></html>
+        """
+        result = _augment_klu_deutschlandstipendium(parsed, html)
+        eligibility = next(item for item in result.criteria if item[1] == "KLU admission and study status")
+        self.assertEqual(eligibility[0], "eligibility")
+        self.assertIn("admitted and plan to start soon", eligibility[2])
+        academic = next(item for item in result.criteria if item[1] == "Academic performance")
+        self.assertEqual(academic[0], "selection_criteria")
+        self.assertIn("fixed minimum eligibility threshold", academic[2])
+        additional = next(item for item in result.criteria if item[1] == "Additional selection factors")
+        self.assertEqual(additional[0], "selection_criteria")
+        self.assertFalse(_is_mandatory_criterion(academic[0], academic[2]))
+        self.assertFalse(_is_mandatory_criterion(additional[0], additional[2]))
+        self.assertEqual(result.fields["funding_summary"], "€300 per month for 12 months.")
+        self.assertIn("has closed", result.fields["deadline_text"])
+        self.assertEqual(result.fields["deadline_date"], "2026-05-31")
+        self.assertEqual(result.fields["application_status"], "closed")
+        self.assertEqual(result.application_status, "closed")
+        self.assertTrue(any(item[1] == "2026–2027 funding period" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Application process" for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == KLU_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(all(result.evidence_sources[item] == KLU_DEUTSCHLANDSTIPENDIUM_URL for item in result.evidence))
+
+    def test_fes_social_democratic_values_are_other_information(self):
+        statement = "Wir suchen Auszubildende, die die Werte der Sozialen Demokratie teilen."
+        kind, label = _classify_eligibility_statement(statement)
+        self.assertEqual(kind, "selection_criteria")
+        self.assertEqual(label, "Programme fit and selection expectations")
+        self.assertFalse(_is_mandatory_criterion(kind, statement))
+
+    def test_fes_apprenticeship_faq_augments_same_award_with_evidence(self):
+        parsed = ExtractedPage(
+            title="FES Scholarship for Apprentices",
+            description=None,
+            provider_name="Friedrich Ebert Foundation",
+        )
+        html = """
+        <html><body><main>
+          <p>Der Ausbildungsgang muss mit einer staatlich anerkannten Prüfung abschließen.</p>
+          <p>Zu Beginn der Ausbildung darf die Bewerberin oder der Bewerber das 45. Lebensjahr noch nicht vollendet haben.</p>
+          <p>§8 BAföG lists eligible person groups.</p>
+          <p>Die Stipendien für Auszubildende sind nicht auf die Erstausbildung beschränkt.</p>
+          <p>Teilzeitberufsausbildungen sind möglich, wenn sie den Vorgaben des BBiG entsprechen.</p>
+          <p>Nein, Sie müssen sich nicht in der SPD engagieren oder Mitglied sein.</p>
+          <p>Derzeit ist keine Bewerbung möglich. Für die Auswahlrunde 2026 wird das Bewerbungsportal voraussichtlich vom 16. März bis 17. Mai geöffnet.</p>
+        </main></body></html>
+        """
+        result = _augment_fes_apprenticeship_faq(parsed, html)
+        self.assertIs(result, parsed)
+        self.assertEqual(result.fields["deadline_date"], "2026-05-17")
+        self.assertEqual(result.application_status, "closed")
+        self.assertTrue(any("state-recognized examination" in item[2] for item in result.criteria))
+        self.assertTrue(any("under 45" in item[2] or "45 years" in item[2] for item in result.criteria))
+        self.assertTrue(any("not limited to a first vocational qualification" in item[2] for item in result.criteria))
+        self.assertTrue(any("Part-time vocational training" in item[2] for item in result.criteria))
+        self.assertTrue(any("Membership in the Social Democratic Party" in item[2] for item in result.criteria))
+        for item in result.criteria:
+            self.assertEqual(result.criteria_sources[item], FES_APPRENTICESHIP_FAQ_URL)
+
+    def test_bachelor_qualification_statements_get_study_level_type(self):
+        self.assertEqual(
+            _classify_eligibility_statement("Proof of a completed Bachelor's degree is required."),
+            ("study_level", "Study level"),
+        )
+        self.assertEqual(
+            _classify_eligibility_statement("Nachweis eines abgeschlossenen Bachelorstudiums."),
+            ("study_level", "Study level"),
+        )
+
+    def test_rosa_residence_exception_stays_attached_to_15_month_rule(self):
+        statements = _split_criteria_statements(
+            "You must not have been in Germany for more than 15 months. "
+            "This applies unless you have already studied in Germany or are preparing for university studies."
+        )
+        self.assertEqual(len(statements), 1)
+        self.assertIn("15 months", statements[0])
+        self.assertIn("unless", statements[0])
+
+        german_statements = _split_criteria_statements(
+            "Sie dürfen sich nicht länger als 15 Monate in Deutschland aufhalten. "
+            "Ausnahme: Sie haben bereits in Deutschland studiert oder bereiten sich auf das Studium vor."
+        )
+        self.assertEqual(len(german_statements), 1)
+        self.assertIn("Ausnahme", german_statements[0])
+
+    def test_villigst_faq_process_exceptions_are_not_mandatory_but_admission_is(self):
+        self.assertTrue(_is_mandatory_criterion(
+            "doctoral_admission",
+            "Applicants must provide evidence of admission to do a doctorate.",
+        ))
+        self.assertTrue(_is_mandatory_criterion(
+            "doctoral_project_stage",
+            "Applicants whose doctoral project is already in its final phase cannot be considered.",
+        ))
+        self.assertFalse(_is_mandatory_criterion(
+            "application_requirements",
+            "If you have worked on your doctoral project for longer than one year, you may still apply; explain separately why you are applying now.",
+        ))
+        self.assertFalse(_is_mandatory_criterion(
+            "application_requirements",
+            "Applicants do not have to be enrolled at the university during the doctorate.",
+        ))
+
+    def test_villigst_doctoral_faq_adds_admission_exceptions_and_final_phase(self):
+        parsed = ExtractedPage(
+            title="Evangelisches Studienwerk Doctoral Scholarship",
+            description=None,
+            provider_name="Evangelisches Studienwerk",
+        )
+        faq = """
+        <html><body><main>
+          <p>Do I have to be admitted to the doctorate at the time of application?</p>
+          <p>Yes. You must provide evidence of admission (authorisation) to do a doctorate.</p>
+          <p>Do I have to be enrolled during the doctorate?</p>
+          <p>No, you do not have to be enrolled during the doctorate.</p>
+          <p>If you are working longer than one year at your project, please inform us with a separate document, why you want to apply now.</p>
+          <p>I am older than 35. Can I apply for a scholarship for the doctorate? Yes. Please explain your reasons in your CV.</p>
+          <p>Applications from doctoral students whose work is already in the final phase cannot be considered for a doctoral scholarship.</p>
+        </main></body></html>
+        """
+        result = _augment_villigst_doctoral_faq(parsed, faq, VILLIGST_DOCTORAL_FAQ_URL)
+        criteria = {item[0]: item[2] for item in result.criteria}
+        self.assertIn("doctoral_admission", criteria)
+        self.assertIn("application_requirements", criteria)
+        self.assertTrue(any("longer than one year" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "age_limit" for item in result.criteria))
+        self.assertIn("doctoral_project_stage", criteria)
+        self.assertTrue(all(url == VILLIGST_DOCTORAL_FAQ_URL for url in result.criteria_sources.values()))
+
     def test_line_preserving_cleanup_repairs_live_hec_theme_joins(self) -> None:
         from app.extraction import _clean_preserving_lines
 
@@ -53,6 +494,23 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
             "U.S. Department of State; i.e. spouses",
         )
 
+    def test_filters_provider_directory_descriptions_from_applicant_criteria(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Example Scholarship Directory</h1>
+          <h2>Eligibility</h2>
+          <p>International students can apply to various funding options listed here.</p>
+          <p>Denominational organisations: Students wishing to study theology may apply for support.</p>
+          <p>Applicants must hold a bachelor's degree from a recognised university.</p>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        texts = [text for _kind, _label, text in criteria]
+        self.assertEqual(
+            texts,
+            ["Applicants must hold a bachelor's degree from a recognised university."],
+        )
+
     def test_extracts_visible_facts_and_keeps_evidence(self) -> None:
         html = """
         <html><head>
@@ -87,6 +545,284 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
     def test_normalizes_explicit_deadline_date(self) -> None:
         self.assertEqual(_parse_deadline_date("August 1, 2020"), "2020-08-01")
         self.assertEqual(_parse_deadline_date("30 September 2027"), "2027-09-30")
+
+    def test_application_windows_extract_closing_date_not_opening_date(self) -> None:
+        value = "Spring 2027: 15 January 2027 until 1 March 2027 Fall 2027: 15 July 2027 until 1 September 2027"
+        self.assertEqual(_parse_deadline_date(value), "2027-03-01")
+
+    def test_normalizes_german_application_window_closing_date(self) -> None:
+        value = "15. November 2026 bis einschließlich 15. Januar 2027"
+        self.assertEqual(_parse_deadline_date(value), "2027-01-15")
+
+    def test_normalizes_german_numeric_application_window_closing_date(self) -> None:
+        self.assertEqual(
+            _parse_deadline_date("Der Zugang zum Bewerbungsportal ist vom 15.04.-15.06.2026 geöffnet."),
+            "2026-06-15",
+        )
+
+    def test_extracts_foundation_supported_student_group_and_exclusions(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Student scholarships</h1>
+          <p>Do you have good to very good grades or academic achievements, are you interested in politics, are you committed and have a liberal, cosmopolitan attitude? Then apply for a scholarship.</p>
+          <p>We support German and foreign students who study full-time at state or state-recognized universities and technical colleges.</p>
+          <h2>Unfortunately, we cannot support the following:</h2>
+          <ul>
+            <li>Second degrees</li>
+            <li>Part-time degrees</li>
+            <li>Bachelor programmes for foreign, non-EU students</li>
+          </ul>
+        </main></body></html>
+        """
+        from bs4 import BeautifulSoup
+        from app.extraction import _find_heading_section, _has_explicit_not_supported_heading
+        root = BeautifulSoup(html, "html.parser")
+        exclusion_section = _find_heading_section(
+            root, ("Unfortunately, we cannot support the following",)
+        )
+        self.assertTrue(_has_explicit_not_supported_heading(root))
+        self.assertIn("Second degrees", exclusion_section or "")
+        page = parse_scholarship_page(html, "https://example.org/student-scholarships")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertTrue(any("German and foreign students" in item[2] for item in page.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" for item in page.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "Second degrees" in item[2] for item in page.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "non-EU students" in item[2] for item in page.criteria))
+
+    def test_extracts_implied_applicant_conditions_from_kaad_style_lists(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>KAAD Scholarship Programme 2</h1>
+          <p>KAAD Scholarship Programme 2 supports international students already studying in Germany.</p>
+          <ul>
+            <li>come from a country in Africa, Asia, the Near and Middle East, or Latin America</li>
+            <li>have not been in Germany for more than 15 months</li>
+            <li>hold a residence permit for study purposes</li>
+            <li>are already studying in Germany and have at least six months remaining in your program</li>
+            <li>wish to pursue a master’s degree or a doctoral degree at a German university</li>
+            <li>belong to the Catholic Church or another Christian denomination</li>
+            <li>belong to another religion and are nominated by Catholic partners</li>
+            <li>have sufficient knowledge of the German language</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/kaad-programme-2")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertGreaterEqual(len(page.criteria), 7)
+        self.assertTrue(any("15 months" in item[2] for item in page.criteria))
+        self.assertTrue(any("residence permit" in item[2] for item in page.criteria))
+        self.assertTrue(any("Christian denomination" in item[2] for item in page.criteria))
+
+    def test_filters_promotional_cta_copy_from_german_eligibility(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Stipendium für Auszubildende – Lux Like Ausbildung</h1>
+          <p>Das Stipendium unterstützt Auszubildende mit finanzieller Förderung während ihrer beruflichen Ausbildung und begleitet sie bei gesellschaftlichem Engagement.</p>
+          <h2>Wer kann sich bewerben?</h2>
+          <ul>
+            <li>Personen unter 45 Jahre, die kein berufsqualifizierendes Studium abgeschlossen haben.</li>
+            <li>Jetzt über Stipendien für die berufliche Ausbildung informieren und online bewerben!</li>
+            <li>Du suchst ein Stipendium für deine Ausbildung?</li>
+            <li>Dann kannst du bei der Seite des BMFTR mehr erfahren!</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.rosalux.de/berufliche-bildung",
+            "Lux Like Ausbildung – Apprenticeship Scholarship",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("unter 45 jahre" in value for value in texts))
+        self.assertFalse(any("jetzt über stipendien" in value for value in texts))
+        self.assertFalse(any("du suchst ein stipendium" in value for value in texts))
+        self.assertFalse(any("bmftr mehr erfahren" in value for value in texts))
+
+    def test_extracts_german_fes_international_student_requirements(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Grundförderung</h1>
+          <p>Die Grundförderung für Ausländer:innen richtet sich an internationale Studierende, die an einer deutschen Hochschule eingeschrieben sind und gute Leistungen erbringen möchten.</p>
+          <p>Voraussetzung für eine Bewerbung sind erste benotete Leistungsnachweise und gute deutsche Sprachkenntnisse.</p>
+          <ul>
+            <li>bereits an einer deutschen, staatlichen oder staatlich anerkannten Hochschule oder Fachhochschule studieren</li>
+            <li>sehr gute deutsche Sprachkenntnisse haben</li>
+            <li>überdurchschnittliche Noten im Studium haben</li>
+            <li>gesellschaftspolitisch engagiert sind</li>
+            <li>sich mit den Werten der Sozialen Demokratie identifizieren</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.fes.de/studienfoerderung/stipendium/grundfoerderung-fuer-auslaender-innen",
+            "FES Scholarship for International Students",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("deutsche sprachkenntnisse" in value for value in texts))
+        self.assertTrue(any("hochschule" in value for value in texts))
+        self.assertTrue(any("noten im studium" in value for value in texts), repr(texts))
+        self.assertTrue(any("gesellschaftspolitisch engagiert" in value for value in texts))
+        self.assertTrue(any("sozialen demokratie" in value for value in texts), repr(texts))
+
+    def test_extracts_german_fes_apprentice_requirements(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Förderung für Auszubildende</h1>
+          <p>Mit dem Stipendium für Auszubildende unterstützen wir engagierte Nachwuchskräfte während ihrer anerkannten beruflichen Ausbildung und stärken ihre gesellschaftliche Teilhabe.</p>
+          <p>Wir suchen Auszubildende, die die Werte der Sozialen Demokratie teilen.</p>
+          <ul>
+            <li>am Anfang des ersten und spätestens am Anfang des zweiten Ausbildungsjahres stehen</li>
+            <li>einen staatlich anerkannten Ausbildungsberuf erlernen</li>
+            <li>einen Ausbildungsvertrag oder die schriftliche Zusage für einen Ausbildungsplatz haben</li>
+            <li>deutsche Staatsangehörige oder Bürger:innen eines EU- oder EWR-Staates oder Geflüchtete oder geduldete Ausländer:innen sind</li>
+            <li>keine anderen Stipendienleistungen aus öffentlichen Mitteln erhalten</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.fes.de/studienfoerderung/stipendium/stipendien-auszubildende",
+            "FES Scholarship for Apprentices",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("ausbildungsjahr" in value for value in texts), repr(texts))
+        self.assertTrue(any("ausbildungsberuf" in value for value in texts))
+        self.assertTrue(any("ausbildungsvertrag" in value for value in texts))
+        self.assertTrue(any("staatsangehörige" in value for value in texts))
+
+    def test_fes_related_programme_teasers_do_not_leak_into_apprentice_criteria(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Förderung für Auszubildende</h1>
+          <p>Das Stipendium für Auszubildende unterstützt Auszubildende während ihrer anerkannten beruflichen Ausbildung und stärkt ihre gesellschaftliche Teilhabe durch zusätzliche fachliche und persönliche Begleitung.</p>
+          <ul>
+            <li>am Anfang des ersten und spätestens am Anfang des zweiten Ausbildungsjahres stehen</li>
+            <li>einen staatlich anerkannten Ausbildungsberuf erlernen</li>
+          </ul>
+          <h2>Finden Sie jetzt Ihr passendes Stipendienprogramm</h2>
+          <div class="ce-defaults ce-teaser">
+            <h3>Grundförderung für Ausländer:innen</h3>
+            <p>Die Förderung richtet sich an Studierende, die bereits an einer deutschen Hochschule studieren.</p>
+          </div>
+          <div class="ce-defaults ce-teaser">
+            <h3>Promotionsförderung für Ausländer:innen</h3>
+            <p>Die Förderung richtet sich an ausländische Doktorand:innen, die zur Promotion zugelassen sind.</p>
+          </div>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.fes.de/studienfoerderung/stipendium/stipendien-auszubildende",
+            "FES Scholarship for Apprentices",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("ausbildungsjahr" in value for value in texts), repr(texts))
+        self.assertTrue(any("ausbildungsberuf" in value for value in texts), repr(texts))
+        self.assertFalse(any("doktorand" in value for value in texts), repr(texts))
+        self.assertFalse(any("hochschule studieren" in value for value in texts), repr(texts))
+
+
+    def test_classifies_german_rosa_luxemburg_apprentice_age_and_residence_rules(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Stipendium für Auszubildende – Lux Like Ausbildung</h1>
+          <p>Das Stipendium unterstützt Auszubildende mit finanzieller Förderung während ihrer beruflichen Ausbildung und begleitet sie bei gesellschaftlichem Engagement.</p>
+          <h2>Wer kann sich für ein Azubi-Stipendium bewerben?</h2>
+          <ul>
+            <li>Azubis in einer anerkannten Ausbildung nach BBiG/HwO oder in Gesundheitsberufen</li>
+            <li>Engagierte junge Menschen in Schule, Verein, Initiative oder Ähnlichem</li>
+            <li>Personen unter 45 Jahre, die kein berufsqualifizierendes Studium abgeschlossen haben</li>
+            <li>Bewerber:innen mit ständigem Wohnsitz in Deutschland oder Aufenthaltstitel oder deutscher Staatsangehörigkeit</li>
+          </ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.rosalux.de/berufliche-bildung",
+            "Lux Like Ausbildung – Apprenticeship Scholarship",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        texts = [item[2].casefold() for item in page.criteria]
+        self.assertTrue(any("anerkannten ausbildung" in value for value in texts))
+        self.assertTrue(any("unter 45 jahre" in value for value in texts))
+        self.assertTrue(any("wohnsitz in deutschland" in value for value in texts))
+        self.assertIn("age_limit", [item[0] for item in page.criteria])
+        self.assertIn("nationality", [item[0] for item in page.criteria])
+
+    def test_extracts_german_apprentice_scholarship_funding_deadline_and_criteria(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Stipendien für Auszubildende</h1>
+          <p>Der Zugang zu unserem Bewerbungsportal ist zwischen dem 15.04.-15.06.2026 geöffnet.</p>
+          <p>Mit unserem Stipendium für Auszubildende erhalten Auszubildende 300 Euro im Monat.</p>
+          <h2>Wer kann sich bewerben?</h2>
+          <ol>
+            <li>eine Ausbildung in einem anerkannten Ausbildungsberuf absolvieren.</li>
+            <li>zu dem in § 8 des Berufsausbildungsgesetzes genannten Personenkreis gehören.</li>
+            <li>die Voraussetzungen nach § 10 BAföG entsprechend erfüllen.</li>
+            <li>Für die Entscheidung über den Zugang zur Förderung ist das Verzeichnis der anerkannten Ausbildungsberufe des Bundesinstituts für Berufsbildung (BIBB) in der jeweils geltenden Fassung zugrunde zu legen.</li>
+            <li>Im Bereich der bundesrechtlich geregelten Ausbildungsberufe ist dieses Verzeichnis abschließend.</li>
+          </ol>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/apprentice-scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("15.04.-15.06.2026", page.fields["deadline_text"])
+        self.assertEqual(_parse_deadline_date(page.fields["deadline_text"]), "2026-06-15")
+        self.assertIn("300 Euro im Monat", page.fields["funding_summary"])
+        self.assertTrue(any("anerkannten Ausbildungsberuf" in item[2] for item in page.criteria))
+        self.assertTrue(any("§ 10 BAföG" in item[2] for item in page.criteria))
+        self.assertFalse(any("Für die Entscheidung über den Zugang" in item[2] for item in page.criteria))
+        self.assertFalse(any("dieses Verzeichnis abschließend" in item[2] for item in page.criteria))
+
+    def test_extracts_german_application_windows_from_list_items(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Hanns Seidel Scholarship Programme</h1>
+          <p>Unser Bewerbungsportal ist geöffnet:</p>
+          <ul>
+            <li>15. November 2026 bis einschließlich 15. Januar 2027: Promotionsstipendien.</li>
+            <li>15. Mai 2027 bis einschließlich 15. Juli 2027: Journalistisches Förderprogramm.</li>
+          </ul>
+          <h2>Who can apply?</h2>
+          <p>Applicants must hold a recognised degree and study full-time in Germany.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/hss-scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("15. November 2026", page.fields["deadline_text"])
+        self.assertIn("15. Mai 2027", page.fields["deadline_text"])
+        self.assertEqual(_parse_deadline_date(page.fields["deadline_text"]), "2027-01-15")
+
+    def test_deadline_heading_section_is_extracted(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Tailwind for Talents Scholarship Programme</h1>
+          <h2>Our next application deadlines:</h2>
+          <p>Spring 2027: 15 January 2027 until 1 March 2027 Fall 2027: 15 July 2027 until 1 September 2027</p>
+          <h2>Who can apply?</h2>
+          <p>International students who completed their first degree abroad may apply before starting a Master's degree in Germany.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/scholarships")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("1 March 2027", page.fields["deadline_text"])
+        self.assertEqual(_parse_deadline_date(page.fields["deadline_text"]), "2027-03-01")
 
 
     def test_ignores_navigation_and_footer_text(self) -> None:
@@ -163,6 +899,17 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
     def test_explicit_open_and_upcoming_language(self) -> None:
         self.assertEqual(_classify_application_status("Applications are now open", None), "open")
         self.assertEqual(_classify_application_status("Applications will open in October", None), "upcoming")
+        self.assertEqual(
+            _classify_application_status(
+                "The online application portal opens on January 15, 2027, and closes on March 1, 2027.",
+                "2027-03-01",
+            ),
+            "upcoming",
+        )
+        self.assertEqual(
+            _classify_application_status("Applications are open until March 1, 2027.", "2027-03-01"),
+            "open",
+        )
 
     def test_rolling_and_discontinued_statuses(self) -> None:
         self.assertEqual(_classify_application_status("Applications accepted throughout the year", None), "open")
@@ -402,17 +1149,55 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         page = parse_scholarship_page(html, "https://example.org/scholarship")
         self.assertIsNotNone(page)
         assert page is not None
-        eligibility = [item for item in page.criteria if item[0] == "eligibility"]
-        self.assertEqual(len(eligibility), 3)
-        self.assertTrue(_is_mandatory_criterion(eligibility[0][0], eligibility[0][2]))
-        self.assertFalse(_is_mandatory_criterion(eligibility[2][0], eligibility[2][2]))
+        criteria = page.criteria
+        self.assertEqual(len(criteria), 3)
+        self.assertEqual(
+            [item[0] for item in criteria],
+            ["eligibility", "study_level", "eligibility"],
+        )
+        self.assertTrue(_is_mandatory_criterion(criteria[0][0], criteria[0][2]))
+        self.assertTrue(_is_mandatory_criterion(criteria[1][0], criteria[1][2]))
+        self.assertFalse(_is_mandatory_criterion(criteria[2][0], criteria[2][2]))
+
+    def test_explicit_eligibility_heading_marks_conditions_mandatory_but_priority_informational(self) -> None:
+        from app.extraction import _is_mandatory_criterion
+
+        self.assertTrue(_is_mandatory_criterion("eligibility", "am actively involved in voluntary work"))
+        self.assertTrue(_is_mandatory_criterion("language_requirements", "German language skills of at least B2"))
+        self.assertTrue(_is_mandatory_criterion(
+            "nationality",
+            "deutsche Staatsangehörige oder Bürger:innen eines EU- oder EWR-Staates oder Geflüchtete oder geduldete Ausländer:innen sind",
+        ))
+        self.assertTrue(_is_mandatory_criterion(
+            "work_experience",
+            "einen Ausbildungsvertrag oder die schriftliche Zusage für einen Ausbildungsplatz haben",
+        ))
+        self.assertFalse(_is_mandatory_criterion("nationality", "Priority is given to applicants from DAC countries"))
+        self.assertFalse(_is_mandatory_criterion("work_experience", "Relevant experience is preferred"))
+        self.assertFalse(_is_mandatory_criterion("eligibility", "Priority is given to applicants from DAC countries"))
+
+    def test_absence_of_doctoral_completion_awards_is_informational(self):
+        self.assertFalse(_is_mandatory_criterion(
+            "study_level",
+            "No doctoral completion scholarships are awarded.",
+        ))
+        self.assertFalse(_is_mandatory_criterion(
+            "study_level",
+            "Keine Promotionsabschlussstipendien werden vergeben.",
+        ))
 
     def test_mandatory_criteria_classification_is_conservative(self) -> None:
         self.assertTrue(_is_mandatory_criterion("eligibility", "Applicants must hold a bachelor's degree."))
         self.assertTrue(_is_mandatory_criterion("ineligibility", "Applicants with dual nationality are not eligible."))
-        self.assertTrue(_is_mandatory_criterion("required_documents", "Academic transcripts and reference letters."))
+        self.assertFalse(_is_mandatory_criterion("required_documents", "Academic transcripts and reference letters."))
+        self.assertFalse(_is_mandatory_criterion("application_requirements", "Submit the application form before the deadline."))
+        self.assertTrue(_is_mandatory_criterion("eligibility", "Applicants must hold a bachelor's degree."))
         self.assertFalse(_is_mandatory_criterion("eligibility", "Applicants with science backgrounds are particularly encouraged."))
         self.assertFalse(_is_mandatory_criterion("eligibility", "Relevant experience is preferred."))
+
+    def test_klu_scholarship_overview_is_not_misclassified_as_one_award(self) -> None:
+        self.assertTrue(_is_generic_title("Scholarships & Financial Aid"))
+        self.assertTrue(_is_generic_title("KLU Scholarships & Financial Aid"))
 
     def test_deadline_only_page_is_not_promoted(self) -> None:
         html = """<html><body><main>
@@ -693,7 +1478,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertFalse(_is_mandatory_criterion(audience[0][0], audience[0][2]))
         self.assertEqual(len(post_selection), 1)
         self.assertIn("after selection", post_selection[0][2].casefold())
-        self.assertTrue(_is_mandatory_criterion(post_selection[0][0], post_selection[0][2]))
+        self.assertFalse(_is_mandatory_criterion(post_selection[0][0], post_selection[0][2]))
         self.assertTrue(any("four-year bachelor's degree" in x for x in exclusions))
         self.assertTrue(any("master's degree" in x for x in exclusions))
         self.assertTrue(any("currently enrolled" in x for x in exclusions))
@@ -1325,6 +2110,54 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
             "Pakistan national university; USD 2,000/- or actual, whichever is lower",
         )
 
+    def test_scrapes_eligibility_from_unlabelled_official_page_paragraphs_and_lists(self) -> None:
+        from bs4 import BeautifulSoup
+        from app.extraction import _extract_unlabelled_criteria
+
+        html = """
+        <main>
+          <h1>International Scholarship Programme</h1>
+          <p>Applicants must hold a bachelor's degree in a relevant subject.</p>
+          <ul>
+            <li>Applicants must be citizens of an eligible country.</li>
+            <li>Applicants should have English language proficiency at B2 level.</li>
+            <li>Relevant professional experience is preferred.</li>
+          </ul>
+          <p>Applications close on 30 September 2027.</p>
+        </main>
+        """
+        criteria = _extract_unlabelled_criteria(BeautifulSoup(html, "html.parser"))
+        texts = [item[2] for item in criteria]
+
+        self.assertTrue(any("bachelor's degree" in text for text in texts))
+        self.assertTrue(any("citizens of an eligible country" in text for text in texts))
+        self.assertTrue(any("English language proficiency" in text for text in texts))
+        preference = next(item for item in criteria if "professional experience" in item[2])
+        self.assertEqual(preference[0], "selection_criteria")
+        self.assertFalse(any("30 September 2027" in text for text in texts))
+
+    def test_scrapes_requirements_from_linked_official_eligibility_page(self) -> None:
+        from app.extraction import extract_criteria_from_html
+
+        html = """
+        <main>
+          <h1>Eligibility</h1>
+          <h2>Who can apply</h2>
+          <ul>
+            <li>Applicants must hold a recognised bachelor's degree.</li>
+            <li>Applicants must be citizens of an eligible country.</li>
+          </ul>
+          <h2>Language requirements</h2>
+          <p>Applicants must demonstrate English language proficiency.</p>
+        </main>
+        """
+        criteria = extract_criteria_from_html(html)
+        texts = [item[2] for item in criteria]
+
+        self.assertTrue(any("recognised bachelor's degree" in text for text in texts))
+        self.assertTrue(any("eligible country" in text for text in texts))
+        self.assertTrue(any("English language proficiency" in text for text in texts))
+
     def test_no_upper_age_limit_is_informational_not_mandatory(self) -> None:
         from app.extraction import _is_mandatory_criterion
 
@@ -1444,6 +2277,368 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertEqual(page.evidence_sources[("development_themes", theme_evidence)], url)
         self.assertTrue(all(source == url for source in page.criteria_sources.values()))
         self.assertTrue(any("nomination process" in value for _kind, _label, value in page.criteria))
+
+
+    def test_extracts_eligibility_under_question_mark_heading(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Tailwind for Talents: Scholarships for Graduates and PhD students</h1>
+          <h2>Who can apply?</h2>
+          <p>International students who have completed their first degree abroad can apply prior to starting a Master's degree program in Germany.</p>
+          <p>Priority is given to applicants from DAC countries who have not yet taken up residence in Germany at the time of their application.</p>
+          <p>International PhD students who have completed their graduate degree abroad may apply for a PhD program in Germany.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://www.boell.de/en/scholarships")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertTrue(any("completed their first degree abroad" in item[2] for item in page.criteria))
+        self.assertTrue(any("DAC countries" in item[2] for item in page.criteria))
+        self.assertTrue(any(item[0] == "study_level" and "Master" in item[2] for item in page.criteria))
+        self.assertTrue(any(item[0] == "study_level" and "PhD" in item[2] for item in page.criteria))
+
+    def test_extracts_language_requirement_split_across_paragraphs_in_requirements_section(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Research Fellowship</h1>
+          <h2>Requirements</h2>
+          <p>Applicants are required to have a very good command</p>
+          <p>of the English language.</p>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        self.assertTrue(any(
+            item[0] == "language_requirements"
+            and "very good command" in item[2].lower()
+            and "english language" in item[2].lower()
+            for item in criteria
+        ))
+
+    def test_extracts_tabular_requirements_under_scholarship_for_studies(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Hanns Seidel Foundation Requirements</h1>
+          <h4>Scholarship for Studies</h4>
+          <table><tr><td>am less than 45 years old</td></tr>
+          <tr><td>have proof of German language skills of at least B2 or comparable level</td></tr>
+          <tr><td>show above-average performance at school or in my studies</td></tr>
+          <tr><td>am actively involved in voluntary work</td></tr>
+          <tr><td>am politically interested</td></tr>
+          <tr><td>support democracy, rule of law, and human rights</td></tr>
+          <tr><td>complete a full-time course of study at a state or state-recognized university in Germany.</td></tr></table>
+          <ul><li>Richtlinien Studienförderung</li></ul>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        texts = [item[2] for item in criteria]
+        self.assertTrue(any("less than 45 years old" in text for text in texts))
+        self.assertTrue(any("German language skills" in text for text in texts))
+        self.assertTrue(any("full-time course of study" in text for text in texts))
+        self.assertIn("age_limit", [item[0] for item in criteria])
+        self.assertIn("language_requirements", [item[0] for item in criteria])
+        self.assertFalse(any("please contact" in text.lower() for text in texts))
+        self.assertFalse(any("submit your application directly" in text.lower() for text in texts))
+
+
+    def test_filters_rosa_lux_apprentice_promotion_and_repairs_age_rule(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Lux Like Ausbildung</h1>
+          <p>Das neue Förderprogramm „Lux Like Ausbildung“ unterstützt Azubis finanziell und mit einem umfangreichen Begleitprogramm.</p>
+          <p>Stipendium für die berufliche Ausbildung – das bietet dir „Lux Like Ausbildung“:</p>
+          <p>Individuelle Betreuung durch Mentor*innen – egal ob in der Ausbildung oder deinem Aktivismus.</p>
+          <h2>Wer kann sich bewerben?</h2>
+          <ul>
+            <li>Azubis in einer anerkannten Ausbildung (BBiG/HwO, Gesundheitsberufe oder landesrechtlich geregelt).</li>
+            <li>Personen unter 45 Jahre (mit Ausnahmen, z.</li>
+            <li>B. für Zweitausbildung oder mit Kindern), die kein berufsqualifizierendes Studium abgeschlossen haben.</li>
+            <li>Bewerber*innen mit ständigem Wohnsitz in Deutschland oder Aufenthaltstitel (§ 8 BAföG-Gesetz) oder deutscher Staatsangehörigkeit.</li>
+            <li>Ausbildungsvertrag / Schulbescheinigung oder Zusage des Betriebes / der Schule.</li>
+          </ul>
+          <p>Hier kannst du prüfen, ob deine Ausbildung anerkannt ist: https://www.bibb.de/de/65925.php</p>
+          <p>Die restlichen, unpersönlicheren Felder füllst du mit deinen Personaldaten.</p>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        texts = [item[2] for item in criteria]
+        age = next(item for item in texts if "unter 45 Jahre" in item)
+        self.assertIn("z. B. für Zweitausbildung", age)
+        self.assertIn("kein berufsqualifizierendes Studium abgeschlossen", age)
+        self.assertTrue(any("anerkannten Ausbildung" in item for item in texts))
+        self.assertTrue(any("ständigem Wohnsitz" in item for item in texts))
+        self.assertFalse(any("umfangreichen Begleitprogramm" in item for item in texts))
+        self.assertFalse(any("Mentor*innen" in item for item in texts))
+        self.assertFalse(any("Hier kannst du prüfen" in item for item in texts))
+        self.assertFalse(any("unpersönlicheren Felder" in item for item in texts))
+
+
+    def test_funding_amount_is_not_misclassified_as_eligibility(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Stipendien für Auszubildende</h1>
+          <p>Mit unserem Stipendium für Auszubildende erhalten Auszubildende 300 Euro im Monat.</p>
+          <h2>Wer kann sich bewerben?</h2>
+          <ol>
+            <li>eine Ausbildung in einem anerkannten Ausbildungsberuf absolvieren.</li>
+            <li>zu dem in § 8 des Berufsausbildungsgesetzes genannten Personenkreis gehören.</li>
+            <li>die Voraussetzungen nach § 10 BAföG entsprechend erfüllen.</li>
+          </ol>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(html, "https://example.org/apprentice-scholarship")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn("300 Euro im Monat", page.fields["funding_summary"])
+        self.assertEqual(len(page.criteria), 3)
+        self.assertFalse(any("300 Euro" in item[2] for item in page.criteria))
+
+
+    def test_hss_apprentice_criteria_exclude_administrative_and_informational_notes(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Stipendien für Auszubildende</h1>
+          <h2>Wer kann sich bewerben?</h2>
+          <ol>
+            <li>eine Ausbildung in einem anerkannten Ausbildungsberuf auf der Grundlage des Berufsbildungsgesetzes (BBiG) absolvieren.</li>
+            <li>zu dem in § 8 des Berufsausbildungsgesetzes (BAföG) genannten Personenkreis gehören.</li>
+            <li>die Voraussetzungen nach § 10 BAföG entsprechend erfüllen.</li>
+            <li>Für die Entscheidung über den Zugang zur Förderung ist das Verzeichnis der anerkannten Ausbildungsberufe des Bundesinstituts für Berufsbildung (BIBB) in der jeweils geltenden Fassung zugrunde zu legen.</li>
+            <li>Im Bereich der bundesrechtlich geregelten Ausbildungsberufe ist dieses Verzeichnis abschließend.</li>
+            <li>Zur Auslegung der Fördervoraussetzungen nach Ziffer 1 bis 3 gilt Folgendes: Die Förderfähigkeit beschränkt sich nicht auf das Absolvieren einer Erstausbildung.</li>
+            <li>Ein vor der Aufnahme in die Förderung erfolgter Studien- oder Ausbildungsabbruch steht einer Aufnahme in die Förderung nicht entgegen.</li>
+          </ol>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        texts = [item[2] for item in criteria]
+        self.assertEqual(len(texts), 5)
+        self.assertTrue(any("anerkannten Ausbildungsberuf" in item for item in texts))
+        self.assertTrue(any("§ 8 des Berufsausbildungsgesetzes" in item for item in texts))
+        self.assertTrue(any("§ 10 BAföG" in item for item in texts))
+        self.assertFalse(any("BIBB" in item for item in texts))
+        self.assertFalse(any("abschließend" in item for item in texts))
+        clarifications = [item for item in criteria if item[0] == "application_requirements"]
+        self.assertEqual(len(clarifications), 2)
+        self.assertTrue(any("Erstausbildung" in item[2] for item in clarifications))
+        self.assertTrue(any("Ausbildungsabbruch" in item[2] for item in clarifications))
+        self.assertTrue(all(not _is_mandatory_criterion(item[0], item[2]) for item in clarifications))
+
+
+    def test_accepts_german_hss_scholarship_landing_page(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>Studieren – Horizonte erweitern – Zukunft gestalten</h1>
+          <p>Ein Stipendium ist weit mehr als nur eine finanzielle Hilfe: Es bietet auch viele interessante Veranstaltungen, eine Gemeinschaft Gleichgesinnter und wertvolle Kontakte. Das Beste daran? Die Chancen stehen gut, dass auch Sie alle nötigen Voraussetzungen für die Bewerbung erfüllen.</p>
+          <p>Sie erfüllen die Voraussetzungen und finden sich in unserem Programm wieder?
+             Dann bewerben Sie sich! Unser Bewerbungsportal ist geöffnet.</p>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://www.hss.de/stipendium/",
+            "Hanns Seidel Foundation – Scholarships",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertEqual(page.title, "Studieren – Horizonte erweitern – Zukunft gestalten")
+
+
+    def test_thousands_separator_is_not_misread_as_a_calendar_date(self) -> None:
+        from app.extraction import DATE_PATTERN
+
+        for value in (
+            "The monthly scholarship is worth 1.500 Euro.",
+            "Applicants receive 3.500 Euro per semester.",
+            "Funding amounts range from 1.000 to 2.500 Euro.",
+        ):
+            with self.subTest(value=value):
+                self.assertIsNone(DATE_PATTERN.search(value))
+
+        self.assertIsNotNone(DATE_PATTERN.search("Applications close on 15.04.2027."))
+        self.assertIsNotNone(DATE_PATTERN.search("Deadline: 15/04/2027."))
+
+
+    def test_funding_amount_under_deadline_heading_does_not_create_deadline(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>International Student Scholarship</h1>
+          <p>The programme supports eligible students studying in Germany.</p>
+          <h2>Our Next Application Deadlines</h2>
+          <p>Monthly funding is 1.500 Euro for up to 3.5 years.</p>
+          <h2>Funding</h2>
+          <p>Recipients receive 1.500 Euro per month.</p>
+          <h2>Eligibility</h2>
+          <ul><li>Applicants must be enrolled at a German university.</li></ul>
+        </main></body></html>
+        """
+        page = parse_scholarship_page(
+            html,
+            "https://provider.example/international-student-scholarship",
+        )
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertNotIn("deadline_text", page.fields)
+        self.assertIn("1.500 Euro", page.fields.get("funding_summary", ""))
+
+
+    def test_selection_and_target_audience_are_informational_not_mandatory(self) -> None:
+        from app.extraction import _is_mandatory_criterion
+
+        for kind, wording in (
+            ("target_audience", "The programme is aimed at early-career researchers."),
+            ("selection_process", "Candidates are shortlisted by an independent panel."),
+            ("selection_criteria", "Preference is given to applicants with community involvement."),
+        ):
+            with self.subTest(kind=kind):
+                self.assertFalse(_is_mandatory_criterion(kind, wording))
+
+
+
+    def test_provider_priority_and_welcome_language_is_informational(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>International Student Scholarship</h1>
+          <p>Priority will be given to international students from DAC countries.</p>
+          <p>We particularly welcome applications from students who completed their degree abroad.</p>
+          <p>Applicants must be enrolled at a state-recognized university in Germany.</p>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        preferences = [item for item in criteria if item[0] == "selection_criteria"]
+        mandatory = [item for item in criteria if _is_mandatory_criterion(item[0], item[2])]
+        self.assertTrue(any("Priority will be given" in item[2] for item in preferences))
+        self.assertTrue(any("particularly welcome" in item[2] for item in preferences))
+        self.assertFalse(any("Priority will be given" in item[2] for item in mandatory))
+        self.assertFalse(any("particularly welcome" in item[2] for item in mandatory))
+        self.assertTrue(any("must be enrolled" in item[2] for item in mandatory))
+
+
+    def test_encouragement_to_apply_despite_formal_criteria_is_not_a_gate(self) -> None:
+        html = """
+        <html><body><main>
+          <h1>International Scholarship</h1>
+          <p>We encourage applicants to apply even if they do not meet the formal requirements.
+             We decide on these applications on a case-by-case basis.</p>
+        </main></body></html>
+        """
+        criteria = extract_criteria_from_html(html)
+        preference = next(
+            (item for item in criteria if "encourage applicants" in item[2].lower()),
+            None,
+        )
+        self.assertIsNotNone(preference)
+        assert preference is not None
+        self.assertEqual(preference[0], "selection_criteria")
+        self.assertFalse(_is_mandatory_criterion(preference[0], preference[2]))
+
+
+    def test_kiel_deutschlandstipendium_separates_eligibility_from_selection_and_documents(self):
+        parsed = ExtractedPage(
+            title="University of Kiel – Deutschlandstipendium",
+            description=None,
+            provider_name="Kiel University",
+        )
+        html = """
+        <html><body><main>
+          <h1>Information for scholarship recipients</h1>
+          <p>All prospective students of Kiel University as well as students of all subjects
+             who are already enrolled at Kiel University are eligible to apply.</p>
+          <p>Any university entrance qualification that is recognized for university studies
+             at the University of Kiel also entitles the holder to apply.</p>
+          <p>In addition to a first degree, second or supplementary degree programs as well as
+             Master's degree programs are generally eligible for funding.</p>
+          <p>Those who already receive merit-based financial support exceeding €30 per month
+             will not receive a Germany Scholarship during the funding period.</p>
+          <p>The application deadline for the Germany Scholarship 2026/2027 has passed.
+             The application deadline for the 2027/2028 scholarship will be published here
+             at the beginning of 2027.</p>
+          <ul><li>Curriculum vitae</li><li>Letter of motivation</li></ul>
+          <p>Applicants who have successfully participated in a Software Challenge and who
+             are applying to CAU for Computer Science must submit the scholarship certificate
+             and a recommendation letter.</p>
+          <p>The following criteria are viewed favorably: special achievements, awards and prizes from the last two years, prior vocational training, internships or voluntary service lasting at least two months.</p>
+        </main></body></html>
+        """
+        result = _augment_kiel_deutschlandstipendium(parsed, html)
+        self.assertTrue(any(item[0] == "eligibility" and "preparing to start" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "application_requirements" and "foreign university entrance qualification" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "target_audience" and "second degrees" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "exceeding €30" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "application_requirements" and "beginning of 2027" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "required_documents" and "curriculum vitae" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "application_requirements" and "Software Challenge" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == KIEL_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" for item in result.criteria))
+        self.assertFalse(any(item[0] == "eligibility" and "social involvement" in item[2].lower() for item in result.criteria))
+
+    def test_kiel_deutschlandstipendium_does_not_invent_a_future_deadline(self):
+        parsed = ExtractedPage(
+            title="University of Kiel – Deutschlandstipendium",
+            description=None,
+            provider_name="Kiel University",
+        )
+        html = """
+        <html><body><main>
+          <p>The application deadline for 2026/2027 has passed.
+             The 2027/2028 deadline will be published at the beginning of 2027.</p>
+        </main></body></html>
+        """
+        result = _augment_kiel_deutschlandstipendium(parsed, html)
+        period = next(item[2] for item in result.criteria if item[1] == "Application period")
+        self.assertIn("no exact future deadline is confirmed", period)
+
+
+    def test_haw_kiel_deutschlandstipendium_keeps_entry_and_continuing_student_rules_distinct(self):
+        parsed = ExtractedPage(
+            title="HAW Kiel Deutschlandstipendium",
+            description=None,
+            provider_name="HAW Kiel",
+        )
+        html = """
+        <html><body><main>
+          <p>Anyone who is studying or intends to study at HAW Kiel within the standard period of study at the beginning of the funding period can apply.</p>
+          <p>If you are about to start studying at HAW Kiel or have not yet completed a semester at HAW Kiel, you must have a grade of better than 2.0 in your university entrance qualification.</p>
+          <p>All other students must have completed at least half of the ECTS per semester as stipulated in the respective curriculum of the degree program.</p>
+          <p>Applicants must not have exceeded the standard period of study for their degree program at the start of the funding period.</p>
+          <p>For Bachelor's graduates transferring to a Master's degree course, the grade of the degree qualifying for the Master's degree is decisive. Students must also prove that they are among the top 20% of the respective cohort.</p>
+          <p>Applicants with certificates from foreign universities or schools: only the grade converted by uniassist for the German grading system is decisive.</p>
+          <p>Applications can only be submitted via the online portal. The applicable application deadline is also stated there.</p>
+          <p>Special achievements, awards and prizes from the last two years, previous professional activity, internships or voluntary services of a duration of at least six months.</p>
+          <p>Current extracurricular commitment of at least one year.</p>
+        </main></body></html>
+        """
+        result = _augment_haw_kiel_deutschlandstipendium(parsed, html)
+        self.assertTrue(any(item[1] == "Study at HAW Kiel" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Entry qualification grade" and "better than 2.0" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Study progress" and "half of the ECTS" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Academic ranking evidence" and "top 20%" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Foreign qualification grade conversion" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Application deadline" and "stated in that portal" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[0] == "selection_criteria" and "six months" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
+
+    def test_fu_berlin_deutschlandstipendium_captures_winter_only_and_acceptance_route(self):
+        parsed = ExtractedPage(
+            title="Freie Universität Berlin Deutschlandstipendium",
+            description=None,
+            provider_name="Freie Universität Berlin",
+        )
+        html = """
+        <html><body><main>
+          <p>The Deutschlandstipendium scholarship allows students at Freie Universität Berlin of all nations and all parts of society to apply.</p>
+          <p>Requirements: enrollment at Freie Universität Berlin within the standard time to degree during the funding period or a letter of acceptance to start a degree program at Freie Universität Berlin.</p>
+          <p>300 euros per month for a minimum of two semesters starting in October, extensions are possible.</p>
+          <p>Scholarships are always awarded for the winter semester. It is not possible to start the scholarship program in the summer semester.</p>
+          <p>Application period for the funding year 2026/2027: The application period ended.</p>
+        </main></body></html>
+        """
+        result = _augment_fu_berlin_deutschlandstipendium(parsed, html)
+        self.assertTrue(any(item[1] == "Study at Freie Universität Berlin" for item in result.criteria))
+        self.assertTrue(any(item[1] == "International applicants" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Funding start" for item in result.criteria))
+        self.assertTrue(any(item[1] == "Application period" and "next application deadline" in item[2] for item in result.criteria))
+        self.assertTrue(any(item[1] == "Funding amount" and "€300 per month" in item[2] for item in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
 
 
 if __name__ == "__main__":

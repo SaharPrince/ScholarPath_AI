@@ -19,7 +19,7 @@ MAX_RESPONSE_BYTES = 2_000_000
 USER_AGENT = "ScholarPathAI/0.4 (+official scholarship detail extractor)"
 FIELD_LABELS = {
     "provider_name": ("scholarship provider", "offered by", "administered by", "sponsor"),
-    "deadline_text": ("application deadline", "application closes", "deadline", "apply by", "closing date"),
+    "deadline_text": ("our next application deadlines", "application deadline", "application closes", "deadline", "apply by", "closing date"),
     "application_status": ("current status",),
     "funding_summary": ("funding", "scholarship value", "financial support", "tuition fee", "stipend"),
     "eligibility": ("eligibility", "who can apply", "eligible applicants"),
@@ -36,16 +36,30 @@ GENERIC_PAGE_TERMS = (
     "scholarship database", "funding partners", "application guide",
     "step by step guide", "scholarship applicants", "find funding",
     "scholarship programmes for", "scholarship programs for",
-    "all scholarships", "scholarship index",
+    "all scholarships", "scholarship index", "scholarships & financial aid",
     "promoting mutual understanding through exchanges",
 )
 OPPORTUNITY_TERMS = ("scholarship", "fellowship", "grant", "studentship", "award", "programme", "program", "ugrad", "fulbright", "humphrey", "flta", "epos")
 DATE_PATTERN = re.compile(
-    r"(?i)\b(?:\d{1,2}[./ -](?:\d{1,2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[./, -]*\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})\b"
+    r"(?i)\b(?:\d{1,2}[./ -](?:\d{1,2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[./, -]+\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})\b"
+)
+GERMAN_DATE_PATTERN = re.compile(
+    r"(?i)\b(?P<day>\d{1,2})\.?\s+"
+    r"(?P<month>januar|februar|märz|maerz|april|mai|juni|juli|august|"
+    r"september|oktober|november|dezember)\s+(?P<year>\d{4})\b"
+)
+GERMAN_MONTHS = {
+    "januar": 1, "februar": 2, "märz": 3, "maerz": 3, "april": 4,
+    "mai": 5, "juni": 6, "juli": 7, "august": 8, "september": 9,
+    "oktober": 10, "november": 11, "dezember": 12,
+}
+GERMAN_NUMERIC_DATE_RANGE_PATTERN = re.compile(
+    r"(?i)\b(?P<start_day>\d{1,2})\.(?P<start_month>\d{1,2})\.?\s*[-–]\s*"
+    r"(?P<end_day>\d{1,2})\.(?P<end_month>\d{1,2})\.?(?P<year>\d{4})\b"
 )
 ROLLING_PATTERN = re.compile(r"(?i)\b(rolling basis|no fixed deadline|applications? accepted throughout the year|open year[- ]round)\b")
 OPEN_PATTERN = re.compile(r"(?i)\b(applications? (?:(?:are )?(?:now )?)open|now accepting applications|currently accepting applications|apply now)\b")
-UPCOMING_PATTERN = re.compile(r"(?i)\b(applications? (?:will|are expected to) open|opens? for applications)\b")
+UPCOMING_PATTERN = re.compile(r"(?i)\b(applications? (?:will|are expected to) open|opens? for applications|(?:online )?application portal (?:will )?open(?:s)?\s+(?:on|from|in)|applications? (?:are )?open(?:s)?\s+(?:on|from|starting|beginning))\b")
 DISCONTINUED_PATTERN = re.compile(r"(?i)\b(discontinued|programme has ended|program has ended|no longer offered)\b")
 SHORTLISTED_PATTERN = re.compile(r"(?i)\b(shortlisted candidates|candidates? who (?:have been |were )?shortlisted|only for candidates? shortlisted|shortlist announced|interview shortlist)\b")
 
@@ -254,6 +268,7 @@ def _split_criteria_statements(value: str) -> list[str]:
     """Split list items and sentences without breaking common academic abbreviations."""
     protected = value
     abbreviations = {
+        "z. B.": "ZB_ABBREVIATION",
         "U.S.": "US_ABBREVIATION",
         "Ph.D.": "PHD_ABBREVIATION",
         "M.Phil.": "MPHIL_ABBREVIATION",
@@ -273,13 +288,91 @@ def _split_criteria_statements(value: str) -> list[str]:
             part = re.sub(token, original, part, flags=re.I)
         part = re.sub(r"\b([A-Z])INITIAL", r"\1.", part)
         cleaned = _clean(part)
-        if cleaned and cleaned not in restored:
+        if (
+            restored
+            and re.match(r"(?i)^B\.\s+für Zweitausbildung\b", cleaned)
+            and re.search(r"(?i)\bz\.$", restored[-1])
+        ):
+            # Some German provider pages split the abbreviation "z. B."
+            # across separate list items or DOM text blocks. Rejoin the
+            # continuation before returning criteria so the age condition
+            # remains one complete, evidence-backed statement.
+            restored[-1] = f"{restored[-1]} {cleaned}"
+        elif cleaned and cleaned not in restored:
             restored.append(cleaned)
-    return restored
+    # Keep a residence-duration exception attached to the 15-month rule.
+    # The provider presents this as one condition, even when sentence splitting
+    # would otherwise turn the exception into a separate, unmatchable criterion.
+    merged = []
+    for statement in restored:
+        if (
+            merged
+            and re.search(r"\b15\s+months?\b|\b15\s+monate?\b", merged[-1], re.I)
+            and re.search(
+                r"\b(?:unless|exception|except|ausnahme|already studied in germany|"
+                r"previously studied in germany|prepar\w*|bereits in deutschland studiert|"
+                r"studienvorbereitung)\b",
+                statement,
+                re.I,
+            )
+        ):
+            merged[-1] = f"{merged[-1]} {statement}"
+        else:
+            merged.append(statement)
+    return merged
+
+
+def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
+    """Assign a more useful criterion type to explicit applicant conditions."""
+    text = statement.casefold()
+    if re.search(
+        r"\b(?:förderfähigkeit beschränkt sich nicht auf das absolvieren einer erstausbildung|"
+        r"nicht auf die erstausbildung beschränkt|"
+        r"studien- oder ausbildungsabbruch.{0,120}steht einer aufnahme.{0,80}nicht entgegen)\b",
+        text,
+    ):
+        return "application_requirements", "Previous education or training clarification"
+    if re.search(r"\b(?:under|less than|below)\s+\d{1,2}\s+years?\s+old\b|\b\d{1,2}\s+years?\s+old\b", text):
+        return "age_limit", "Age limit"
+    if re.search(r"\b(?:unter\s+\d{1,2}\s+jahre|jünger\s+als\s+\d{1,2}\s+jahre)\b", text):
+        return "age_limit", "Age limit"
+    if re.search(r"\b(?:werte der sozialen demokratie|values of social democracy|identifikation mit den werten der sozialen demokratie)\b", text):
+        return "selection_criteria", "Programme fit and selection expectations"
+    if re.search(
+        r"\b(german language skills|command of the (?:english|german) language|"
+        r"deutschkenntnisse|sprachkenntnisse)\b",
+        text,
+    ):
+        return "language_requirements", "Language requirements"
+    if re.search(
+        r"(?i)(?:not|is not|are not)\s+(?:a\s+)?(?:prerequisite|requirement|necessary|required)|\bnot required\b",
+        statement,
+    ) and re.search(r"(?i)academic|outstanding achievement|grade|gpa|ects", statement):
+        return "selection_criteria", "Academic assessment clarification"
+    if re.search(r"(?i)\b(?:approximately|about|around)\s+\d+\s+ects\b|\bgenerally accepted\b.{0,100}\bects\b", statement):
+        return "selection_criteria", "Academic progress guidance"
+    if re.search(r"\b(above-average|academic performance|grades|gpa|school performance)\b", text):
+        return "academic_requirements", "Academic requirements"
+    if re.search(r"\b(bachelor(?:'s)?|master(?:'s)?|phd|doctoral|bachelorabschluss|bachelorstudium\w*)\b", text):
+        return "study_level", "Study level"
+    if re.search(
+        r"\b(?:full-time|part-time)\s+(?:course|study|student|degree|programme|program)\b|"
+        r"\b(university|higher education institution|enrolled|admitted)\b",
+        text,
+    ):
+        return "study_level", "Study requirements"
+    return "eligibility", "Eligibility"
 
 
 def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Infer mandatory status conservatively, preserving explicit preferences."""
+    if re.search(
+        r"(?i)\bno\s+doctoral\s+completion\s+scholarships?\b|\bkeine\s+promotionsabschlussstipendien\b",
+        requirement_text,
+    ):
+        # This describes a funding type the foundation does not offer; it is
+        # not a personal exclusion that should make doctoral applicants fail.
+        return False
     if criterion_type in {"target_audience", "selection_process", "selection_criteria"}:
         # These describe award administration or ranking, not applicant eligibility.
         return False
@@ -291,14 +384,19 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         # not a condition an applicant must satisfy.
         return False
     if criterion_type == "application_requirements" and re.search(
-        r"(?i)\b(sole responsibility|both (?:the )?(?:commonwealth|hec)|"
-        r"commonwealth and hec|hec and commonwealth)\b",
+        r"(?i)\b(both (?:the )?(?:commonwealth|hec)|commonwealth and hec|hec and commonwealth)\b",
         requirement_text,
     ):
+        # A dual-portal rule is a mandatory application step, even though it is
+        # not a personal eligibility qualification.
         return True
+    if criterion_type in {"required_documents", "application_requirements", "post_selection_requirement"}:
+        # Supporting documents and post-award obligations are useful process
+        # information, not conditions that determine initial applicant eligibility.
+        return False
     if criterion_type in {
-        "ineligibility", "required_documents", "post_selection_requirement",
-        "age_limit", "category_i_eligibility", "category_ii_eligibility",
+        "ineligibility", "age_limit", "category_i_eligibility", "category_ii_eligibility",
+        "doctoral_admission", "doctoral_project_stage",
     }:
         # An extracted age-limit criterion is an explicit eligibility boundary,
         # even when the source phrases it as "40 years in case of..." rather
@@ -310,10 +408,18 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         return True
     if re.search(
         r"\b(preferred|preferable|encouraged|recommended|desirable|an advantage|"
-        r"priority will be given|particularly welcome|should be poised|poised to assume)\b",
+        r"priority (?:will be|is) given|particularly welcome|should be poised|poised to assume)\b",
         text,
     ):
         return False
+    if criterion_type in {
+        "eligibility", "nationality", "language_requirements",
+        "academic_requirements", "study_level", "work_experience",
+    }:
+        # These statements came from an explicit applicant-requirements section.
+        # Nationality/residence and experience conditions are mandatory unless
+        # the preference language above explicitly marks them informational.
+        return True
     if re.search(
         r"\b(must|required|mandatory|minimum|at least|no more than|maximum|"
         r"only|cannot|not eligible|ineligible|shall|must not|eligible|"
@@ -327,13 +433,40 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     return False
 
 def _parse_deadline_date(value: str | None) -> str | None:
-    """Normalize an explicitly extracted English deadline date to ISO format."""
+    """Normalize an explicitly extracted English or German deadline date to ISO format."""
     if not value:
         return None
-    match = DATE_PATTERN.search(value)
-    if not match:
+    numeric_window = GERMAN_NUMERIC_DATE_RANGE_PATTERN.search(value)
+    if numeric_window:
+        return (
+            f"{int(numeric_window.group('year')):04d}-"
+            f"{int(numeric_window.group('end_month')):02d}-"
+            f"{int(numeric_window.group('end_day')):02d}"
+        )
+    matches = sorted(
+        [*DATE_PATTERN.finditer(value), *GERMAN_DATE_PATTERN.finditer(value)],
+        key=lambda item: item.start(),
+    )
+    if not matches:
         return None
+    # For application windows, prefer the first closing date (for example,
+    # "15 January until 1 March") rather than the opening date.
+    closing_matches = [
+        match for match in matches
+        if re.search(
+            r"(?i)(?:until|through|bis(?: einschließlich)?|deadline(?:\s+is)?|closes?(?:\s+on)?|closing date|apply by|no later than)\s*$",
+            value[max(0, match.start() - 48):match.start()],
+        )
+    ]
+    match = closing_matches[0] if closing_matches else matches[0]
     candidate = match.group(0).strip()
+    german_match = GERMAN_DATE_PATTERN.fullmatch(candidate)
+    if german_match:
+        month = GERMAN_MONTHS[german_match.group("month").casefold()]
+        return (
+            f"{int(german_match.group('year')):04d}-"
+            f"{month:02d}-{int(german_match.group('day')):02d}"
+        )
     for date_format in (
         "%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y",
         "%d %B %Y", "%d %b %Y", "%Y-%m-%d",
@@ -363,15 +496,28 @@ def _is_opportunity(candidate_title: str, page_title: str, page_url: str, body_t
     has_specific_fact = any(term in body_text.lower() for term in (
         "eligibility", "who can apply", "application deadline", "apply by",
         "funding", "stipend", "tuition", "minimum gpa", "academic requirement",
-        "application period", "applications open",
+        "application period", "applications open", "voraussetzungen",
+        "bewerbungsfrist", "bewerbungsportal", "stipendium",
+        "studienförderung", "förderung", "finanzielle unterstützung",
+        "we support", "applicants must", "must be submitted",
+        "residence permit", "come from a country", "belong to the catholic church",
+        "have sufficient knowledge",
     ))
     return has_opportunity_identity and has_specific_fact
 
 
-def _remove_site_chrome(soup: BeautifulSoup) -> BeautifulSoup:
+def _remove_site_chrome(soup: BeautifulSoup, page_url: str | None = None) -> BeautifulSoup:
     """Remove shared navigation and layout regions before reading programme facts."""
     for node in soup(["script", "style", "noscript", "svg", "nav", "footer", "aside"]):
         node.decompose()
+
+    # FES programme pages embed cards for other scholarships in the same main
+    # content area. They are navigation teasers, not requirements for the
+    # programme being viewed; remove them before extracting any facts.
+    hostname = (urlparse(page_url).hostname or "").casefold() if page_url else ""
+    if hostname == "fes.de" or hostname.endswith(".fes.de"):
+        for teaser in soup.select(".ce-teaser"):
+            teaser.decompose()
 
     # Inspect the complete tree before decomposing anything. Removing a parent
     # Tag clears the attributes of its descendants in BeautifulSoup; mutating
@@ -424,19 +570,31 @@ def _find_labeled_text(content_root: BeautifulSoup, labels: tuple[str, ...], fie
                 )
                 if len(value.split()) < 3 and not any(term in value.lower() for term in meaningful_terms):
                     continue
-            if field_name == "deadline_text" and not (DATE_PATTERN.search(value) or ROLLING_PATTERN.search(value)):
+            if field_name == "deadline_text" and not (DATE_PATTERN.search(value) or GERMAN_DATE_PATTERN.search(value) or GERMAN_NUMERIC_DATE_RANGE_PATTERN.search(value) or ROLLING_PATTERN.search(value)):
                 continue
             return value
     return None
+def _has_explicit_not_supported_heading(content_root: BeautifulSoup) -> bool:
+    """Identify provider headings that make every following list item an exclusion."""
+    expected = {
+        "unfortunately, we cannot support the following",
+        "unfortunately, we cannot fund the following",
+    }
+    return any(
+        _clean(heading.get_text(" ", strip=True)).rstrip(":?! .").casefold() in expected
+        for heading in content_root.find_all(["h2", "h3", "h4", "h5"])
+    )
+
+
 def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str, ...]) -> str | None:
     """Collect visible paragraph/list content beneath a matching section heading."""
     wanted = {name.casefold() for name in heading_names}
     for heading in content_root.find_all(["h2", "h3", "h4", "h5"]):
-        heading_text = _clean(heading.get_text(" ", strip=True)).rstrip(":").casefold()
+        heading_text = _clean(heading.get_text(" ", strip=True)).rstrip(":?! .").casefold()
         if heading_text not in wanted:
             continue
         chunks: list[str] = []
-        nodes = heading.find_all_next(["h1", "h2", "h3", "h4", "h5", "p", "li"])
+        nodes = heading.find_all_next(["h1", "h2", "h3", "h4", "h5", "p", "li", "td", "th"])
         section_nodes = []
         for node in nodes:
             if node.name in {"h1", "h2", "h3", "h4", "h5"}:
@@ -452,7 +610,7 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
         if list_items:
             selected_nodes = [
                 node for node in section_nodes
-                if node.name == "li"
+                if node.name in {"li", "td", "th"}
                 or (
                     node.name == "p"
                     and re.search(
@@ -462,14 +620,19 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
                 )
             ]
         else:
-            selected_nodes = [node for node in section_nodes if node.name == "p"]
+            selected_nodes = [node for node in section_nodes if node.name in {"p", "td", "th"}]
         for node in selected_nodes:
             # Skip nested list items when their parent item already captures
             # the complete requirement.
             if node.name == "li" and node.find_parent("li"):
                 continue
             value = _clean(node.get_text(" ", strip=True))
-            if value and value not in chunks:
+            if not value or value in chunks:
+                continue
+            if chunks and re.match(r"(?i)^b\.\s+für zweitausbildung\b", value):
+                # Rejoin a wrapped German abbreviation: "z." + "B. für ...".
+                chunks[-1] = f"{chunks[-1]} {value}"
+            else:
                 chunks.append(value)
         if chunks:
             return "\n".join(chunks)[:4000]
@@ -591,7 +754,11 @@ def _find_funding_statement(content_root: BeautifulSoup) -> str | None:
     for paragraph in content_root.find_all("p"):
         value = _clean(paragraph.get_text(" ", strip=True))
         lowered = value.lower()
-        if len(value) >= 45 and any(term in lowered for term in indicators):
+        has_monthly_amount = (
+            re.search(r"(?i)\b\d[\d.,]*\s*(?:€|euro)\b", value)
+            and re.search(r"(?i)\b(?:monatlich|pro monat|im monat|monthly|per month)\b", value)
+        )
+        if len(value) >= 30 and (any(term in lowered for term in indicators) or has_monthly_amount):
             return value[:1200]
     return None
 
@@ -630,6 +797,318 @@ def _extract_description_criteria(description: str) -> list[tuple[str, str, str]
         elif applicant_actor.search(sentence) and re.search(r"(?i)\b(applicants?|candidates?|students?|participants?|scholars?|fellows?|professionals?|teachers?|officials?)\s+(?:must|required|are required|should)", sentence):
             extracted.append(("eligibility", "Eligibility from programme description", sentence))
     return extracted
+
+
+def _is_applicant_eligibility_statement(statement: str) -> bool:
+    """Reject directory taxonomy and broad discovery copy masquerading as criteria."""
+    value = _clean(statement)
+    if not value:
+        return False
+    # DAAD and foundation directories describe categories of funding providers.
+    # A student mentioned after an organisation category is not an applicant rule.
+    if re.match(
+        r"(?i)^(?:denominational|religious|faith[- ]based|private|public|"
+        r"corporate|government(?:al)?|non[- ]?profit)\s+"
+        r"(?:organisations?|organizations?|institutions?|foundations?|associations?)\s*:",
+        value,
+    ):
+        return False
+    if re.match(
+        r"(?i)^(?:organisations?|organizations?|institutions?|foundations?|"
+        r"associations?)\s*:\s*(?:students?|applicants?|candidates?)\b",
+        value,
+    ):
+        return False
+    if re.match(
+        r"(?i)^(?:your answer to all of the above|sie konnten alle punkte mit ja|"
+        r"please make sure you have reviewed)\b",
+        value,
+    ):
+        return False
+    # General directory invitations are not eligibility conditions for a
+    # particular scholarship opportunity.
+    if re.search(
+        r"(?i)\b(?:students?|applicants?)\s+(?:can|may)\s+apply\s+"
+        r"(?:to|for)\s+(?:various|different|a range of|many)\b",
+        value,
+    ):
+        return False
+    if re.search(
+        r"(?i)\b(?:various|different|a range of)\s+"
+        r"(?:scholarships?|funding options?|funding opportunities)\b",
+        value,
+    ):
+        return False
+    if re.match(
+        r"(?i)^(?:then please contact|if the hsf is not represented|"
+        r"please submit your application|dann nehmen sie bitte kontakt|"
+        r"reichen sie ihre bewerbung)\b",
+        value,
+    ):
+        return False
+    # Explanations about how the provider consults the national training
+    # register are administrative guidance, not conditions an applicant must
+    # satisfy. Keep the actual recognised-occupation condition itself.
+    if re.match(
+        r"(?i)^(?:für die entscheidung über den zugang zur förderung|"
+        r"im bereich der bundesrechtlich geregelten ausbildungsberufe ist "
+        r"dieses verzeichnis)\b",
+        value,
+    ):
+        return False
+    # Keep explicit clarifications that protect applicants from false exclusions.
+    # Drop only the introductory sentence when it contains no substantive rule.
+    lowered_value = value.casefold()
+    if lowered_value.startswith("zur auslegung der fördervoraussetzungen"):
+        return "förderfähigkeit beschränkt sich nicht" in lowered_value
+    if lowered_value.startswith(
+        "ein vor der aufnahme in die förderung erfolgter studien- oder ausbildungsabbruch"
+    ):
+        return True
+    if re.match(
+        r"(?i)^bewerber(?:innen|:innen)? sollten folgende kriterien erfüllen\b",
+        value,
+    ):
+        return False
+    # Calls to action and promotional prompts are page navigation, not
+    # applicant conditions. Keep genuine requirements even when they sit near
+    # these snippets in the same section.
+    if re.match(
+        r"(?i)^(?:jetzt über stipendien|du suchst ein stipendium|"
+        r"dann kannst du bei der seite|mehr erfahren|jetzt online bewerben)\b",
+        value,
+    ):
+        return False
+    if re.match(r"(?i)^speak german at an adequate level\b", value):
+        return False
+    # Provider marketing and application-page instructions are not eligibility rules.
+    if re.match(
+        r"(?i)^(?:das neue förderprogramm|stipendium für die berufliche ausbildung\s*[–-]\s*"
+        r"das bietet dir|individuelle betreuung durch mentor|hier kannst du prüfen|"
+        r"die restlichen, unpersönlicheren felder|lux like ausbildung\s*[–-])",
+        value,
+    ):
+        return False
+    if re.search(
+        r"(?i)\b(?:es gibt|existieren) unterschiedliche "
+        r"(?:stipendienprogramme|förderprogramme)\b",
+        value,
+    ):
+        return False
+    # Funding amounts describe the award, not a condition the applicant must meet.
+    if (
+        re.search(r"(?i)\b(?:stipendium|scholarship|funding|förderung)\b", value)
+        and re.search(r"(?i)\b\d[\d.,]*\s*(?:€|euro)\b", value)
+        and re.search(r"(?i)\b(?:im monat|monatlich|pro monat|per month|monthly)\b", value)
+    ):
+        return False
+    return True
+
+
+def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str, str, str]]:
+    """Scrape eligibility statements from ordinary paragraphs and lists.
+
+    Providers often publish requirements without an 'Eligibility' heading or
+    labelled fields. This fallback scans visible page content, but only keeps
+    statements that explicitly describe applicant conditions; it never invents
+    missing thresholds or turns selection preferences into hard requirements.
+    """
+    extracted: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    requirement_signal = re.compile(
+        r"(?i)\b(?:must|must not|required|are required|is required|"
+        r"should have|should hold|need to|needs to|eligible|ineligible|"
+        r"not eligible|only applicants|only candidates|can apply|may apply|"
+        r"cannot apply|preferred|preferable|desirable|recommended|encourage(?:d|s)?|"
+        r"particularly welcome|priority (?:will be|is) given|at least|minimum of|maximum age|no older than|"
+        r"no more than|between \d|professional experience|from the following countries|"
+        r"citizens? of|nationals? of|resident in|residing in|"
+        r"hold a (?:bachelor|master|doctoral)|have completed|"
+        r"müssen|muss|sollten|soll|voraussetzung(?:en)?|erforderlich|"
+        r"mindestens|höchstens|nicht förderfähig|förderfähig|"
+        r"studieren|erlernen|engagiert|engagieren|identifizieren|"
+        r"haben|sind|stehen|erhalten|ausbildung|ausbildungsberuf|"
+        r"ausbildungsjahr\w*|ausbildungsvertrag|sprachkenntnisse|deutschkenntnisse|"
+        r"unter \d{1,2}\s+jahre|wohnsitz|anerkannt(?:e|en|er))\b"
+    )
+    applicant_signal = re.compile(
+        r"(?i)\b(?:applicants?|candidates?|students?|graduates?|"
+        r"doctoral candidates?|postdocs?|researchers?|scholars?|"
+        r"international students?|citizens?|nationals?|residents?|"
+        r"bewerber(?:innen|:innen)?|studierende|promovierende|"
+        r"auszubildende|azubis|ausländer(?:innen|:innen)?|"
+        r"geflüchtete|staatsangehörige|personen|menschen)\b"
+    )
+    raw_values: list[str] = []
+    implied_applicant_condition = re.compile(
+        r"(?i)^(?:come from\b|have not been\b|hold (?:a|an)\b|"
+        r"are already studying\b|wish to pursue\b|would like to pursue\b|"
+        r"belong to\b|have sufficient knowledge\b|have a university degree\b|"
+        r"are of\b|currently reside\b)"
+    )
+    for node in content_root.find_all(["p", "li", "dd", "dt"]):
+        raw = _clean(node.get_text(" ", strip=True))
+        if not raw or len(raw) < 4 or len(raw) > 1400:
+            continue
+        if raw_values and re.match(r"(?i)^b\.\s+für zweitausbildung\b", raw):
+            # Repair a source line break in the German abbreviation "z. B.".
+            raw_values[-1] = f"{raw_values[-1]} {raw}"
+        elif (
+            raw_values
+            and re.search(
+                r"(?i)\b(?:command|knowledge|proficiency|fluency|understanding|ability|mastery)\s*$",
+                raw_values[-1],
+            )
+            and re.match(r"(?i)^(?:of|in|for|with|at)\b", raw)
+        ):
+            raw_values[-1] = f"{raw_values[-1]} {raw}"
+        else:
+            raw_values.append(raw)
+
+    # Some foundations phrase eligibility as "we support [group] who ...".
+    # Preserve the exact supported applicant group and study condition.
+    for node in content_root.find_all("p"):
+        paragraph = _clean(node.get_text(" ", strip=True))
+        match = re.search(
+            r"(?i)\b(?:we support|the foundation supports|foundation supports)\s+"
+            r"(.+?)\s+who\s+(.+?)(?:[.!?]|$)",
+            paragraph,
+        )
+        if match:
+            statement = _clean(f"{match.group(1)} who {match.group(2)}")
+            if applicant_signal.search(statement) and len(statement) >= 24:
+                key = statement.casefold()
+                if key not in seen and _is_applicant_eligibility_statement(statement):
+                    extracted.append(("eligibility", "Eligible applicant group", statement))
+                    seen.add(key)
+
+    # Keep source-framed preferences separate from mandatory conditions.
+    for node in content_root.find_all("p"):
+        paragraph = _clean(node.get_text(" ", strip=True))
+        match = re.search(r"(?i)\bdo you have (.+?\?)\s*then\b", paragraph)
+        if match:
+            statement = _clean(match.group(1))
+            key = statement.casefold()
+            if len(statement) >= 24 and key not in seen:
+                extracted.append(("selection_criteria", "Selection preferences", statement))
+                seen.add(key)
+
+    for raw in raw_values:
+        raw_is_implied_list_condition = bool(implied_applicant_condition.match(raw))
+        if len(raw) < 24 or (
+            not requirement_signal.search(raw) and not raw_is_implied_list_condition
+        ):
+            continue
+        for statement in _split_criteria_statements(raw):
+            statement = _clean(statement)
+            key = statement.casefold()
+            statement_is_implied_list_condition = bool(
+                implied_applicant_condition.match(statement)
+            )
+            if not statement or key in seen or len(statement) < 24 or len(statement) > 1000:
+                continue
+            if (
+                not requirement_signal.search(statement)
+                and not statement_is_implied_list_condition
+            ):
+                continue
+            if not _is_applicant_eligibility_statement(statement):
+                continue
+            # A condition must identify applicants, or be an unmistakable
+            # qualification fragment such as "at least two years of experience".
+            has_actor = bool(applicant_signal.search(statement))
+            has_qualification = bool(re.search(
+                r"(?i)\b(?:degree|bachelor|master|doctorate|phd|gpa|grade|"
+                r"academic|language|ielts|toefl|experience|age|nationality|"
+                r"citizenship|residence|enrol(?:led|ment)|study level|"
+                r"studium|ausbildung|ausbildungsberuf|ausbildungsjahr\w*|"
+                r"hochschule|fachhochschule|deutschkenntnisse|sprachkenntnisse|"
+                r"noten|leistungen|engagement|engagiert|identifikation|identifizieren|staatsangehörigkeit|"
+                r"aufenthaltstitel|berufserfahrung|ausbildungsvertrag|abschluss|semester)\b",
+                statement,
+            ))
+            if not (has_actor or has_qualification or statement_is_implied_list_condition):
+                continue
+            lowered = statement.casefold()
+            if re.search(r"(?i)\b(preferred|preferable|desirable|recommended|encourage(?:d|s)?|"
+                         r"particularly welcome|priority (?:will be|is) given|welcome applications|"
+                         r"an advantage|besonders willkommen|engagiert(?:e|en)?|"
+                         r"ausdrücklich zu einer bewerbung ermutigt|bevorzugt berücksichtigt)\b", statement):
+                kind, label = "selection_criteria", "Selection preference"
+            elif re.search(r"(?i)\b(ineligible|not eligible|cannot apply|must not)\b", statement):
+                kind, label = "ineligibility", "Ineligibility"
+            elif re.search(r"(?i)\b(language|ielts|toefl|german|english proficiency|"
+                            r"deutschkenntnisse|sprachkenntnisse)\b", statement):
+                kind, label = "language_requirements", "Language requirements"
+            elif re.search(r"(?i)\b(age|years old|younger than|older than|"
+                            r"unter \d{1,2} jahre|über \d{1,2} jahre)\b", statement):
+                kind, label = "age_limit", "Age requirements"
+            elif re.search(r"(?i)\b(nationality|citizenship|citizen|national|resident|residing|"
+                            r"staatsangehörigkeit|staatsangehörige|aufenthaltstitel|wohnsitz|"
+                            r"ausländer|geflüchtete)\b", statement):
+                kind, label = "nationality", "Nationality and residence"
+            elif re.search(r"(?i)\b(bachelor|master|doctorate|phd|degree|enrolled|graduate|"
+                            r"studium|ausbildung|ausbildungsberuf|hochschule|semester|promotion)\b", statement):
+                kind, label = "study_level", "Academic qualification"
+            elif re.search(r"(?i)\b(experience|professional|employment|employed|work|"
+                            r"berufserfahrung|ausbildungsvertrag)\b", statement):
+                kind, label = "work_experience", "Work experience"
+            else:
+                kind, label = "eligibility", "Eligibility"
+            extracted.append((kind, label, statement))
+            seen.add(key)
+    return extracted
+
+
+def extract_criteria_from_html(html: str, page_url: str | None = None) -> list[tuple[str, str, str]]:
+    """Extract eligibility from a linked official requirements page."""
+    soup = BeautifulSoup(html, "html.parser")
+    content_root = _remove_site_chrome(soup, page_url)
+    section_specs = {
+        "eligibility": (
+            "Eligibility", "Eligibility Criteria", "Who can apply", "Eligible applicants",
+            "Scholarship for Studies", "Requirements", "Wer kann sich bewerben",
+            "Voraussetzungen", "Fördervoraussetzungen",
+        ),
+        "ineligibility": (
+            "Ineligibility", "Who cannot apply", "Who is not eligible",
+            "Unfortunately, we cannot support the following",
+            "Unfortunately, we cannot fund the following",
+        ),
+        "study_level": ("Degree Level", "Study Level", "Level of Study", "Academic qualification"),
+        "nationality": ("Nationality Requirements", "Citizenship Requirements", "Eligible Nationalities", "Eligible Countries"),
+        "academic_requirements": ("Academic Requirements", "Academic Eligibility", "Minimum Academic Requirements", "Minimum Grades", "Minimum GPA"),
+        "age_limit": ("Age Limit", "Age Requirements", "Age Eligibility"),
+        "required_documents": ("Required Documents", "Documents Required", "Supporting Documents"),
+        "language_requirements": ("Language Requirements", "Language Proficiency", "English Language Requirements"),
+        "work_experience": ("Work Experience", "Professional Experience", "Relevant Experience"),
+    }
+    found: list[tuple[str, str, str]] = []
+    for kind, headings in section_specs.items():
+        section = _find_heading_section(content_root, headings)
+        if not section:
+            continue
+        for statement in _split_criteria_statements(section):
+            statement = _clean(statement)
+            if (
+                statement
+                and len(statement) >= 18
+                and _is_applicant_eligibility_statement(statement)
+            ):
+                criterion_kind, criterion_label = (
+                    _classify_eligibility_statement(statement) if kind == "eligibility"
+                    else (kind, kind.replace("_", " ").title())
+                )
+                found.append((criterion_kind, criterion_label, statement))
+    found.extend(_extract_unlabelled_criteria(content_root))
+    unique = []
+    seen = set()
+    for item in found:
+        key = item[2].casefold()
+        if key not in seen:
+            unique.append(item)
+            seen.add(key)
+    return unique
 
 
 def _extract_ccip_criteria(content_root: BeautifulSoup) -> list[tuple[str, str, str]]:
@@ -770,7 +1249,7 @@ def _classify_applicant_category(body_text: str) -> str:
 
 def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None = None) -> ExtractedPage | None:
     soup = BeautifulSoup(html, "html.parser")
-    content_root = _remove_site_chrome(soup)
+    content_root = _remove_site_chrome(soup, page_url)
 
     h1 = content_root.find("h1")
     title_node = h1 or soup.find("title")
@@ -789,6 +1268,35 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             fields[field_name] = value[:1200]
             evidence.append((field_name, value[:1200]))
 
+    # Some official providers publish several application windows beneath a
+    # dedicated deadlines heading instead of a labelled field.
+    if "deadline_text" not in fields:
+        deadline_section = _find_heading_section(
+            content_root,
+            ("Application Deadlines", "Our Next Application Deadlines", "Deadlines"),
+        )
+        if deadline_section and (DATE_PATTERN.search(deadline_section) or GERMAN_DATE_PATTERN.search(deadline_section)):
+            fields["deadline_text"] = deadline_section[:1200]
+            evidence.append(("deadline_text", fields["deadline_text"]))
+
+    # German providers often publish application windows as dated list items
+    # without a separate heading or an English "deadline" label.
+    if "deadline_text" not in fields:
+        application_windows = []
+        for node in content_root.find_all(["p", "li", "td", "dd"]):
+            value = _clean(node.get_text(" ", strip=True))
+            has_date = DATE_PATTERN.search(value) or GERMAN_DATE_PATTERN.search(value) or GERMAN_NUMERIC_DATE_RANGE_PATTERN.search(value)
+            has_window_marker = re.search(
+                r"(?i)\b(?:bis(?: einschließlich)?|application (?:period|window|deadline)|"
+                r"bewerbungs(?:frist|schluss|zeitraum|portal)|closing date|applications? close|zwischen dem)\b",
+                value,
+            )
+            if has_date and has_window_marker:
+                application_windows.append(value)
+        if application_windows:
+            fields["deadline_text"] = " / ".join(application_windows)[:1200]
+            evidence.append(("deadline_text", fields["deadline_text"]))
+
     if not _is_opportunity(candidate_title or title, page_title or title, page_url, body_text):
         return None
 
@@ -797,9 +1305,14 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     section_specs = {
         "eligibility": (
             "Eligibility Criteria", "Eligibility", "Who can apply", "Eligible applicants",
-            "Technical Eligibility Requirements",
+            "Technical Eligibility Requirements", "Wer kann sich bewerben",
+            "Voraussetzungen", "Fördervoraussetzungen",
         ),
-        "ineligibility": ("Ineligibility", "Who cannot apply", "Who is not eligible"),
+        "ineligibility": (
+            "Ineligibility", "Who cannot apply", "Who is not eligible",
+            "Unfortunately, we cannot support the following",
+            "Unfortunately, we cannot fund the following",
+        ),
         "study_level": ("Degree Level", "Study Level", "Level of Study", "Eligible Degree Levels"),
         "nationality": ("Nationality Requirements", "Citizenship Requirements", "Eligible Nationalities", "Eligible Countries"),
         "academic_requirements": ("Academic Requirements", "Academic Eligibility", "Minimum Academic Requirements", "Minimum Grades", "Minimum GPA"),
@@ -808,6 +1321,9 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         "language_requirements": ("Language Requirements", "Language Proficiency", "English Language Requirements"),
         "work_experience": ("Work Experience", "Professional Experience", "Relevant Experience"),
     }
+    if "irgac" in page_url.casefold() or "irgac" in title.casefold():
+        section_specs["eligibility"] = (*section_specs["eligibility"], "Requirements")
+
     for field_name, headings in section_specs.items():
         section = _find_heading_section(content_root, headings)
         if not section:
@@ -827,7 +1343,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
 
     # Some official pages place exclusion rules inside a broader technical
     # eligibility section. Split at the explicit exclusion-introduction sentence.
-    embedded_ineligibility_context = False
+    embedded_ineligibility_context = _has_explicit_not_supported_heading(content_root)
     eligibility_section = fields.get("eligibility")
     if eligibility_section:
         statements = _split_criteria_statements(eligibility_section)
@@ -884,7 +1400,10 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             continue
         if "provides opportunities and scholarships" in lowered or "welcome to" in lowered:
             continue
-        if any(term in lowered for term in ("scholarship", "fellowship", "grant", "programme", "program")):
+        if any(term in lowered for term in (
+            "scholarship", "fellowship", "grant", "programme", "program",
+            "stipendium", "förderung", "studierende", "promovierende",
+        )):
             description = candidate[:1200]
             break
 
@@ -910,7 +1429,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             statements = _split_criteria_statements(fields[field_name])
             for statement in statements:
                 statement = _clean(statement)
-                if not statement:
+                if not statement or not _is_applicant_eligibility_statement(statement):
                     continue
                 if re.search(
                     r"(?i)^(?:all program activities will be in english|"
@@ -937,9 +1456,10 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                     statement,
                 ):
                     continue
-                # Ineligibility sections can include programme history or
-                # selection copy before the next heading. Keep only explicit
-                # disqualification statements.
+                # Broad ineligibility sections can contain history and selection copy.
+                # Only bypass this filter under an explicit "cannot support" heading.
+                # Preserve literal regex word boundaries so explicit exclusions
+                # remain detectable in the merged pull-request build.
                 if field_name == "ineligibility" and not embedded_ineligibility_context and not re.search(
                     r"\b(ineligible|not eligible|not be accepted|will not be accepted|"
                     r"cannot apply|cannot be nominated|not eligible to|are excluded|"
@@ -978,17 +1498,26 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
                             f"{excluded_part} (excluded by the source's stated exception)",
                         ))
                 else:
-                    criteria.append((
-                        field_name,
-                        field_name.replace("_", " ").title(),
-                        statement,
-                    ))
+                    criterion_kind, criterion_label = (
+                        _classify_eligibility_statement(statement) if field_name == "eligibility"
+                        else (field_name, field_name.replace("_", " ").title())
+                    )
+                    criteria.append((criterion_kind, criterion_label, statement))
 
     if description:
         evidence.append(("description", description))
         # Descriptive copy is used only when it contains explicit eligibility
         # language and a clearly identified applicant or host actor.
         criteria.extend(_extract_description_criteria(description))
+
+    # Fallback for official pages that publish eligibility as ordinary prose
+    # or list items without an explicit Eligibility heading or field label.
+    fallback_criteria = _extract_unlabelled_criteria(content_root)
+    existing_text = {item[2].casefold() for item in criteria}
+    for item in fallback_criteria:
+        if item[2].casefold() not in existing_text:
+            criteria.append(item)
+            existing_text.add(item[2].casefold())
 
     if urlparse(page_url).path.casefold().endswith("/ccip.cfm"):
         ccip_criteria = _extract_ccip_criteria(content_root)
@@ -1006,10 +1535,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         # the dual-citizenship clarification, but avoid a duplicate citizen rule.
         criteria = [
             item for item in criteria
-            if not (
-                item[0] == "eligibility"
-                and _clean(item[2]).casefold() == "be a pakistani citizen"
-            )
+            if not _clean(item[2]).casefold().startswith("be a pakistani citizen")
         ]
         # The broad dual-citizenship exclusion already covers an applicant
         # whose spouse is a U.S. citizen or permanent resident. Retain that
@@ -1086,6 +1612,1347 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     return ExtractedPage(title[:300], description, provider, fields, criteria, evidence,
                          application_status, applicant_category)
 
+
+
+VILLIGST_DOCTORAL_FAQ_URL = (
+    "https://www.evstudienwerk.de/english/scholarship-for-doctoral-students-faq/"
+)
+
+
+def _augment_villigst_doctoral_faq(
+    parsed: ExtractedPage, html: str, faq_url: str = VILLIGST_DOCTORAL_FAQ_URL
+) -> ExtractedPage:
+    """Add doctoral FAQ clarifications to the existing award, retaining FAQ evidence."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), faq_url)
+    page_text = _clean(root.get_text(" ", strip=True))
+
+    def add(kind: str, label: str, statement: str) -> None:
+        statement = _clean(statement)
+        item = (kind, label, statement)
+        if not statement or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = faq_url
+        evidence_item = ("eligibility", statement)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = faq_url
+
+    if re.search(r"(?i)must provide evidence of admission.{0,100}doctorate", page_text):
+        add(
+            "doctoral_admission",
+            "Admission to doctoral studies",
+            "Applicants must provide evidence of admission (authorisation) to do a doctorate.",
+        )
+    if re.search(r"(?i)do not have to be enrolled during the doctorate", page_text):
+        add(
+            "application_requirements",
+            "Doctoral enrolment clarification",
+            "Applicants do not have to be enrolled at the university during the doctorate.",
+        )
+    if re.search(r"(?i)working longer than one year at your project", page_text):
+        add(
+            "application_requirements",
+            "Doctoral project started more than one year ago",
+            "If you have worked on your doctoral project for longer than one year, you may still apply; explain separately why you are applying now.",
+        )
+    if re.search(r"(?i)older than 35.{0,100}can i apply", page_text):
+        add(
+            "age_limit",
+            "Age exception",
+            "Applicants older than 35 may apply; explain the reasons for pursuing a doctorate in your CV.",
+        )
+    if re.search(r"(?i)work is already in the final phase cannot be considered", page_text):
+        add(
+            "doctoral_project_stage",
+            "Doctoral project stage",
+            "Applicants whose doctoral project is already in its final phase cannot be considered.",
+        )
+    return parsed
+
+
+OSKAR_KARL_FORSTER_URL = (
+    "https://www.uni-wuerzburg.de/en/stipendien/nach-zielgruppen/oskar-karl-forster-scholarship/"
+)
+ROMANA_SCHOTT_URL = (
+    "https://www.uni-wuerzburg.de/en/equity/wro/scholarships-and-funding-opportunities/romana-schott-scholarships/"
+)
+AMEND_SCHOLARSHIP_URL = "https://www.med.uni-wuerzburg.de/en/service/stipendien/"
+AMEND_FUNDING_GUIDELINES_URL = (
+    "https://www.med.uni-wuerzburg.de/fileadmin/03000000/user_upload/dateien_studiendekanat/Stipendien/Foerdergrundsaetze_Studienstiftung_Amend_30.03.2015.pdf"
+)
+
+
+REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://www.uni-regensburg.de/en/studies/deutschlandstipendium/information-for-students"
+)
+
+
+def _augment_regensburg_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Capture Regensburg's current call, study-stage rules and supporting evidence."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if "you are enrolled on a degree programme at the university of regensburg" in page_text:
+        add(
+            "eligibility",
+            "Study at the University of Regensburg",
+            "Applicants must be enrolled on a degree programme at the University of Regensburg. Prospective students may participate in the selection process, but can receive funding only if they actually start the Regensburg degree programme.",
+        )
+    if "within the standard period of study" in page_text:
+        add(
+            "eligibility",
+            "Study duration",
+            "Applicants must be studying within the standard period of study for their degree programme.",
+        )
+    if "students on doctoral programmes are not eligible" in page_text:
+        add(
+            "ineligibility",
+            "Doctoral students",
+            "Students enrolled on doctoral programmes are not eligible for this scholarship.",
+        )
+    if "students of all degree programmes" in page_text:
+        add(
+            "other_information",
+            "Eligible subject areas",
+            "The university awards scholarships across degree programmes, including both unrestricted awards and some subject-specific awards. The current page lists Computer Science, Data Science, Business Administration, Economics, Law, Dentistry, Physics and other subjects; availability depends on the funded places in each call.",
+        )
+    if "300.00 eur per month" in page_text:
+        add_field("funding_summary", "€300 per month, initially for one year.")
+        add(
+            "other_information",
+            "Funding amount and duration",
+            "The scholarship provides €300 per month and is initially awarded for one year, within the standard period of study. Funding depends on available funds.",
+        )
+    if "start of the application period" in page_text and "2 november 2026" in page_text and "15 november 2026" in page_text:
+        add_field("deadline_text", "2–15 November 2026 (applications close on 15 November 2026).")
+        add_field("deadline_date", "2026-11-15")
+        today = datetime.now(timezone.utc).date()
+        start = datetime(2026, 11, 2).date()
+        end = datetime(2026, 11, 15).date()
+        parsed.application_status = "upcoming" if today < start else ("open" if today <= end else "closed")
+        add_field("application_status", parsed.application_status)
+        add(
+            "application_requirements",
+            "2027 funding round",
+            "The application period for the summer semester 2027 and winter semester 2027–28 is 2–15 November 2026. The university plans to award scholarships from April 2027.",
+        )
+    if "valid" in page_text and "studiennachweis" in page_text and "certificate of higher education entrance qualification" in page_text:
+        add(
+            "required_documents",
+            "Application documents",
+            "For the winter 2026/27 application round, the university lists a valid Studiennachweis (not an Immatrikulationsbescheinigung), higher-education entrance qualification certificate, previous academic records where available, and applicable evidence of previous degrees, academic commitment and extracurricular activities. The online form gives the current round-specific instructions.",
+        )
+    if "society commitment" in page_text and "willingness to take on responsibility" in page_text:
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "Selection considers talent and academic performance. Documented social commitment, willingness to take responsibility, achievements and relevant personal or educational circumstances may also be considered; these are selection factors, not universal mandatory gates.",
+        )
+    return parsed
+
+
+TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://uni-tuebingen.de/en/study/student-life/student-finances/deutschlandstipendium-scholarships"
+)
+
+
+def _augment_tuebingen_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Keep Tübingen's grade routes, exclusions and live annual deadline distinct."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if "students in their first semester" in page_text and "not poorer than 1.40" in page_text:
+        add(
+            "category_i_eligibility",
+            "First-semester applicants",
+            "Students beginning their first semester in winter semester 2026/27 must be enrolled in their major degree programme at the University of Tübingen and have a German university-entrance qualification average of 1.40 or better.",
+        )
+    if "students in their second semester" in page_text and "average grade of studies to date 1.40 or better" in page_text:
+        add(
+            "category_ii_eligibility",
+            "Continuing students",
+            "Students from their second semester onward must have a current average grade of 1.40 or better in their studies to date; Law students may qualify with at least 9 points. The required transcript must show the calculated average and earned ECTS credits.",
+        )
+    if "students doing higher degrees (master)" in page_text and "average grade of 1.40 or better in your first degree" in page_text:
+        add(
+            "category_iii_eligibility",
+            "Master's applicants",
+            "Master's applicants must have achieved an average grade of 1.40 or better in their first degree. Applicants who have already completed coursework in the Master's programme must also provide a current official transcript showing the grade average and ECTS credits.",
+        )
+    if "foreign high school diploma" in page_text and "conversion to the german grading system" in page_text:
+        add(
+            "application_requirements",
+            "Foreign qualifications",
+            "Applicants with foreign university-entrance or Bachelor's qualifications must have their grades converted to the German grading system. The university states that applications using an unconverted foreign average grade will not be considered.",
+        )
+    exclusions = []
+    for phrase, label in (
+        ("does not support doctoral students", "doctoral students"),
+        ("part-time students", "part-time students"),
+        ("come-to-prepare students", "Come-to-Prepare students"),
+        ("students at the leibniz kolleg", "students at Leibniz Kolleg"),
+        ("guest students", "guest students"),
+    ):
+        if phrase in page_text:
+            exclusions.append(label)
+    if exclusions:
+        add(
+            "ineligibility",
+            "Excluded study categories",
+            "The scholarship does not support " + ", ".join(exclusions) + ".",
+        )
+    if "300 euros per month" in page_text and "one year at a time" in page_text:
+        add_field("funding_summary", "€300 per month for one year.")
+        add(
+            "other_information",
+            "Funding amount and duration",
+            "The scholarship provides €300 per month for one year at a time. Funding is independent of income and can be combined with BAföG; the maximum funding period is generally tied to the standard period of study.",
+        )
+    if "1.11. to 30.11.2026" in page_text:
+        add_field("deadline_text", "1–30 November 2026 (applications close on 30 November 2026).")
+        add_field("deadline_date", "2026-11-30")
+        today = datetime.now(timezone.utc).date()
+        start = datetime(2026, 11, 1).date()
+        end = datetime(2026, 11, 30).date()
+        parsed.application_status = "upcoming" if today < start else ("open" if today <= end else "closed")
+        add_field("application_status", parsed.application_status)
+        add(
+            "application_requirements",
+            "2027 funding round",
+            "The application period for summer semester 2027 and winter semester 2027/28 is 1–30 November 2026. Applications are submitted through the university's online portal.",
+        )
+    if "long-term extracurricular" in page_text and "voluntary work" in page_text:
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "Awards, special achievements, long-term extracurricular activity and voluntary work may strengthen an application. Personal or family circumstances may also be considered by the university, but are not universal mandatory requirements and are not collected by the matcher.",
+        )
+    if "requesting a transcript of records" in page_text and "must not be older than october 15" in page_text:
+        add(
+            "required_documents",
+            "Transcript validity",
+            "The current transcript must show the calculated grade average and ECTS credits and carry the examination office's stamp and signature. The university says it must not be older than 15 October of the application year.",
+        )
+    if "special case 1: students of the medicine program" in page_text and "special case 2: students of the dentistry program" in page_text:
+        add(
+            "other_information",
+            "Medicine and dentistry evidence routes",
+            "Medicine and dentistry applicants have programme-stage-specific evidence rules. Medicine applicants submit the relevant preclinical grade overview or a Physikum/clinical-section grade average of 1.40 or better. Dentistry applicants follow separate evidence rules under the applicable examination regulations, including grade 1.0 thresholds at specified examination stages. Applicants should check the current university instructions for the exact stage-specific document.",
+        )
+    if "tax identification number" in page_text:
+        add(
+            "application_requirements",
+            "Application administration",
+            "The university asks applicants to provide a tax identification number in the online application. This is an application-administration detail and is not collected in the ScholarPath profile.",
+        )
+    return parsed
+
+
+GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL = (
+    "https://uni-goettingen.de/en/306042.html"
+)
+
+
+def _augment_goettingen_niedersachsenstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Capture Göttingen's Lower Saxony Scholarship without treating priority groups as hard gates."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+    parsed.title = "Lower Saxony Scholarship (Niedersachsenstipendium)"
+    parsed.provider_name = parsed.provider_name or "University of Göttingen"
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if "already enrolled at göttingen university" in page_text and "not on leave of absence" in page_text:
+        add(
+            "eligibility",
+            "University of Göttingen enrolment",
+            "Applicants must be enrolled at the University of Göttingen and must not be on leave of absence at the beginning of the funding period.",
+        )
+    if "university entrance qualifications required for studying" in page_text and "student account" in page_text:
+        add(
+            "eligibility",
+            "Prospective students",
+            "Applicants who already hold the university entrance qualification required for their intended studies and will start a degree at Göttingen in the near future may apply. Enrolment and an active Göttingen student account are required before the application can be completed.",
+        )
+    if "doctoral/phd students are not eligible" in page_text:
+        add(
+            "ineligibility",
+            "Doctoral students",
+            "Doctoral students are not eligible for the Niedersachsenstipendium.",
+        )
+    if "500 euros" in page_text and "one-off grant" in page_text:
+        add_field("funding_summary", "One-time grant of €500.")
+        add(
+            "other_information",
+            "Funding amount",
+            "The Niedersachsenstipendium is a one-time grant of €500, not a recurring monthly stipend.",
+        )
+    if "educationally disadvantaged backgrounds" in page_text and "first-generation students" in page_text:
+        add(
+            "selection_criteria",
+            "Priority and selection considerations",
+            "The university considers academic talent and achievement alongside educational disadvantage, first-generation university status, migration-related barriers, special personal circumstances and outstanding voluntary work. These are selection considerations and may be reviewed by the university; ScholarPath does not infer or request sensitive personal circumstances.",
+        )
+    if "the application portal was open from 1 september 2026 to 30 september 2026" in page_text:
+        add_field("deadline_text", "1–30 September 2026 (the 2026 application window has closed).")
+        add_field("deadline_date", "2026-09-30")
+        today = datetime.now(timezone.utc).date()
+        start = datetime(2026, 9, 1).date()
+        end = datetime(2026, 9, 30).date()
+        parsed.application_status = "upcoming" if today < start else ("open" if today <= end else "closed")
+        add_field("application_status", parsed.application_status)
+        add(
+            "application_requirements",
+            "2026 application round",
+            "The official page states that the application portal was open from 1 to 30 September 2026 for the winter semester 2026/27 award round. The page does not confirm a later application window; check the university's current announcement before applying.",
+        )
+    if "no need for letters of motivation or recommendation" in page_text:
+        add(
+            "other_information",
+            "Motivation and recommendation letters",
+            "The university states that motivation letters and recommendation letters are not required and are not considered positively for this application.",
+        )
+    if "application portal" in page_text and "student portal" in page_text:
+        add(
+            "application_requirements",
+            "Application submission",
+            "Applications are submitted through the university's eCampus portal and must include the signed cover sheet and supporting documents requested in the current guidelines. The portal may not support every function on smartphones.",
+        )
+    return parsed
+
+
+KLU_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://www.klu.org/about-klu/student-services/scholarships/deutschlandstipendium"
+)
+
+
+def _augment_klu_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = KLU_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Preserve KLU's prospective-student route and distinguish selection from gates."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        statement = _clean(statement)
+        item = (kind, label, statement)
+        if not statement or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", statement)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"fulfill the admission criteria for studies at klu", page_text) and re.search(
+        r"already enrolled in a degree program at klu or have been admitted to klu", page_text
+    ):
+        add(
+            "eligibility",
+            "KLU admission and study status",
+            "Applicants must meet the admission requirements for their KLU degree programme and either already be enrolled in a KLU degree programme or have been admitted and plan to start soon.",
+        )
+
+    if re.search(r"very good grades", page_text) and re.search(
+        r"study starters and current klu students will be evaluated separately", page_text
+    ):
+        add(
+            "selection_criteria",
+            "Academic performance",
+            "Selection is merit-based and prioritises very good grades. Applicants who have not started at KLU are assessed mainly on their university entrance qualification or latest degree; current KLU students are assessed mainly on their verified KLU GPA, including consideration of exam grades not yet recorded. KLU says successful applicants typically have a GPA of 1.7 or better, but does not publish this as a fixed minimum eligibility threshold.",
+        )
+
+    if re.search(r"special achievements, awards, and prizes", page_text) and re.search(
+        r"voluntary work or societal, social, and political engagement", page_text
+    ):
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "Where the applicant's GPA is good to very good, selection may also consider awards and special achievements, previous work experience or internships, voluntary and other societal engagement, and relevant personal or family circumstances. These are selection considerations, not universal mandatory requirements.",
+        )
+
+    if re.search(r"300 euros monthly for 12 months", page_text):
+        add_field(
+            "funding_summary",
+            "€300 per month for 12 months.",
+        )
+        add(
+            "other_information",
+            "Funding amount and duration",
+            "The scholarship provides €300 per month for a one-year funding period.",
+        )
+
+    if re.search(r"march 27 - may 31, 2026", page_text):
+        add_field(
+            "deadline_text",
+            "27 March–31 May 2026 (the published 2026 application window has closed; no later date is confirmed on this page).",
+        )
+        add_field("deadline_date", "2026-05-31")
+        # The generic parser runs before this provider-specific augmentation;
+        # set the persisted status from the exact dates on KLU's official page.
+        today = datetime.now(timezone.utc).date()
+        application_start = datetime(2026, 3, 27).date()
+        application_end = datetime(2026, 5, 31).date()
+        if today < application_start:
+            parsed.application_status = "upcoming"
+        elif today <= application_end:
+            parsed.application_status = "open"
+        else:
+            parsed.application_status = "closed"
+        add_field("application_status", parsed.application_status)
+        add(
+            "application_requirements",
+            "Published application window",
+            "The published application window for the September 2026–August 2027 funding period was 27 March–31 May 2026 and has closed. The official page does not yet confirm a later application deadline.",
+        )
+
+    if re.search(r"sept(?:ember)?\.?\s+2026\s*[-–]\s*aug(?:ust)?\.?\s+2027", page_text):
+        add(
+            "other_information",
+            "2026–2027 funding period",
+            "The published funding period for this round is September 2026 to August 2027.",
+        )
+
+    if re.search(r"following the call for application sent out by the dean of programs", page_text):
+        add(
+            "application_requirements",
+            "Application process",
+            "KLU opens the application portal after the Dean of Programs issues a call for applications. Applicants submit information and supporting documentation relevant to the published selection criteria.",
+        )
+
+    return parsed
+
+
+def _augment_oskar_karl_forster(parsed: ExtractedPage, html: str, source_url: str = OSKAR_KARL_FORSTER_URL) -> ExtractedPage:
+    """Preserve Oskar Karl Forster's semester exception and evidence nuances."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"one-time grant for the purchase of books or other learning materials", page_text):
+        add_field(
+            "funding_summary",
+            "One-time grant of €100–€500 for books or other learning materials, including laptops and tablets. Dissertation-printing support is possible only in exceptional cases.",
+        )
+        add(
+            "other_information",
+            "Grant purpose and amount",
+            "This is a one-time educational-materials grant of €100–€500 for books, laptops, tablets or other learning materials—not general living-cost funding. Dissertation-printing support is possible only in exceptional cases.",
+        )
+
+    if re.search(r"from the second semester onwards", page_text):
+        add(
+            "study_level",
+            "Minimum study semester",
+            "Applicants in non-Master's programmes must be enrolled from the second semester onwards; the second-semester restriction does not apply to Master's students.",
+        )
+    if re.search(r"enrolment at the university of würzburg must be proven", page_text):
+        add(
+            "eligibility",
+            "University of Würzburg enrolment",
+            "Applicants must be currently enrolled at the University of Würzburg and provide a current certificate of enrolment with the application.",
+        )
+    if re.search(r"gifted and needy students", page_text):
+        add(
+            "eligibility",
+            "Financial need",
+            "Applicants must demonstrate financial need. Receiving BAföG is accepted as evidence; otherwise the provider assesses relevant supporting income documents.",
+        )
+    if re.search(r"particularly outstanding academic achievements are not a prerequisite", page_text):
+        add(
+            "selection_criteria",
+            "Academic performance clarification",
+            "Particularly outstanding academic achievements are not required. The provider looks for the usual academic progress for the semester reached; around 20 ECTS per semester is described as an indicator of continued progress, not a fixed minimum.",
+        )
+    if re.search(r"can only be claimed once", page_text):
+        add(
+            "application_requirements",
+            "One-time grant",
+            "The grant can generally be received only once; the recipient must later provide proof that the grant was used for the approved purchase.",
+        )
+    if re.search(r"foreign documents can only be utilised in officially certified translations or in english-language copies", page_text):
+        add(
+            "application_requirements",
+            "Foreign-language documents",
+            "Foreign documents must be submitted as officially certified translations or in English-language copies.",
+        )
+    if re.search(r"approval of a university lecturer", page_text):
+        add(
+            "application_requirements",
+            "Lecturer confirmation",
+            "For a books or learning-materials grant, a full-time University of Würzburg lecturer must confirm that the planned purchase is appropriate and confirm the applicant's funding eligibility in light of previous study progress.",
+        )
+    if re.search(r"printing costs of dissertations", page_text):
+        add(
+            "application_requirements",
+            "Exceptional dissertation-printing support",
+            "In exceptional cases, a grant may be requested for dissertation printing costs; the provider applies a separate personal-income assessment to this type of support.",
+        )
+    return parsed
+
+
+
+
+HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://www.haw-kiel.de/en/studium/studieninteressierte/studienfinanzierung-stipendien/deutschlandstipendium/stipendiatin-werden/"
+)
+
+
+def _augment_haw_kiel_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Capture HAW Kiel's distinct enrolment, grade and study-progress rules."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"studying or intends to study at haw kiel", page_text) and re.search(
+        r"within the standard period of study", page_text
+    ):
+        add(
+            "eligibility",
+            "Study at HAW Kiel",
+            "At the beginning of the funding period, applicants must be studying or intend to study at HAW Kiel within the standard period of study. Applicants starting or transferring to HAW Kiel must enrol by the end of the stated enrolment period.",
+        )
+
+    if re.search(r"grade of better than 2\.0", page_text):
+        add(
+            "academic_requirements",
+            "Entry qualification grade",
+            "Applicants who are about to start at HAW Kiel or have not yet completed a semester there must have a university entrance qualification grade better than 2.0 in the German grading system.",
+        )
+
+    if re.search(r"at least half of the ects per semester", page_text):
+        add(
+            "academic_requirements",
+            "Study progress",
+            "Continuing HAW Kiel students must have completed at least half of the ECTS credits per semester required by their degree curriculum and must not have exceeded the standard period of study when the funding period begins.",
+        )
+
+    if re.search(r"top 20%", page_text) and re.search(r"master", page_text):
+        add(
+            "application_requirements",
+            "Academic ranking evidence",
+            "For applicants transferring from another university and applicants entering a Master's programme, the provider requests evidence of placement within the top 20% of the previous degree cohort. The page says currently enrolled HAW Kiel students do not need to provide this top-20% proof.",
+        )
+
+    if re.search(r"foreign universities or schools", page_text) and re.search(
+        r"grade converted by uniassist", page_text
+    ):
+        add(
+            "required_documents",
+            "Foreign qualification grade conversion",
+            "Applicants with foreign school or university certificates must submit the grade converted to the German grading system by uni-assist by the scholarship application deadline. Master's applicants must also submit cohort-ranking evidence in German or English.",
+        )
+
+    if re.search(r"current overview of grades from qis", page_text) and re.search(
+        r"current certificate of study", page_text
+    ):
+        add(
+            "required_documents",
+            "Current HAW Kiel students",
+            "Currently enrolled HAW Kiel students must provide a current grade overview from QIS and a current certificate of study. Students who have not completed a full semester at HAW Kiel must also provide their university entrance qualification certificate.",
+        )
+
+    if re.search(r"online portal", page_text) and re.search(r"applicable application deadline", page_text):
+        add(
+            "application_requirements",
+            "Application deadline",
+            "Applications are submitted through the online portal. The current deadline is stated in that portal; no fixed future deadline is confirmed on the programme information page.",
+        )
+
+    if re.search(r"special achievements, awards and prizes from the last two years", page_text):
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "The selection process may also consider awards and achievements from the last two years, previous work, internships or voluntary service lasting at least six months, and current extracurricular engagement lasting at least one year. These are additional selection factors, not universal mandatory requirements.",
+        )
+
+    return parsed
+
+
+FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://www.fu-berlin.de/en/sites/deutschlandstipendium/index.html"
+)
+
+
+def _augment_fu_berlin_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Capture Freie Universität Berlin's own award and intake conditions."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"enrollment at fre[i]?e universität berlin", page_text) or re.search(
+        r"enrollment at fre ie universität berlin", page_text
+    ):
+        add(
+            "eligibility",
+            "Study at Freie Universität Berlin",
+            "Applicants must either be degree students at Freie Universität Berlin within the standard time to degree during the funding period, or hold a letter of acceptance to start a degree programme there.",
+        )
+
+    if re.search(r"all nations and all parts of society", page_text):
+        add(
+            "target_audience",
+            "International applicants",
+            "Applicants from all nationalities and backgrounds may apply, subject to the programme's study and funding conditions.",
+        )
+
+    if re.search(r"always awarded for the winter semester", page_text) and re.search(
+        r"not possible to start.*summer semester", page_text
+    ):
+        add(
+            "application_requirements",
+            "Funding start",
+            "Freie Universität Berlin awards this scholarship for the winter semester only; a new award cannot start in the summer semester.",
+        )
+
+    if re.search(r"application period for the funding year 2026/2027", page_text) and re.search(
+        r"application period ended", page_text
+    ):
+        add(
+            "application_requirements",
+            "Application period",
+            "The application period for the 2026/2027 funding year has ended. The page does not confirm the next application deadline.",
+        )
+
+    if re.search(r"300 euros per month", page_text):
+        add(
+            "funding_information",
+            "Funding amount",
+            "The scholarship provides €300 per month. The programme page states a minimum funding period of two semesters starting in October; extensions are possible.",
+        )
+
+    return parsed
+
+
+KIEL_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://deutschlandstipendium-cau-kiel.de/en/infos-fuer-stipendiatinnen/"
+)
+
+
+def _augment_kiel_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = KIEL_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Add Kiel-specific routes and distinguish eligibility from selection factors."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if (
+        re.search(r"all prospective students of kiel university", page_text)
+        and re.search(r"already enrolled at kiel university", page_text)
+    ):
+        add(
+            "eligibility",
+            "Study at Kiel University",
+            "Applicants must meet Kiel University's admission requirements and either be preparing to start a programme at Kiel University or already be enrolled there. The scholarship is linked to studying at Kiel University.",
+        )
+
+    if re.search(r"university entrance qualification", page_text) and re.search(
+        r"recognized for university studies at the university of kiel", page_text
+    ):
+        add(
+            "application_requirements",
+            "Foreign qualifications",
+            "A foreign university entrance qualification is acceptable when it is recognized for university study at Kiel University.",
+        )
+
+    if (
+        re.search(r"second or supplementary degree", page_text)
+        and re.search(r"master.?s degree programs", page_text)
+    ):
+        add(
+            "target_audience",
+            "Eligible study routes",
+            "First degrees, second degrees, supplementary degree programmes and Master's programmes are generally eligible.",
+        )
+
+    if re.search(r"merit-based financial support exceeding €?30 per month", page_text):
+        add(
+            "ineligibility",
+            "Other merit-based funding",
+            "Applicants who already receive merit-based financial support exceeding €30 per month are not eligible for this funding period. The provider says this depends on the amount and type of funding.",
+        )
+
+    if re.search(r"(?:deadline.{0,80}2026/2027|2026/2027.{0,80}has passed)", page_text) and re.search(
+        r"2027/2028.{0,120}beginning of 2027", page_text
+    ):
+        add(
+            "application_requirements",
+            "Application period",
+            "The 2026/2027 application deadline has passed. The provider says the 2027/2028 deadline will be published at the beginning of 2027; no exact future deadline is confirmed yet.",
+        )
+
+    if re.search(r"curriculum vitae", page_text) and re.search(
+        r"letter of motivation", page_text
+    ):
+        add(
+            "required_documents",
+            "Application documents",
+            "Prepare a curriculum vitae and a motivation letter. The provider also requests a university entrance qualification certificate; additional certificates and evidence are submitted when applicable.",
+        )
+
+    if re.search(r"special achievements, awards", page_text) and re.search(
+        r"viewed favorably", page_text
+    ):
+        add(
+            "selection_criteria",
+            "Additional selection factors",
+            "The selection process also views recent achievements, awards or prizes, vocational training, internships or voluntary service lasting at least two months, and current extracurricular or non-academic involvement favorably. These are selection factors, not universal mandatory eligibility requirements.",
+        )
+
+    if re.search(r"software challenge", page_text) and re.search(
+        r"computer science", page_text
+    ):
+        add(
+            "application_requirements",
+            "Software Challenge route",
+            "Applicants using the Software Challenge route for Computer Science must submit the Software Challenge scholarship certificate and a recommendation letter from a teacher, tutor or the programme's sponsoring association.",
+        )
+
+    return parsed
+
+
+TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL = (
+    "https://www.tu.berlin/en/careerservice/d-stipendium/application/basic-principles"
+)
+
+
+def _augment_tu_berlin_deutschlandstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Keep the current-student and prospective-student routes separate."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    has_current_route = (
+        re.search(r"regularly enrolled bachelor.{0,30}master.{0,30}students", page_text)
+        and re.search(r"at least two semesters remaining", page_text)
+        and re.search(r"already enrolled at tu berlin", page_text)
+    )
+    if has_current_route:
+        add(
+            "category_i_eligibility",
+            "Current TU Berlin students",
+            "Regularly enrolled Bachelor's and Master's students already enrolled at TU Berlin at the beginning of the upcoming winter-semester funding period must still have at least two semesters remaining within the standard period of study.",
+        )
+
+    has_prospective_route = (
+        re.search(r"new students who have applied", page_text)
+        and re.search(r"commence their studies at tu berlin in the winter semester", page_text)
+    )
+    if has_prospective_route:
+        add(
+            "category_ii_eligibility",
+            "Prospective TU Berlin students",
+            "Prospective students who have applied to begin their studies at TU Berlin in the upcoming winter semester may apply; TU Berlin verifies enrolment in the degree programme before awarding the scholarship.",
+        )
+
+    if re.search(r"doctoral candidates.{0,80}not eligible to apply", page_text):
+        add(
+            "ineligibility",
+            "Doctoral candidates",
+            "Doctoral candidates are not eligible to apply for the TU Berlin Deutschlandstipendium.",
+        )
+
+    if re.search(r"second degree.{0,80}eligible", page_text) and re.search(r"complementary studies.{0,40}eligible", page_text):
+        add(
+            "target_audience",
+            "Additional study routes",
+            "Students pursuing a second degree or complementary studies are also eligible, subject to the applicable student-route requirements.",
+        )
+
+    if re.search(r"international students and applicants of tu berlin can apply", page_text):
+        add(
+            "target_audience",
+            "International applicants",
+            "International students and applicants of TU Berlin may apply.",
+        )
+
+    return parsed
+
+
+def _augment_romana_schott(parsed: ExtractedPage, html: str, source_url: str = ROMANA_SCHOTT_URL) -> ExtractedPage:
+    """Add nomination-process details without collecting sensitive personal data."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"awarded to needy female students of all faculties", page_text):
+        add(
+            "eligibility",
+            "Applicant group and financial need",
+            "The fund is intended for female students of all faculties who meet its financial-need rules under BAföG. Gender and financial circumstances are not assessed by this matcher; applicants must review the official provider process privately.",
+        )
+    if re.search(r"generally three years", page_text) and re.search(r"150\.00 € per month", page_text):
+        add_field(
+            "funding_summary",
+            "€150 per month for students without children; child supplement may apply. The current programme page and its 2026 call publish different child-supplement amounts, so applicants should confirm the applicable amount with the University before relying on it.",
+        )
+        add(
+            "other_information",
+            "Funding amount and duration",
+            "The published standard funding period is three years, with extensions possible. Students without children receive €150 per month. A child supplement is available, but the current programme page and its 2026 call list different amounts; confirm the applicable amount with the University.",
+        )
+
+    if re.search(r"despite obstacles", page_text):
+        add(
+            "other_information",
+            "Programme focus",
+            "The fund supports female students who have overcome obstacles in pursuing university studies; the University particularly highlights support for students with children. This is programme information, not a request for personal profile data.",
+        )
+
+    if re.search(r"not possible to apply for a scholarship on one's own", page_text):
+        add(
+            "application_requirements",
+            "Nomination required",
+            "Students cannot apply independently. A proposal from an eligible University of Würzburg faculty member is required, and a consultation with a staff member of the University Women's Representative is obligatory.",
+        )
+    if re.search(r"application deadline.*?march 31 and september 30", page_text):
+        add(
+            "application_requirements",
+            "Proposal deadlines",
+            "The proposal procedure has two annual deadlines: 31 March and 30 September for consideration at the next Equal Opportunities Commission meeting.",
+        )
+    if re.search(r"the justification for the proposal", page_text) and re.search(r"proposal form", page_text):
+        add(
+            "required_documents",
+            "Nomination and application documents",
+            "The proposal must include an expert justification of the student's subject and personal suitability, a brief statement from an eligible faculty body, and the student's completed proposal form with the additional requested documents.",
+        )
+    if re.search(r"no benefits will be granted if you are not in need", page_text):
+        add(
+            "eligibility",
+            "Funding during leave semesters",
+            "No benefits are paid for semesters of leave; the provider also confirms that funding is limited to applicants who meet its financial-need assessment.",
+        )
+    return parsed
+
+
+HEINRICH_BOLL_APPLICATION_URL = "https://www.boell.de/en/applying-scholarship"
+HEINRICH_BOLL_FAQ_URL = "https://www.boell.de/en/2026/03/26/frequently-asked-questions-about-application-process"
+
+
+
+def _augment_amend_medical_scholarship(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = AMEND_SCHOLARSHIP_URL,
+) -> ExtractedPage:
+    """Capture the current Amend call and its linked foundation principles."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+    linked_guidelines = any(
+        (urlparse(anchor.get("href", "")).path or "").endswith(".pdf")
+        and "foerdergrundsaetze_studienstiftung_amend" in anchor.get("href", "").casefold()
+        for anchor in root.find_all("a", href=True)
+    )
+
+    def add(
+        kind: str,
+        label: str,
+        statement: str,
+        evidence_url: str = source_url,
+    ) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = evidence_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if "2027" in page_text and re.search(r"€\s*300,\s*00", page_text):
+        add_field("funding_summary", "€300 per month, starting in summer semester 2027.")
+        add(
+            "other_information",
+            "Funding amount and start",
+            "The current call offers €300 per month starting in summer semester 2027.",
+        )
+
+    if re.search(r"bewerbungsschluss.*30\.11\.2026", page_text):
+        add_field(
+            "deadline_text",
+            "30 November 2026 (published deadline for the summer-semester 2027 call).",
+        )
+        add(
+            "application_requirements",
+            "Application deadline",
+            "The published application deadline is 30 November 2026 for funding starting in summer semester 2027.",
+        )
+
+    if re.search(r"abiturdurchschnitt von mindestens 2,\s*5", page_text):
+        add(
+            "academic_requirements",
+            "Abitur grade",
+            "Applicants must meet the published Abitur average requirement of 2.5 or better in the German grading system.",
+        )
+
+    if re.search(r"physikum mit der note.*sehr gut", page_text):
+        add(
+            "academic_requirements",
+            "Physikum result",
+            "Applicants must have completed the Physikum with the grade 'very good'.",
+        )
+
+    if re.search(r"regelstudiendauer ab physikum", page_text):
+        add(
+            "study_level",
+            "Funding period in medical studies",
+            "Funding is provided within the standard study period counted from completion of the Physikum.",
+        )
+
+    if re.search(r"leistungsnachweise", page_text):
+        add(
+            "application_requirements",
+            "Ongoing academic progress",
+            "Recipients must submit copies of their academic achievement records to the foundation at the end of each semester.",
+        )
+
+    if all(
+        re.search(pattern, page_text)
+        for pattern in (
+            r"lebenslauf",
+            r"motivationsschreiben",
+            r"abiturzeugnis",
+            r"bescheinigung über das abgeschlossene physikum",
+        )
+    ):
+        add(
+            "required_documents",
+            "Application documents",
+            "The current call requests a CV, motivation letter, Abitur certificate and proof of completed Physikum. A BAföG notice should also be supplied if the applicant receives BAföG.",
+        )
+
+    if linked_guidelines:
+        add(
+            "eligibility",
+            "Medical studies and dissertation project",
+            "The linked foundation principles state that the scholarship is for medical students at Julius-Maximilians-Universität Würzburg who are preparing a dissertation leading to the Dr. med. degree. The dissertation topic and its start date are requested.",
+            AMEND_FUNDING_GUIDELINES_URL,
+        )
+        add(
+            "other_information",
+            "Possible completion extension",
+            "The linked foundation principles allow an application for up to three additional months after the State Examination to complete the dissertation, subject to the stated examination and dissertation grades.",
+            AMEND_FUNDING_GUIDELINES_URL,
+        )
+
+    if re.search(r"konto einricht", page_text):
+        add(
+            "other_information",
+            "Payment arrangements",
+            "The current call states that the recipient must arrange a university account for scholarship payments.",
+        )
+
+    return parsed
+
+
+def _augment_heinrich_boll_faq(
+    parsed: ExtractedPage,
+    faq_html: str,
+    application_html: str = "",
+    faq_url: str = HEINRICH_BOLL_FAQ_URL,
+    application_url: str = HEINRICH_BOLL_APPLICATION_URL,
+) -> ExtractedPage:
+    """Attach official FAQ and application-page clarifications to the same HBS award."""
+    faq_root = _remove_site_chrome(BeautifulSoup(faq_html, "html.parser"), faq_url)
+    faq_text = _clean(faq_root.get_text(" ", strip=True)).casefold()
+    application_text = ""
+    if application_html:
+        application_root = _remove_site_chrome(
+            BeautifulSoup(application_html, "html.parser"), application_url
+        )
+        application_text = _clean(application_root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str, source_url: str = faq_url) -> None:
+        statement = _clean(statement)
+        item = (kind, label, statement)
+        if not statement or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", statement)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if re.search(r"(?:level b2 or dsh ii|dsh ii or b2)", faq_text):
+        add(
+            "language_requirements",
+            "German language proficiency",
+            "International applicants must provide proof of German language proficiency at B2 or DSH II, even when their degree programme is taught in English.",
+        )
+
+    if re.search(r"we do not set any age limits", faq_text):
+        add(
+            "age_limit",
+            "Age limit clarification",
+            "The Foundation sets no age limit for international graduate and PhD applicants; applicants educated in Germany are subject to BAföG age rules.",
+        )
+
+    if re.search(r"priority will be given to international students and phd candidates from dac countries", faq_text):
+        add(
+            "selection_criteria",
+            "Priority applicant groups",
+            "Applicants from DAC countries are prioritised, particularly those who have completed their previous degree abroad and have not yet moved to Germany; this is a preference, not an exclusive nationality requirement.",
+        )
+
+    if re.search(r"very good academic performance", faq_text) and re.search(r"civic engagement", faq_text):
+        add(
+            "selection_criteria",
+            "Academic and civic profile",
+            "Selection considers academic performance, civic engagement, political interest and fit with the Foundation's aims; no fixed minimum grade-point average is published.",
+        )
+
+    if re.search(
+        r"(?:only accept applications submitted via our online portal|only applications submitted via our online portal are accepted)",
+        application_text,
+    ) or re.search(
+        r"(?:only accept applications submitted via our online portal|only applications submitted via our online portal are accepted)",
+        faq_text,
+    ):
+        add(
+            "application_requirements",
+            "Application submission",
+            "Applications must be submitted through the Foundation's online application portal; applications by post are not accepted.",
+        )
+
+    if re.search(r"part-time degree programs are not eligible for funding", faq_text):
+        add(
+            "study_level",
+            "Master's study format",
+            "For Master's applicants, part-time degree programmes are not eligible for funding.",
+        )
+
+    if re.search(r"(?:completed their first degree abroad|already have a first professional degree)", faq_text):
+        add(
+            "study_level",
+            "Master's entry route",
+            "For international Master's applicants, a first degree such as a Bachelor's degree must be completed abroad before starting the Master's programme in Germany.",
+        )
+
+    if re.search(r"completed their graduate degree abroad", faq_text):
+        add(
+            "study_level",
+            "Doctoral entry route",
+            "For international PhD applicants, the previous graduate degree must have been completed abroad and the intended doctoral programme must be in Germany.",
+        )
+
+    if re.search(r"have identified a supervisor", faq_text) and re.search(r"completed initial preparatory work", faq_text):
+        add(
+            "application_requirements",
+            "Doctoral application preparation",
+            "PhD applicants should have a defined research topic, a prepared exposé, an identified supervisor and completed initial preparatory work; proof of doctoral admission or a supervisor's confirmation is required, but the formal university confirmation may follow later in the selection process.",
+        )
+
+    if re.search(r"standard duration of four semesters or more", application_text):
+        add(
+            "study_level",
+            "Master's programme duration and format",
+            "For international Master's applicants, the programme must be full-time at a state-recognised university in Germany and have a standard duration of at least four semesters.",
+            application_url,
+        )
+
+    if re.search(r"any bafög payments or funding from another institution.*?must be discontinued prior to the start", faq_text):
+        add(
+            "application_requirements",
+            "Other funding",
+            "BAföG payments or funding from another institution for the same purpose must be discontinued before this scholarship begins; previous funding periods may count towards the maximum PhD funding period.",
+        )
+
+    if re.search(r"documents in german", faq_text) and re.search(r"phd candidates must write the abstract", faq_text):
+        add(
+            "application_requirements",
+            "Application language",
+            "Application documents are expected in German; references, expert reports and translations may be in English. PhD applicants must write the exposé abstract in German, while the exposé itself may be in English.",
+        )
+
+    return parsed
+
+
+FES_APPRENTICESHIP_FAQ_URL = (
+    "https://www.fes.de/studienfoerderung/faq/faq-fuer-bewerber-innen-der-ausbildungsfoerderung"
+)
+
+
+def _augment_fes_apprenticeship_faq(
+    parsed: ExtractedPage, html: str, faq_url: str = FES_APPRENTICESHIP_FAQ_URL
+) -> ExtractedPage:
+    """Add official FAQ clarifications to the existing FES apprenticeship award."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), faq_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+
+    def add(kind: str, label: str, statement: str) -> None:
+        statement = _clean(statement)
+        item = (kind, label, statement)
+        if not statement or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = faq_url
+        evidence_item = ("eligibility", statement)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = faq_url
+
+    if re.search(r"duale, schulische und außerbetriebliche ausbildungsgänge", page_text):
+        add(
+            "application_requirements",
+            "Supported apprenticeship formats",
+            "The FES apprenticeship scholarship can support dual, school-based and extra-company vocational training.",
+        )
+    if re.search(r"staatlich anerkannten prüfung", page_text):
+        add(
+            "eligibility",
+            "State-recognised training qualification",
+            "The vocational training must be in a legally regulated occupation and lead to a state-recognized examination, including eligible BBiG, HwO, federally regulated healthcare or equivalent state-regulated occupations.",
+        )
+        add(
+            "ineligibility",
+            "Unregulated training",
+            "Training in an occupation that is not legally regulated, or that does not end with a state-recognized examination, is not funded.",
+        )
+    if re.search(r"zu beginn der ausbildung.{0,120}45\.\s*lebensjahr", page_text):
+        add(
+            "age_limit",
+            "Age at the start of training",
+            "At the start of vocational training, applicants generally must not yet have reached 45 years of age; statutory exceptions may apply.",
+        )
+    if re.search(r"45\.\s*lebensjahr", page_text):
+        add(
+            "application_requirements",
+            "Statutory age exceptions",
+            "The age guideline refers to statutory exceptions under §10 BAföG. Applicants who have reached the stated age should review the current rule privately with the provider.",
+        )
+    if re.search(r"§\s*8\s*baf[oö]g", page_text):
+        add(
+            "nationality",
+            "Eligible legal-status groups",
+            "Applicants must belong to an eligible person group under §8 BAföG. The law lists several nationality, residence and employment-related routes; check the current official rules privately.",
+        )
+    if re.search(r"nicht auf die erstausbildung beschränkt", page_text):
+        add(
+            "application_requirements",
+            "Previous education or training",
+            "The FES apprenticeship scholarship is not limited to a first vocational qualification; a previously completed or discontinued apprenticeship or study programme does not automatically exclude an applicant.",
+        )
+    if re.search(r"teilzeitberufsausbildung.{0,100}bbig", page_text):
+        add(
+            "application_requirements",
+            "Part-time vocational training",
+            "Part-time vocational training may be funded if it complies with the Vocational Training Act (BBiG).",
+        )
+    if re.search(r"nicht in der spd engagieren|kein(?:e|en)? mitgliedschaft.{0,80}spd", page_text):
+        add(
+            "application_requirements",
+            "Party membership",
+            "Membership in the Social Democratic Party (SPD) is not required.",
+        )
+
+    if re.search(r"derzeit ist keine bewerbung möglich", page_text):
+        if not parsed.fields.get("deadline_text"):
+            deadline_text = (
+                "The 2026 application window was expected from 16 March to 17 May 2026. "
+                "The official FAQ currently says applications are not possible; no later intake date is published there."
+            )
+            parsed.fields["deadline_text"] = deadline_text
+            parsed.fields["deadline_date"] = "2026-05-17"
+            parsed.evidence.append(("deadline_text", deadline_text))
+            parsed.evidence_sources[("deadline_text", deadline_text)] = faq_url
+        parsed.application_status = "closed"
+
+    return parsed
 
 
 HEC_KNOWLEDGE_CORRIDOR_BASE = (
@@ -1825,7 +3692,7 @@ async def extract_candidate_details(
     if candidate_ids is not None:
         if reprocess:
             raise ValueError("Use either global reprocess or targeted candidate_ids, not both.")
-        candidate_ids = sorted({int(value) for value in candidate_ids})
+        candidate_ids = list(dict.fromkeys(int(value) for value in candidate_ids))
         if not candidate_ids:
             return []
     with get_connection() as connection:
@@ -1843,12 +3710,17 @@ async def extract_candidate_details(
         candidates = [dict(row) for row in connection.execute(
             """SELECT c.id, c.source_id, c.title AS candidate_title, c.candidate_url
                FROM discovery_candidates c
+               JOIN sources s ON s.id = c.source_id
                WHERE c.status = 'candidate'
                  AND NOT EXISTS (
                      SELECT 1 FROM extraction_attempts a
                      WHERE a.candidate_id = c.id
                        AND a.status <> 'failed'
-                 )""" + candidate_filter + " ORDER BY c.id",
+                 )""" + candidate_filter + """ ORDER BY CASE
+                   WHEN s.source_type = 'official_database' THEN 0
+                   WHEN s.name LIKE 'DAAD%' THEN 1
+                   ELSE 2
+               END, c.id""",
             candidate_params,
         ).fetchall()]
 
@@ -1881,6 +3753,119 @@ async def extract_candidate_details(
                 )
             else:
                 parsed = parse_scholarship_page(html, candidate["candidate_url"], candidate["candidate_title"]) if html else None
+            if (
+                parsed
+                and (urlparse(candidate["candidate_url"]).hostname or "").casefold() == "www.fes.de"
+                and urlparse(candidate["candidate_url"]).path.rstrip("/").casefold()
+                == "/studienfoerderung/stipendium/stipendien-auszubildende"
+            ):
+                faq_html, _faq_error = await _fetch_page(
+                    client, FES_APPRENTICESHIP_FAQ_URL
+                )
+                if faq_html:
+                    parsed = _augment_fes_apprenticeship_faq(
+                        parsed, faq_html, FES_APPRENTICESHIP_FAQ_URL
+                    )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
+                parsed = _augment_regensburg_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL.rstrip("/"):
+                parsed = _augment_goettingen_niedersachsenstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
+                parsed = _augment_tuebingen_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == KLU_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
+                parsed = _augment_klu_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == OSKAR_KARL_FORSTER_URL.rstrip("/"):
+                parsed = _augment_oskar_karl_forster(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if (
+                parsed
+                and candidate["candidate_url"].rstrip("/") == TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
+            ):
+                parsed = _augment_tu_berlin_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if (
+                parsed
+                and candidate["candidate_url"].rstrip("/") == KIEL_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
+            ):
+                parsed = _augment_kiel_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if (
+                parsed
+                and candidate["candidate_url"].rstrip("/") == HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
+            ):
+                parsed = _augment_haw_kiel_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+            if (
+                parsed
+                and candidate["candidate_url"].rstrip("/") == FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
+            ):
+                parsed = _augment_fu_berlin_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == ROMANA_SCHOTT_URL.rstrip("/"):
+                parsed = _augment_romana_schott(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == AMEND_SCHOLARSHIP_URL.rstrip("/"):
+                parsed = _augment_amend_medical_scholarship(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if (
+                parsed
+                and (urlparse(candidate["candidate_url"]).hostname or "").casefold() == "www.boell.de"
+                and urlparse(candidate["candidate_url"]).path.rstrip("/").casefold()
+                == "/en/scholarships"
+            ):
+                faq_html, _faq_error = await _fetch_page(client, HEINRICH_BOLL_FAQ_URL)
+                application_html, _application_error = await _fetch_page(
+                    client, HEINRICH_BOLL_APPLICATION_URL
+                )
+                if faq_html:
+                    parsed = _augment_heinrich_boll_faq(
+                        parsed,
+                        faq_html,
+                        application_html or "",
+                        HEINRICH_BOLL_FAQ_URL,
+                        HEINRICH_BOLL_APPLICATION_URL,
+                    )
+
+            if (
+                parsed
+                and (urlparse(candidate["candidate_url"]).hostname or "").casefold() == "www.evstudienwerk.de"
+                and urlparse(candidate["candidate_url"]).path.rstrip("/").casefold()
+                == "/english/scholarship-for-doctoral-students"
+            ):
+                faq_html, _faq_error = await _fetch_page(
+                    client, VILLIGST_DOCTORAL_FAQ_URL
+                )
+                if faq_html:
+                    parsed = _augment_villigst_doctoral_faq(
+                        parsed, faq_html, VILLIGST_DOCTORAL_FAQ_URL
+                    )
+
             status = "failed" if error else ("insufficient_evidence" if parsed is None else "extracted")
             message = error or (None if parsed else "Page was not classified as a specific opportunity or lacked explicit scholarship facts.")
 

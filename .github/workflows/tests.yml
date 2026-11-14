@@ -3,11 +3,10 @@ name: ScholarPath tests
 on:
   push:
     branches:
-      - main
-      - fix/eligibility-criteria-normalization
+      - "**"
   pull_request:
     branches:
-      - main
+      - "**"
   workflow_dispatch:
 
 permissions:
@@ -34,10 +33,11 @@ jobs:
       - name: Run complete test suite
         run: python -m unittest discover -s tests -v
 
+  # External provider checks are manual to avoid repeatedly hitting scholarship sites on every code push.
   live-official-sources:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
