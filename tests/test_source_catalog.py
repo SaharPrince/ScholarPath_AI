@@ -272,6 +272,10 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
             with self.subTest(source=name):
                 self.assertEqual(sources[name]["source_type"], "official_programme")
                 self.assertEqual(sources[name]["official_url"], url)
+        self.assertEqual(
+            sources["University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027"]["provider_name"],
+            "Openbank Deutschland AG",
+        )
 
     def test_goettingen_outgoing_promos_and_dead_funding_page_are_not_added(self) -> None:
         urls = {source["official_url"] for source in GERMANY_SOURCES}
