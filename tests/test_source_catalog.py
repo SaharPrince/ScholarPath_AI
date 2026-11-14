@@ -217,6 +217,15 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
             "https://uni-tuebingen.de/en/study/student-life/student-finances/deutschlandstipendium-scholarships",
         )
 
+    def test_goettingen_deutschlandstipendium_is_a_separate_official_programme(self) -> None:
+        sources = {source["name"]: source for source in GERMANY_SOURCES}
+        source = sources["University of Göttingen – Deutschlandstipendium"]
+        self.assertEqual(source["source_type"], "official_programme")
+        self.assertEqual(
+            source["official_url"],
+            "https://uni-goettingen.de/en/218535.html",
+        )
+
     def test_new_german_university_funding_pages_are_classified_without_merging_awards(self) -> None:
         sources = {source["name"]: source for source in GERMANY_SOURCES}
         expected = {
