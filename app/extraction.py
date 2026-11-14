@@ -2001,6 +2001,7 @@ GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL = (
 GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL = (
     "https://www.uni-goettingen.de/de/document/download/b65629c7b10e4a6216bc47550a07878f-en.pdf/Richtlinie%20zum%20Deutschlandstipendium_Fassung%20vom%2020.08.2025%20-%20EN.pdf"
 )
+GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GERMAN_URL = "https://www.uni-goettingen.de/de/218535.html"
 
 
 def _augment_goettingen_deutschlandstipendium(
@@ -2144,7 +2145,7 @@ def _augment_goettingen_deutschlandstipendium(
         "application_requirements",
         "Next application round",
         "The university's current German-language programme information gives 1–30 September 2027 as the next application period for the winter semester 2027/28. The 2026–27 round has ended; applicants should recheck the university announcement before the next call opens.",
-        "https://www.uni-goettingen.de/de/218535.html",
+        GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GERMAN_URL,
     )
     return parsed
 
