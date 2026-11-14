@@ -1899,6 +1899,102 @@ def _augment_tuebingen_deutschlandstipendium(
     return parsed
 
 
+GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL = (
+    "https://uni-goettingen.de/en/306042.html"
+)
+
+
+def _augment_goettingen_niedersachsenstipendium(
+    parsed: ExtractedPage,
+    html: str,
+    source_url: str = GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL,
+) -> ExtractedPage:
+    """Capture Göttingen's Lower Saxony Scholarship without treating priority groups as hard gates."""
+    root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), source_url)
+    page_text = _clean(root.get_text(" ", strip=True)).casefold()
+    parsed.title = "Lower Saxony Scholarship (Niedersachsenstipendium)"
+    parsed.provider_name = parsed.provider_name or "University of Göttingen"
+
+    def add(kind: str, label: str, statement: str) -> None:
+        item = (kind, label, _clean(statement))
+        if not item[2] or item in parsed.criteria:
+            return
+        parsed.criteria.append(item)
+        parsed.criteria_sources[item] = source_url
+        evidence_item = ("eligibility", item[2])
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    def add_field(name: str, value: str) -> None:
+        value = _clean(value)
+        if not value:
+            return
+        parsed.fields[name] = value
+        evidence_item = (name, value)
+        if evidence_item not in parsed.evidence:
+            parsed.evidence.append(evidence_item)
+        parsed.evidence_sources[evidence_item] = source_url
+
+    if "already enrolled at göttingen university" in page_text and "not on leave of absence" in page_text:
+        add(
+            "eligibility",
+            "University of Göttingen enrolment",
+            "Applicants must be enrolled at the University of Göttingen and must not be on leave of absence at the beginning of the funding period.",
+        )
+    if "university entrance qualifications required for studying" in page_text and "student account" in page_text:
+        add(
+            "eligibility",
+            "Prospective students",
+            "Applicants who already hold the university entrance qualification required for their intended studies and will start a degree at Göttingen in the near future may apply. Enrolment and an active Göttingen student account are required before the application can be completed.",
+        )
+    if "doctoral/phd students are not eligible" in page_text:
+        add(
+            "ineligibility",
+            "Doctoral students",
+            "Doctoral students are not eligible for the Niedersachsenstipendium.",
+        )
+    if "500 euros" in page_text and "one-off grant" in page_text:
+        add_field("funding_summary", "One-time grant of €500.")
+        add(
+            "other_information",
+            "Funding amount",
+            "The Niedersachsenstipendium is a one-time grant of €500, not a recurring monthly stipend.",
+        )
+    if "educationally disadvantaged backgrounds" in page_text and "first-generation students" in page_text:
+        add(
+            "selection_criteria",
+            "Priority and selection considerations",
+            "The university considers academic talent and achievement alongside educational disadvantage, first-generation university status, migration-related barriers, special personal circumstances and outstanding voluntary work. These are selection considerations and may be reviewed by the university; ScholarPath does not infer or request sensitive personal circumstances.",
+        )
+    if "the application portal was open from 1 september 2026 to 30 september 2026" in page_text:
+        add_field("deadline_text", "1–30 September 2026 (the 2026 application window has closed).")
+        add_field("deadline_date", "2026-09-30")
+        today = datetime.now(timezone.utc).date()
+        start = datetime(2026, 9, 1).date()
+        end = datetime(2026, 9, 30).date()
+        parsed.application_status = "upcoming" if today < start else ("open" if today <= end else "closed")
+        add_field("application_status", parsed.application_status)
+        add(
+            "application_requirements",
+            "2026 application round",
+            "The official page states that the application portal was open from 1 to 30 September 2026 for the winter semester 2026/27 award round. The page does not confirm a later application window; check the university's current announcement before applying.",
+        )
+    if "no need for letters of motivation or recommendation" in page_text:
+        add(
+            "other_information",
+            "Motivation and recommendation letters",
+            "The university states that motivation letters and recommendation letters are not required and are not considered positively for this application.",
+        )
+    if "e-campus" in page_text and "complete uploaded application documents" in page_text:
+        add(
+            "application_requirements",
+            "Application submission",
+            "Applications are submitted through the university's eCampus portal and must include the signed cover sheet and supporting documents requested in the current guidelines. The portal may not support every function on smartphones.",
+        )
+    return parsed
+
+
 KLU_DEUTSCHLANDSTIPENDIUM_URL = (
     "https://www.klu.org/about-klu/student-services/scholarships/deutschlandstipendium"
 )
@@ -3673,6 +3769,11 @@ async def extract_candidate_details(
 
             if parsed and candidate["candidate_url"].rstrip("/") == REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
                 parsed = _augment_regensburg_deutschlandstipendium(
+                    parsed, html or "", candidate["candidate_url"]
+                )
+
+            if parsed and candidate["candidate_url"].rstrip("/") == GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL.rstrip("/"):
+                parsed = _augment_goettingen_niedersachsenstipendium(
                     parsed, html or "", candidate["candidate_url"]
                 )
 
