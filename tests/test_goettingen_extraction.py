@@ -1,7 +1,7 @@
 """Regression tests for live extraction of Göttingen scholarship pages."""
 import unittest
 
-from app.extraction import _parse_deadline_date, parse_scholarship_page
+from bs4 import BeautifulSoup\n\nfrom app.extraction import (\n    FIELD_LABELS, _find_labeled_text, _parse_deadline_date, _remove_site_chrome, parse_scholarship_page,\n)
 from app.live_discovery import _as_record
 
 
@@ -42,6 +42,11 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
         """
         parsed = parse_scholarship_page(
             html, SANTANDER_URL, "Santander Sorgenfrei Scholarship 2026/2027"
+        )
+        content_root = _remove_site_chrome(BeautifulSoup(html, "html.parser"), SANTANDER_URL)
+        self.assertEqual(
+            _find_labeled_text(content_root, FIELD_LABELS["deadline_text"], "deadline_text"),
+            "November 30th, 2026. A total of 10 scholarships will be awarded.",
         )
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed.fields.get("deadline_text"), "November 30th, 2026. A total of 10 scholarships will be awarded.")
