@@ -1275,17 +1275,11 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     # November 30th, 2026." This wording is common on university pages and is
     # not always exposed as a colon-delimited field.
     if "deadline_text" not in fields:
-        for node in content_root.find_all(["p", "li", "td", "dd"]):
-            value = _clean(node.get_text(" ", strip=True))
-            deadline_match = re.search(
-                r"(?i)\b(?:the\s+)?application deadline\s+(?:is|:)\s*(.+)$",
-                value,
-            )
-            date_match = DATE_PATTERN.search(deadline_match.group(1)) if deadline_match else None
-            if date_match:
-                fields["deadline_text"] = date_match.group(0)
-                evidence.append(("deadline_text", fields["deadline_text"]))
-                break
+        deadline_marker = re.search(r"(?i)\bapplication deadline\b", body_text)
+        date_match = DATE_PATTERN.search(body_text, deadline_marker.end()) if deadline_marker else None
+        if date_match:
+            fields["deadline_text"] = date_match.group(0)
+            evidence.append(("deadline_text", fields["deadline_text"]))
 
     # Some official providers publish several application windows beneath a
     # dedicated deadlines heading instead of a labelled field.
