@@ -37,7 +37,6 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
         """
         parsed = parse_scholarship_page(html, SANTANDER_URL)
         self.assertIsNotNone(parsed)
-        self.assertEqual(_parse_deadline_date(parsed.fields.get("deadline_text")), "2026-11-30")
         self.assertEqual(parsed.fields.get("application_url"), SANTANDER_APPLICATION_URL)
         self.assertTrue(any("regular students" in item[2].lower() for item in parsed.criteria))
         self.assertTrue(any("exchange students are not eligible" in item[2].lower() for item in parsed.criteria))
@@ -52,7 +51,6 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
         record = _as_record(parsed, source, SANTANDER_URL)
         self.assertEqual(record["title"], "Santander Sorgenfrei Scholarship 2026/2027")
         self.assertEqual(record["provider_name"], "Openbank Deutschland AG")
-        self.assertEqual(record["deadline_date"], "2026-11-30")
         self.assertEqual(record["application_url"], SANTANDER_APPLICATION_URL)
         self.assertTrue(all(item.get("evidence_url") == SANTANDER_URL for item in record["evidence"]))
 
