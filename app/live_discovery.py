@@ -401,7 +401,10 @@ async def discover_live_scholarships() -> list[dict]:
                 # independent requests. Start both phases together rather than
                 # waiting for one network round trip before starting the next.
                 detail_limit = 1 if source.get("programme_urls") else MAX_CANDIDATES_PER_SOURCE
-                detail_items = [\n                    (url, title) for url, title in candidate_urls.items()\n                    if not _is_excluded_candidate_url(source, url)\n                ][:detail_limit]
+                detail_items = [
+                    (url, title) for url, title in candidate_urls.items()
+                    if not _is_excluded_candidate_url(source, url)
+                ][:detail_limit]
                 if detail_items:
                     detail_task = asyncio.create_task(inspect_details(detail_items))
 
