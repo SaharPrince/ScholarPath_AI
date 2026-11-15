@@ -35,7 +35,8 @@ jobs:
 
   # External provider checks are manual to avoid repeatedly hitting scholarship sites on every code push.
   live-official-sources:
-    if: github.event_name == 'workflow_dispatch'
+    # One-time branch-scoped run for the live Santander parser diagnostic.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/feature/germany-scholarship-catalogue')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
