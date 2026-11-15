@@ -125,6 +125,25 @@ class SourcePagePromotionTests(unittest.TestCase):
             "source_url": "https://provider.example/scholarships/international-students",
         }, source))
 
+
+    def test_stale_index_candidate_is_excluded_when_dedicated_page_is_curated(self):
+        from app.live_discovery import _is_excluded_candidate_url
+
+        source = {
+            "source_type": "official_index",
+            "exclude_candidate_urls": ("https://uni-goettingen.de/en/707360.html",),
+        }
+        self.assertTrue(_is_excluded_candidate_url(
+            source, "https://www.uni-goettingen.de/en/707360.html"
+        ))
+        self.assertFalse(_is_excluded_candidate_url(
+            source, "https://www.uni-goettingen.de/en/516679.html"
+        ))
+        self.assertFalse(_is_excluded_candidate_url(
+            {"source_type": "official_index"},
+            "https://www.uni-goettingen.de/en/707360.html",
+        ))
+
     def test_application_guides_are_not_promoted_as_scholarships(self):
         from app.live_discovery import _is_promotable_source_page
 
