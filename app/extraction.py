@@ -86,7 +86,9 @@ def _clean(value: str) -> str:
     # Repair common SharePoint joins such as AnnualStipend, FullyFunded,
     # DairyScience, and 1000Ph.D. without splitting acronym endings like PhD.
     text = re.sub(r"(?<=[a-z])(?=[A-Z][a-z])", " ", text)
-    text = re.sub(r"(?<=\d)(?=[A-Za-z])", " ", text)
+    # Keep English ordinal suffixes attached to day numbers (30th, 1st, 2nd, 3rd).
+    # Other digit-to-letter joins still need spacing (for example, 1000PhD).
+    text = re.sub(r"(?<=\d)(?!(?:st|nd|rd|th)\b)(?=[A-Za-z])", " ", text, flags=re.I)
     # Repair letter-to-number joins in years and monetary amounts, plus
     # known SharePoint joins where both sides are lowercase.
     text = re.sub(r"(?<=[A-Za-z])(?=\d{4}\b)", " ", text)
