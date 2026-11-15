@@ -1278,7 +1278,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         for node in content_root.find_all(["p", "li", "td", "dd"]):
             value = _clean(node.get_text(" ", strip=True))
             deadline_match = re.search(
-                r"(?i)\\b(?:the\\s+)?application deadline\\s+(?:is|:)\\s*(.+)$",
+                r"(?i)\b(?:the\s+)?application deadline\s+(?:is|:)\s*(.+)$",
                 value,
             )
             date_match = DATE_PATTERN.search(deadline_match.group(1)) if deadline_match else None
