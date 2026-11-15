@@ -118,17 +118,21 @@ def _should_merge_source_eligibility(record: dict, source_url: str) -> bool:
 def _is_excluded_candidate_url(source: dict, url: str) -> bool:
     """Skip stale index links when a current dedicated programme page is curated."""
     candidate = urlparse(url)
-    candidate_host = _normalized_host(url)
+    candidate_host = (candidate.hostname or "").lower().removeprefix("www.").rstrip(".")
     candidate_path = candidate.path.rstrip("/") or "/"
     for excluded_url in source.get("exclude_candidate_urls", ()):
         excluded = urlparse(excluded_url)
+        excluded_host = (excluded.hostname or "").lower().removeprefix("www.").rstrip(".")
+        excluded_path = excluded.path.rstrip("/") or "/"
         if (
-            candidate_host
-            and candidate_host == _normalized_host(excluded_url)
-            and candidate_path == (excluded.path.rstrip("/") or "/")
+            candidate.scheme == excluded.scheme == "https"
+            and candidate_host
+            and candidate_host == excluded_host
+            and candidate_path == excluded_path
         ):
             return True
     return False
+
 
 def _source_candidate_title(source: dict, url: str) -> str:
     """Use a specific, source-authored title for a curated programme URL."""
