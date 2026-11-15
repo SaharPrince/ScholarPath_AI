@@ -1,7 +1,9 @@
 """Regression tests for live extraction of Göttingen scholarship pages."""
 import unittest
 
-from bs4 import BeautifulSoup\n\nfrom app.extraction import FIELD_LABELS, _find_labeled_text, _parse_deadline_date, parse_scholarship_page
+from bs4 import BeautifulSoup
+
+from app.extraction import FIELD_LABELS, _find_labeled_text, _parse_deadline_date, parse_scholarship_page
 from app.live_discovery import _as_record
 
 
