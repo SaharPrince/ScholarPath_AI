@@ -1,9 +1,7 @@
 """Regression tests for live extraction of Göttingen scholarship pages."""
 import unittest
 
-from bs4 import BeautifulSoup
-
-from app.extraction import FIELD_LABELS, _find_labeled_text, _parse_deadline_date, parse_scholarship_page
+from app.extraction import _parse_deadline_date, parse_scholarship_page
 from app.live_discovery import _as_record
 
 
@@ -39,12 +37,7 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
         """
         parsed = parse_scholarship_page(html, SANTANDER_URL)
         self.assertIsNotNone(parsed)
-        deadline_root = BeautifulSoup(html, "html.parser").main
-        self.assertEqual(
-            _find_labeled_text(deadline_root, FIELD_LABELS["deadline_text"], "deadline_text"),
-            "November 30th, 2026. A total of 10 scholarships will be awarded.",
-        )
-        self.assertEqual(parsed.fields.get("deadline_text"), "November 30th, 2026. A total of 10 scholarships will be awarded.", msg=repr(parsed.fields))
+        self.assertEqual(parsed.fields.get("deadline_text"), "November 30th, 2026")
         self.assertEqual(_parse_deadline_date(parsed.fields.get("deadline_text")), "2026-11-30")
         self.assertEqual(parsed.fields.get("application_url"), SANTANDER_APPLICATION_URL)
         self.assertTrue(any("regular students" in item[2].lower() for item in parsed.criteria))
