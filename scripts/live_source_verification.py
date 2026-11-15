@@ -147,6 +147,7 @@ async def main() -> None:
             f"{record.get('source_name')} | "
             f"{record.get('title')} | "
             f"deadline={record.get('deadline_date')} | "
+            f"funding={record.get('funding_summary')} | "
             f"criteria={len(record.get('criteria', []))} | "
             f"{record.get('source_url')}"
         )
@@ -176,6 +177,10 @@ async def main() -> None:
         if santander_record.get("application_url") != santander_application_url:
             blocking_failures.append(
                 "Göttingen Santander application URL was not preserved from the official page."
+            )
+        if "€1,000" not in str(santander_record.get("funding_summary") or ""):
+            blocking_failures.append(
+                "Göttingen Santander award amount (€1,000) was not preserved from the official page."
             )
         if santander_record.get("provider_name") != "Openbank Deutschland AG":
             blocking_failures.append(
