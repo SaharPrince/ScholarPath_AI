@@ -557,7 +557,7 @@ def _find_labeled_text(content_root: BeautifulSoup, labels: tuple[str, ...], fie
         for label in labels:
             # Labels must begin the field text. A label appearing midway through
             # a navigation sentence is not a reliable field/value pair.
-            match = re.match(rf"^\s*(?:the\s+)?{re.escape(label)}\s*(?:(?:is|are)\s+|[:–—-]\s*)(.+)$", text, re.I)
+            match = re.search(rf"\b{re.escape(label)}\s*(?:(?:is|are)\s+|[:–—-]\s*)(.+)$", text, re.I)
             value = _clean(match.group(1)) if match else ""
             if not value and text.lower().rstrip(":") == label:
                 sibling = node.find_next(["p", "li", "td", "dd"])
