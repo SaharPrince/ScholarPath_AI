@@ -114,14 +114,65 @@ async def main() -> None:
             "RECORD | "
             f"{record.get('source_name')} | "
             f"{record.get('title')} | "
+            f"deadline={record.get('deadline_date')} | "
             f"criteria={len(record.get('criteria', []))} | "
             f"{record.get('source_url')}"
         )
 
-    # Validate the curated foundation programme pages that were added to
-    # increase real opportunity coverage. A single provider can be temporarily
-    # slow, so do not make an unrelated provider's response a hard dependency.
+    # The Santander page is a critical live-extraction check: a successful
+    # source-index request must also produce a fully evidenced individual record.
+    santander_url = "https://www.uni-goettingen.de/en/santander%2Bstipendien/707360.html"
+    santander_application_url = (
+        "https://app.santanderopenacademy.com/en/program/"
+        "sorgenfrei-stipendium-deutschland-2026-10-x-10-000-eur-fuer-dein-studium"
+    )
+    santander_record = next(
+        (record for record in records if record.get("source_url") == santander_url),
+        None,
+    )
+    if santander_record is None:
+        blocking_failures.append(
+            "The current Göttingen Santander programme page was reachable but "
+            "live discovery did not emit an individual scholarship record."
+        )
+    else:
+        if santander_record.get("deadline_date") != "2026-11-30":
+            blocking_failures.append(
+                "Göttingen Santander deadline extraction expected 2026-11-30; "
+                f"received {santander_record.get('deadline_date')!r}."
+            )
+        if santander_record.get("application_url") != santander_application_url:
+            blocking_failures.append(
+                "Göttingen Santander application URL was not preserved from the official page."
+            )
+        if santander_record.get("provider_name") != "Openbank Deutschland AG":
+            blocking_failures.append(
+                "Göttingen Santander provider attribution did not match the curated official source."
+            )
+        criterion_text = " ".join(
+            str(item.get("requirement_text") or "").casefold()
+            for item in santander_record.get("criteria", [])
+        )
+        if "regular students" not in criterion_text or "exchange students are not eligible" not in criterion_text:
+            blocking_failures.append(
+                "Göttingen Santander regular-student eligibility and exchange-student exclusion "
+                "were not both preserved."
+            )
+        if not any(
+            item.get("field_name") == "deadline_text"
+            and item.get("evidence_url") == santander_url
+            for item in santander_record.get("evidence", [])
+        ):
+            blocking_failures.append(
+                "Göttingen Santander deadline is missing its official-page evidence link."
+            )
+
+    # Validate curated programme coverage. Other provider pages remain warnings
+    # because independent providers can temporarily block or delay CI requests.
     expected_programme_urls = {
+        santander_url,
+        "https://www.uni-goettingen.de/en/516679.html",
+        "https://www.uni-goettingen.de/en/516678.html",
         "https://www.hss.de/stipendium/foerderung/foerderung-auszubildender/",
         "https://www.fes.de/studienfoerderung/stipendium/stipendien-auszubildende",
         "https://www.fes.de/studienfoerderung/stipendium/grundfoerderung-fuer-auslaender-innen",
