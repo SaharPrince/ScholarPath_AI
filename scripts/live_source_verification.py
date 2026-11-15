@@ -15,8 +15,9 @@ if str(PROJECT_ROOT) not in sys.path:
 import httpx
 
 from app.discovery import _candidate_links
-from app.source_catalog import OFFICIAL_SOURCES
-from app.live_discovery import discover_live_scholarships
+from app.extraction import parse_scholarship_page
+from app.source_catalog import GERMANY_SOURCES, OFFICIAL_SOURCES
+from app.live_discovery import _as_record, discover_live_scholarships
 
 
 HEADERS = {
@@ -109,6 +110,37 @@ async def main() -> None:
     print("\n========== LIVE SCHOLARSHIP DISCOVERY CHECK ==========")
     records = await discover_live_scholarships()
     print(f"Fresh live scholarship records extracted: {len(records)}")
+
+    # Independently fetch the current Santander page with the verifier's longer
+    # network timeout. This distinguishes a parser regression from the bounded
+    # request-time scan omitting a slow page.
+    santander_source = next(
+        source for source in GERMANY_SOURCES
+        if source["name"] == "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027"
+    )
+    santander_url = santander_source["official_url"]
+    async with httpx.AsyncClient(
+        timeout=TIMEOUT,
+        follow_redirects=True,
+        headers=HEADERS,
+    ) as client:
+        santander_html, santander_final_url = await get_page(client, santander_url)
+    santander_parsed = parse_scholarship_page(
+        santander_html,
+        santander_final_url,
+        "Santander Sorgenfrei Scholarship 2026/2027",
+    )
+    direct_santander = (
+        _as_record(santander_parsed, santander_source, santander_final_url)
+        if santander_parsed else None
+    )
+    print(
+        "SANTANDER DIRECT PARSE | "
+        f"parsed={santander_parsed is not None} | "
+        f"deadline={direct_santander.get('deadline_date') if direct_santander else None} | "
+        f"criteria={len(direct_santander.get('criteria', [])) if direct_santander else 0} | "
+        f"final_url={santander_final_url}"
+    )
     for record in records:
         print(
             "RECORD | "
