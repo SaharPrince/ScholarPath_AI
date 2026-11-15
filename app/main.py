@@ -143,7 +143,7 @@ async def match_profile(profile: dict) -> dict:
         "nationality", "residence_country", "dual_national", "age",
         "regular_government_employee", "public_university_faculty",
         "approved_rd_researcher", "receiving_other_scholarship", "has_phd",
-        "target_study_level", "current_education_level", "academic_percentage",
+        "target_study_level", "current_education_level", "academic_percentage", "cgpa",
         "education_field", "domicile_region", "years_of_education", "latest_degree_division",
         "hat_score", "hat_category", "gre_score", "university_qs_rank", "admission_confirmed",
         "german_language_level", "professional_experience_years",
