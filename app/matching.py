@@ -610,6 +610,26 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                     return _result("fail", f"Your reported marks ({percentage:g}%) are below the published minimum of {minimum_percentage:g}%.")
                 return _result("pass", f"Your reported marks ({percentage:g}%) meet the published minimum of {minimum_percentage:g}%.")
 
+        if "cgpa" in lower:
+            threshold_match = re.search(
+                r"(?:minimum|min\.?|at least|required|of)?\s*(?:a\s+)?(?:cgpa|cumulative grade point average)\s*(?:of|:)?\s*(\d+(?:\.\d+)?)\s*(?:/\s*(\d+(?:\.\d+)?))?",
+                lower,
+            )
+            if threshold_match:
+                reported_cgpa = _number(profile.get("cgpa"))
+                minimum_cgpa = float(threshold_match.group(1))
+                scale = float(threshold_match.group(2)) if threshold_match.group(2) else 4.0
+                if reported_cgpa is None:
+                    return _result("unknown", "Add your CGPA to check this published academic requirement.")
+                if reported_cgpa > scale:
+                    return _result("unknown", f"Your CGPA scale must be compared with the provider's {scale:g}-point scale.")
+                return _result(
+                    "pass" if reported_cgpa >= minimum_cgpa else "fail",
+                    f"Your reported CGPA ({reported_cgpa:g}/{scale:g}) "
+                    f"{'meets' if reported_cgpa >= minimum_cgpa else 'is below'} "
+                    f"the published minimum of {minimum_cgpa:g}/{scale:g}.",
+                )
+
         if "relevant field" in lower or "relevant subject" in lower:
             return _result("unknown", "Your degree subject must match the scholarship's approved field of study; compare it with the official subject list.")
 
