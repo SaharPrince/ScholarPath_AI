@@ -721,37 +721,37 @@ function updateProfileFields(){
  const nationality=profileForm.elements.nationality.value.trim().toLowerCase();
  const universityLevel=["bachelors","masters","phd"].includes(current);
  const vocational=current==="vocational_training"||target==="vocational_training";
- const hasGermanStudyContext=profileForm.elements.residence_country.value.trim().toLowerCase()==="germany";
- setProfileField("age",Boolean(target));
- setProfileField("domicile_region",nationality.includes("pakistan"));
+ // Keep the first screen to the four essentials. Reveal specialist questions
+ // only for the education route that can actually use them.
+ setProfileField("age",false);
+ setProfileField("domicile_region",false);
  setProfileField("academic_percentage",["below_matric","matric","intermediate"].includes(current));
  setProfileField("cgpa",universityLevel);
- setProfileField("education_field",["intermediate","bachelors","masters","phd","vocational_training"].includes(current));
- setProfileField("german_language_level",Boolean(target));
- setProfileField("professional_experience_years",universityLevel||vocational);
- setProfileField("residence_country",Boolean(target));
- setProfileField("admission_confirmed",["bachelors","master","phd"].includes(target));
+ setProfileField("education_field",false);
+ setProfileField("german_language_level",false);
+ setProfileField("professional_experience_years",false);
+ setProfileField("residence_country",false);
+ setProfileField("admission_confirmed",false);
  setProfileField("doctoral_admission_confirmed",target==="phd");
  setProfileField("doctoral_project_final_phase",target==="phd");
- setProfileField("months_in_germany",hasGermanStudyContext);
- setProfileField("residence_duration_exception",hasGermanStudyContext);
- setProfileField("german_residence_permit",hasGermanStudyContext);
- setProfileField("currently_enrolled_in_germany",hasGermanStudyContext);
- setProfileField("current_university_name",universityLevel);
- setProfileField("currently_enrolled_at_current_university",universityLevel);
- setProfileField("applied_to_current_university",universityLevel);
- setProfileField("months_remaining_in_program",universityLevel);
- setProfileField("remaining_semesters_in_program",universityLevel);
- setProfileField("current_semester_in_program",universityLevel);
- setProfileField("first_semester_timing",target==="master");
- setProfileField("standard_programme_semesters",universityLevel);
+ setProfileField("months_in_germany",false);
+ setProfileField("residence_duration_exception",false);
+ setProfileField("german_residence_permit",false);
+ setProfileField("currently_enrolled_in_germany",false);
+ setProfileField("current_university_name",false);
+ setProfileField("currently_enrolled_at_current_university",false);
+ setProfileField("applied_to_current_university",false);
+ setProfileField("months_remaining_in_program",false);
+ setProfileField("remaining_semesters_in_program",false);
+ setProfileField("current_semester_in_program",false);
+ setProfileField("first_semester_timing",false);
+ setProfileField("standard_programme_semesters",false);
  setProfileField("apprenticeship_year",vocational);
  setProfileField("apprenticeship_second_year_stage",vocational);
  setProfileField("recognized_apprenticeship",vocational);
  setProfileField("has_training_contract",vocational);
 }
-["current_education_level","target_study_level","residence_country"].forEach(name=>profileForm.elements[name].addEventListener("change",updateProfileFields));
-profileForm.elements.nationality.addEventListener("input",updateProfileFields);
+["current_education_level","target_study_level"].forEach(name=>profileForm.elements[name].addEventListener("change",updateProfileFields));
 updateProfileFields();
 
 $("profileForm").addEventListener("submit",async e=>{
