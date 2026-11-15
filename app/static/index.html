@@ -770,6 +770,135 @@ $("profileForm").addEventListener("submit",async e=>{
  }catch(err){box.innerHTML="<div class='empty'><strong>Matching could not be completed</strong>"+esc(err.message)+"</div>";}
  finally{button.disabled=false;button.textContent="Find my scholarships →";}
 });
+
+/* Adaptive eligibility: ask only for a missing value explicitly needed by a live criterion. */
+const adaptiveQuestions = {
+ age:["How old are you?","number",13,100],
+ residence_country:["Which country is your permanent residence?","text"],
+ dual_national:["Do you hold another nationality as well?","yesno"],
+ domicile_region:["Which province or region is your permanent domicile?","text"],
+ german_language_level:["What is your current German language level?","options",[["NONE","No German yet"],["A1","A1"],["A2","A2"],["B1","B1"],["B2","B2"],["C1","C1"],["C2","C2"]]],
+ months_in_germany:["How many months have you lived in Germany?","number",0,1200],
+ residence_duration_exception:["Does either published exception apply?","options",[["prior_study","I previously studied in Germany"],["study_preparation","I completed study preparation in Germany"],["none","Neither exception applies"]]],
+ german_residence_permit:["Is your German residence permit for study purposes?","options",[["study","Yes, for study"],["other","Yes, for another purpose"],["none","I do not have one"]]],
+ currently_enrolled_in_germany:["Are you currently enrolled at a university in Germany?","yesno"],
+ current_university_name:["What is the name of your current university?","text"],
+ currently_enrolled_at_current_university:["Are you currently enrolled at that university?","yesno"],
+ applied_to_current_university:["Have you applied to begin a programme at TU Berlin in the upcoming winter semester?","yesno"],
+ remaining_semesters_in_program:["How many semesters remain in your current study programme?","number",0,30],
+ standard_programme_semesters:["What is the standard total number of semesters in your programme?","number",1,30],
+ current_semester_in_program:["Which semester are you currently studying in?","number",1,30],
+ first_semester_timing:["What is the status of your Master's programme?","options",[["not_started","It has not started yet"],["at_beginning","At the beginning of semester 1"],["after_beginning","Semester 1 has progressed"],["later_semester","I am in a later semester"]]],
+ months_remaining_in_program:["How many months remain in your current study programme?","number",0,120],
+ apprenticeship_year:["Which year of your apprenticeship are you in?","number",1,5],
+ apprenticeship_second_year_stage:["Are you still at the beginning of your second apprenticeship year?","options",[["beginning","Yes, at the beginning"],["later","No, later in the year"]]],
+ recognized_apprenticeship:["Is your apprenticeship recognised under the training framework named by the provider?","yesno"],
+ has_training_contract:["Do you have an apprenticeship contract or written training-place offer?","yesno"],
+ professional_experience_years:["How many years of relevant professional experience do you have?","number",0,60],
+ receiving_other_scholarship:["Are you currently receiving another scholarship?","yesno"],
+ has_phd:["Do you already hold a PhD?","yesno"],
+ doctoral_admission_confirmed:["Have you received formal admission to the doctoral programme?","yesno"],
+ doctoral_project_final_phase:["Is your doctoral project already in its final phase?","yesno"],
+ admission_confirmed:["Have you secured admission to the university named in this scholarship requirement?","yesno"],
+ academic_percentage:["What percentage marks did you receive in your latest completed class?","number",0,100],
+ cgpa:["What is your CGPA on a 4.0 scale?","number",0,4],
+ education_field:["What is your degree subject or field of study?","text"],
+ hat_category:["Which HAT category applies to your test?","options",[["I","Category I"],["II","Category II"],["III","Category III"],["IV","Category IV"]]],
+ hat_score:["What was your HEC-HAT score?","number",0,100],
+ gre_score:["What was your GRE score?","number",0,340],
+ years_of_education:["How many years of higher education have you completed?","number",0,30],
+ latest_degree_division:["What was the division or class of your latest completed degree?","options",[["first","First division / class"],["second","Second division / class"],["third","Third division / class"],["other","Other grading system"]]],
+ university_qs_rank:["What is your university's QS world ranking?","number",1,2000],
+ regular_government_employee:["Are you a regular government employee?","yesno"],
+ public_university_faculty:["Are you a faculty member at a public university?","yesno"],
+ approved_rd_researcher:["Are you an approved R&D researcher?","yesno"]
+};
+const adaptiveMatchers = [
+ [/Add your age/i,"age"],[/country of permanent residence/i,"residence_country"],[/hold another nationality/i,"dual_national"],
+ [/province or region of domicile/i,"domicile_region"],[/Select your German language level/i,"german_language_level"],
+ [/months you have been in Germany/i,"months_in_germany"],[/prior-study or study-preparation exception/i,"residence_duration_exception"],
+ [/German residence permit is for study purposes/i,"german_residence_permit"],[/currently enrolled at a German university/i,"currently_enrolled_in_germany"],
+ [/enter the name of your current university/i,"current_university_name"],[/currently enrolled at the university you entered/i,"currently_enrolled_at_current_university"],
+ [/applied to start a programme at TU Berlin/i,"applied_to_current_university"],[/how many semesters remain/i,"remaining_semesters_in_program"],
+ [/current semester/i,"current_semester_in_program"],[/Master's programme has not started/i,"first_semester_timing"],
+ [/months remain in your current study programme/i,"months_remaining_in_program"],[/current apprenticeship year/i,"apprenticeship_year"],
+ [/still at its beginning/i,"apprenticeship_second_year_stage"],[/apprenticeship is recognised/i,"recognized_apprenticeship"],
+ [/apprenticeship contract or written training-place offer/i,"has_training_contract"],[/relevant professional experience in years/i,"professional_experience_years"],
+ [/receiving another scholarship/i,"receiving_other_scholarship"],[/already hold a PhD/i,"has_phd"],
+ [/formal admission to the doctoral programme|formally admitted to doctoral studies/i,"doctoral_admission_confirmed"],
+ [/doctoral project is already in its final phase/i,"doctoral_project_final_phase"],[/percentage marks/i,"academic_percentage"],[/CGPA/i,"cgpa"],
+ [/degree subject must match/i,"education_field"],[/HAT category/i,"hat_category"],[/GRE or HEC-HAT score|HAT score/i,"hat_score"],
+ [/GRE score/i,"gre_score"],[/total years of completed higher education/i,"years_of_education"],
+ [/division\/class of your latest completed degree/i,"latest_degree_division"],[/QS rank and confirm whether you have admission/i,"university_qs_rank"],
+ [/regular government employee, public university faculty member, or approved R&D researcher/i,"regular_government_employee"]
+];
+let adaptiveProfile={};
+function adaptiveHas(key){return adaptiveProfile[key]!==undefined&&adaptiveProfile[key]!==null&&adaptiveProfile[key]!=="";}
+function adaptiveNextQuestion(results){
+ for(const scholarship of results||[]){
+  for(const check of scholarship.checks||[]){
+   if(check.status!=="unknown")continue;
+   const explanation=String(check.explanation||"");
+   let key=null;
+   for(const [pattern,field] of adaptiveMatchers){if(pattern.test(explanation)){key=field;break;}}
+   if(/standard total and remaining semesters/i.test(explanation)&&adaptiveHas("remaining_semesters_in_program"))key="standard_programme_semesters";
+   if(/QS rank and confirm whether you have admission/i.test(explanation)&&adaptiveHas("university_qs_rank")&&!adaptiveHas("admission_confirmed"))key="admission_confirmed";
+   if(key==="regular_government_employee")key=["regular_government_employee","public_university_faculty","approved_rd_researcher"].find(k=>!adaptiveHas(k));
+   if(key&&!adaptiveHas(key)&&adaptiveQuestions[key])return {key,definition:adaptiveQuestions[key],scholarship:scholarship.title};
+  }
+ }
+ return null;
+}
+function adaptiveNormalize(){
+ const data={...adaptiveProfile};
+ ["age","months_in_germany","remaining_semesters_in_program","standard_programme_semesters","current_semester_in_program","months_remaining_in_program","apprenticeship_year","professional_experience_years","academic_percentage","cgpa","hat_score","gre_score","years_of_education","university_qs_rank"].forEach(k=>{if(data[k]!==undefined&&data[k]!=="")data[k]=Number(data[k]);});
+ ["dual_national","currently_enrolled_in_germany","currently_enrolled_at_current_university","applied_to_current_university","recognized_apprenticeship","has_training_contract","receiving_other_scholarship","has_phd","doctoral_admission_confirmed","doctoral_project_final_phase","admission_confirmed","regular_government_employee","public_university_faculty","approved_rd_researcher"].forEach(k=>{if(data[k]==="true")data[k]=true;else if(data[k]==="false")data[k]=false;});
+ return data;
+}
+function adaptiveRenderQuestion(question){
+ const box=$("matchResults"),[label,type,a,b]=question.definition;
+ box.classList.add("show");
+ box.innerHTML="<h3>One more thing</h3><p>One of the scholarships needs this detail to check its published eligibility requirements.</p><div class='criterion'><p class='eyebrow' id='adaptiveScholarship'></p><h4 id='adaptiveLabel'></h4><div id='adaptiveControl' style='margin-top:12px'></div><button type='button' id='adaptiveContinue' class='primary' style='margin-top:14px'>Continue →</button></div>";
+ box.querySelector("#adaptiveScholarship").textContent=question.scholarship||"Scholarship eligibility";
+ box.querySelector("#adaptiveLabel").textContent=label;
+ let control;
+ if(type==="options"||type==="yesno"){
+  control=document.createElement("select");
+  const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Choose an answer";control.appendChild(placeholder);
+  const options=type==="yesno"?[["true","Yes"],["false","No"]]:a;
+  options.forEach(([value,text])=>{const option=document.createElement("option");option.value=value;option.textContent=text;control.appendChild(option);});
+ }else{
+  control=document.createElement("input");control.type=type;control.placeholder=type==="number"?"Enter a number":"Type your answer";
+  if(a!==undefined)control.min=a;if(b!==undefined)control.max=b;
+ }
+ control.required=true;control.style.cssText="width:100%;min-height:46px;padding:10px 12px;border:1px solid #d8e2dc;border-radius:10px;font:inherit";
+ box.querySelector("#adaptiveControl").appendChild(control);
+ box.querySelector("#adaptiveContinue").addEventListener("click",()=>{if(!control.reportValidity())return;adaptiveProfile[question.key]=control.value;adaptiveRun();});
+}
+function adaptiveRenderResults(p){
+ const box=$("matchResults"),labels={likely_eligible:"Likely eligible",needs_more_information:"More information needed",not_eligible:"Not eligible"},results=p.results||[];
+ box.innerHTML=\`<h3>Your scholarship matches</h3><p>We checked \${p.total} opportunities fetched live from official sources.</p><div class="match-summary"><div class="match-stat"><strong>\${p.likely_eligible}</strong><span>Likely eligible</span></div><div class="match-stat"><strong>\${p.needs_more_information}</strong><span>Need more information</span></div><div class="match-stat"><strong>\${p.not_eligible}</strong><span>Not eligible</span></div></div>\${results.map(x=>\`<article class="match-result"><div><h4>\${esc(x.title)}</h4><p>\${esc(x.provider_name||"Provider not stated")} · \${esc(x.deadline_text||"Deadline not stated")} · \${x.checks_passed} passed · \${x.checks_unknown} to check</p><a href="\${esc(x.source_url)}" target="_blank" rel="noopener" style="font-size:11px;color:#176b55">Official source ↗</a> · <button type="button" data-match="\${x.id}" style="border:0;background:none;color:#176b55;font-size:11px;font-weight:700">Why this result?</button></div><span class="match-state \${x.match_status}">\${labels[x.match_status]}</span></article>\`).join("")||"<p>No opportunities currently match your profile. Results that failed mandatory requirements are excluded.</p>"}<p class="notice">\${esc(p.notice)}</p>\`;
+ box.querySelectorAll("[data-match]").forEach(button=>button.addEventListener("click",()=>showMatchDetail(Number(button.dataset.match),results)));
+}
+async function adaptiveRun(){
+ const button=$("matchButton"),box=$("matchResults");button.disabled=true;button.textContent="Checking your matches…";box.classList.add("show");box.innerHTML="<p>Comparing your answers with official criteria…</p>";
+ try{
+  const response=await fetch("/api/match",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(adaptiveNormalize())});
+  const payload=await response.json();if(!response.ok)throw new Error(payload.detail||"Matching failed");
+  const question=adaptiveNextQuestion(payload.results||[]);
+  if(question)adaptiveRenderQuestion(question);
+  else{const explore=document.getElementById("explore-section");if(explore)explore.style.display="none";adaptiveRenderResults(payload);}
+ }catch(error){box.innerHTML="<div class='empty'><strong>Matching could not be completed</strong>"+esc(error.message)+"</div>";}
+ finally{button.disabled=false;button.textContent="Find my scholarships →";}
+}
+/* Capture-phase handler prevents the former all-at-once submit handler from running. */
+profileForm.addEventListener("submit",event=>{
+ event.preventDefault();event.stopImmediatePropagation();
+ adaptiveProfile=Object.fromEntries(new FormData(profileForm).entries());
+ Object.keys(adaptiveProfile).forEach(key=>{if(adaptiveProfile[key]==="")delete adaptiveProfile[key];});
+ adaptiveRun();
+},true);
+
 function showMatchDetail(id,rows){
  const x=rows.find(v=>v.id===id);if(!x)return;$("overlay").classList.add("show");document.body.style.overflow="hidden";$("detailTitle").textContent=x.title;$("detailProvider").textContent=x.provider_name||"Provider not stated";
  const labels={pass:"Meets requirement",fail:"Does not meet",unknown:"Needs checking",informational:"Information"};
