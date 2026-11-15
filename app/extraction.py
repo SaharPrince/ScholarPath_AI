@@ -750,20 +750,48 @@ def _find_application_url(content_root: BeautifulSoup, page_url: str) -> str | N
 
 
 def _find_funding_statement(content_root: BeautifulSoup) -> str | None:
-    """Capture explicit funding prose when the source has no labelled funding field."""
+    """Capture explicit funding prose in paragraphs or unwrapped provider text."""
     indicators = (
         "scholarship funds", "funds graduate study", "grant funds",
         "the grant funds", "the scholarship covers", "the grant covers",
         "financial support includes", "provides a stipend",
     )
-    for paragraph in content_root.find_all("p"):
-        value = _clean(paragraph.get_text(" ", strip=True))
-        lowered = value.lower()
+
+    def is_funding_statement(value: str) -> bool:
+        lowered = value.casefold()
         has_monthly_amount = (
             re.search(r"(?i)\b\d[\d.,]*\s*(?:€|euro)\b", value)
             and re.search(r"(?i)\b(?:monatlich|pro monat|im monat|monthly|per month)\b", value)
         )
-        if len(value) >= 30 and (any(term in lowered for term in indicators) or has_monthly_amount):
+        has_award_amount = (
+            re.search(r"(?i)(?:€\s*\d[\d.,]*|\d[\d.,]*\s*(?:€|euro))", value)
+            and re.search(r"(?i)\b(?:scholarship|grant|stipend|financial support|funding|award)\b", value)
+        )
+        return len(value) >= 30 and (
+            any(term in lowered for term in indicators)
+            or has_monthly_amount
+            or has_award_amount
+        )
+
+    for paragraph in content_root.find_all(["p", "li", "dd", "dt"]):
+        value = _clean(paragraph.get_text(" ", strip=True))
+        if is_funding_statement(value):
+            return value[:1200]
+
+    # Some university pages put award summaries in bold text nodes rather than
+    # paragraphs. Read only unwrapped visible text and leave links/navigation out.
+    block_tags = {"p", "li", "dd", "dt", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6"}
+    for text_node in content_root.find_all(string=True):
+        parent = text_node.parent
+        if (
+            parent is None
+            or parent.name in {"a", "script", "style", "noscript"}
+            or parent.name in block_tags
+            or parent.find_parent(list(block_tags)) is not None
+        ):
+            continue
+        value = _clean(str(text_node))
+        if is_funding_statement(value):
             return value[:1200]
     return None
 
@@ -968,6 +996,24 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         ):
             raw_values[-1] = f"{raw_values[-1]} {raw}"
         else:
+            raw_values.append(raw)
+
+    # A few official university pages place applicant rules as bare text between
+    # italic section labels and empty paragraph tags instead of wrapping them in
+    # <p> elements. Include only unwrapped visible text; the same strict
+    # requirement/applicant checks below still decide whether it is a criterion.
+    block_tags = {"p", "li", "dd", "dt", "td", "th", "h1", "h2", "h3", "h4", "h5", "h6"}
+    for text_node in content_root.find_all(string=True):
+        parent = text_node.parent
+        if (
+            parent is None
+            or parent.name in {"a", "script", "style", "noscript"}
+            or parent.name in block_tags
+            or parent.find_parent(list(block_tags)) is not None
+        ):
+            continue
+        raw = _clean(str(text_node))
+        if raw and 4 <= len(raw) <= 1400 and raw not in raw_values:
             raw_values.append(raw)
 
     # Some foundations phrase eligibility as "we support [group] who ...".
