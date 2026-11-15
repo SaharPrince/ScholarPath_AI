@@ -509,9 +509,10 @@ async def discover_live_scholarships() -> list[dict]:
                 return_when=asyncio.ALL_COMPLETED,
             )
             for task in pending:
+                # Do not await cancellation cleanup here: nested HTTP requests may
+                # otherwise keep the public API blocked well beyond the discovery
+                # budget. Cancel them and return the opportunities collected so far.
                 task.cancel()
-            if pending:
-                await asyncio.gather(*pending, return_exceptions=True)
             for task in done:
                 try:
                     task.result()
