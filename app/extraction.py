@@ -468,7 +468,7 @@ def _parse_deadline_date(value: str | None) -> str | None:
             f"{month:02d}-{int(german_match.group('day')):02d}"
         )
     # English university pages commonly use ordinal dates such as "November 30th, 2026".
-    candidate = re.sub(r"(?i)(\\d{1,2})(?:st|nd|rd|th)\\b", r"\\1", candidate)
+    candidate = re.sub(r"(?i)(\d{1,2})(?:st|nd|rd|th)\b", r"\1", candidate)
     for date_format in (
         "%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y",
         "%d %B %Y", "%d %b %Y", "%Y-%m-%d",
