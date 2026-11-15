@@ -1271,6 +1271,22 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             fields[field_name] = value[:1200]
             evidence.append((field_name, value[:1200]))
 
+    # Preserve a date stated in natural language, e.g. "The application deadline is
+    # November 30th, 2026." This wording is common on university pages and is
+    # not always exposed as a colon-delimited field.
+    if "deadline_text" not in fields:
+        for node in content_root.find_all(["p", "li", "td", "dd"]):
+            value = _clean(node.get_text(" ", strip=True))
+            deadline_match = re.search(
+                r"(?i)\\b(?:the\\s+)?application deadline\\s+(?:is|:)\\s*(.+)$",
+                value,
+            )
+            date_match = DATE_PATTERN.search(deadline_match.group(1)) if deadline_match else None
+            if date_match:
+                fields["deadline_text"] = date_match.group(0)
+                evidence.append(("deadline_text", fields["deadline_text"]))
+                break
+
     # Some official providers publish several application windows beneath a
     # dedicated deadlines heading instead of a labelled field.
     if "deadline_text" not in fields:
