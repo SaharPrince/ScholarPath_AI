@@ -11,6 +11,16 @@ class ProfileMatchingTests(unittest.TestCase):
             "evidence_url": "https://official.example/eligibility",
         }
 
+    def test_cgpa_requirement_uses_cgpa_profile_field(self):
+        criterion = self.criterion(
+            "academic_requirements",
+            "Minimum CGPA",
+            "Applicants must have a minimum CGPA of 3.0/4.0.",
+        )
+        self.assertEqual(evaluate_criterion(criterion, {})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(criterion, {"cgpa": 3.4})["status"], "pass")
+        self.assertEqual(evaluate_criterion(criterion, {"cgpa": 2.8})["status"], "fail")
+
     def test_bachelors_profile_excludes_completed_masters_requirement(self):
         result = evaluate_criterion(
             self.criterion("study_level", "Study level", "Applicants should have completed their Master degree within the last 2 years."),
