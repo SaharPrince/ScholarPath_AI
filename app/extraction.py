@@ -41,7 +41,7 @@ GENERIC_PAGE_TERMS = (
 )
 OPPORTUNITY_TERMS = ("scholarship", "fellowship", "grant", "studentship", "award", "programme", "program", "ugrad", "fulbright", "humphrey", "flta", "epos")
 DATE_PATTERN = re.compile(
-    r"(?i)\b(?:\d{1,2}[./ -](?:\d{1,2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[./, -]+\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})\b"
+    r"(?i)\b(?:\d{1,2}[./ -](?:\d{1,2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[./, -]+\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})\b"
 )
 GERMAN_DATE_PATTERN = re.compile(
     r"(?i)\b(?P<day>\d{1,2})\.?\s+"
@@ -467,6 +467,8 @@ def _parse_deadline_date(value: str | None) -> str | None:
             f"{int(german_match.group('year')):04d}-"
             f"{month:02d}-{int(german_match.group('day')):02d}"
         )
+    # English university pages commonly use ordinal dates such as "November 30th, 2026".
+    candidate = re.sub(r"(?i)(\\d{1,2})(?:st|nd|rd|th)\\b", r"\\1", candidate)
     for date_format in (
         "%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y",
         "%d %B %Y", "%d %b %Y", "%Y-%m-%d",
@@ -706,7 +708,7 @@ def _find_application_url(content_root: BeautifulSoup, page_url: str) -> str | N
         parent_text = _clean(anchor.parent.get_text(" ", strip=True)) if anchor.parent else label
         previous_heading = anchor.find_previous(["h1", "h2", "h3", "h4", "h5"])
         heading_text = (
-            _clean(previous_heading.get_text(" ", strip=True)).rstrip(":").casefold()
+            _clean(previous_heading.get_text(" ", strip=True)).rstrip(":?").casefold()
             if previous_heading else ""
         )
         in_application_section = heading_text in application_headings
