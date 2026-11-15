@@ -30,16 +30,16 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
               <b>The Sorgenfrei Scholarship 2026/2027 offers students at the University of Göttingen
               financial support in the amount of €1,000.</b>
               <b><p> The application deadline is November 30th, 2026. A total of 10 scholarships will be awarded.</p></b>
-              <i>Who can apply?</i>
-              <p>All regular students of the University of Göttingen in the winter semester 2026/2027
+              <i>Who can apply?</i><p></p>
+              All regular students of the University of Göttingen in the winter semester 2026/2027
               are eligible to apply. Exchange students are not eligible for funding as they are only temporarily
-              enrolled at the University of Göttingen and do not graduate from the University of Göttingen.</p>
-              <i>How to apply?</i>
-              <p>The application is made via the Santander Open Academy. You can access the application portal
-              <a href="{SANTANDER_APPLICATION_URL}">here</a>.</p>
-              <i>When is the deadline?</i>
-              <p>The application deadline is November 30th, 2026.</p>
-              <i>The scholarships are offered by Openbank Deutschland AG.</i>
+              enrolled at the University of Göttingen and do not graduate from the University of Göttingen. <p></p>
+              <i>How to apply?</i><p></p>
+              The application is made via the Santander Open Academy. You can access the application portal
+              <a href="{SANTANDER_APPLICATION_URL}">here</a>. <p></p>
+              <i>When is the deadline?</i><p></p>
+              The application deadline is November 30th, 2026. <p></p>
+              <i>The scholarships are offered by Openbank Deutschland AG.</i><p></p>
             </div>
           </div>
         </article></body></html>
@@ -56,6 +56,7 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
         self.assertEqual(parsed.fields.get("deadline_text"), "November 30th, 2026. A total of 10 scholarships will be awarded.")
         self.assertEqual(_parse_deadline_date(parsed.fields.get("deadline_text")), "2026-11-30")
         self.assertEqual(parsed.fields.get("application_url"), SANTANDER_APPLICATION_URL)
+        self.assertIn("€1,000", parsed.fields.get("funding_summary", ""))
         self.assertTrue(any("regular students" in item[2].lower() for item in parsed.criteria))
         self.assertTrue(any("exchange students are not eligible" in item[2].lower() for item in parsed.criteria))
 
