@@ -39,7 +39,11 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
         """
         parsed = parse_scholarship_page(html, SANTANDER_URL)
         self.assertIsNotNone(parsed)
-        deadline_root = BeautifulSoup(html, "html.parser").main\n        self.assertEqual(\n            _find_labeled_text(deadline_root, FIELD_LABELS["deadline_text"], "deadline_text"),\n            "November 30th, 2026. A total of 10 scholarships will be awarded.",\n        )\n        self.assertEqual(parsed.fields.get("deadline_text"), "November 30th, 2026", msg=repr(parsed.fields))
+        deadline_root = BeautifulSoup(html, "html.parser").main
+        self.assertEqual(
+            _find_labeled_text(deadline_root, FIELD_LABELS["deadline_text"], "deadline_text"),
+            "November 30th, 2026. A total of 10 scholarships will be awarded.",
+        )\n        self.assertEqual(parsed.fields.get("deadline_text"), "November 30th, 2026. A total of 10 scholarships will be awarded.", msg=repr(parsed.fields))
         self.assertEqual(_parse_deadline_date(parsed.fields.get("deadline_text")), "2026-11-30")
         self.assertEqual(parsed.fields.get("application_url"), SANTANDER_APPLICATION_URL)
         self.assertTrue(any("regular students" in item[2].lower() for item in parsed.criteria))
