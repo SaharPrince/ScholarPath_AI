@@ -259,7 +259,7 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
         sources = {source["name"]: source for source in GERMANY_SOURCES}
         expected = {
             "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027": (
-                "https://uni-goettingen.de/en/707360.html",
+                "https://www.uni-goettingen.de/en/santander%2Bstipendien/707360.html",
             ),
             "University of Göttingen – Academic Degree Bursaries for International Students": (
                 "https://www.uni-goettingen.de/en/516679.html",
