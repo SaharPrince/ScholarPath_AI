@@ -43,7 +43,8 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
         self.assertEqual(
             _find_labeled_text(deadline_root, FIELD_LABELS["deadline_text"], "deadline_text"),
             "November 30th, 2026. A total of 10 scholarships will be awarded.",
-        )\n        self.assertEqual(parsed.fields.get("deadline_text"), "November 30th, 2026. A total of 10 scholarships will be awarded.", msg=repr(parsed.fields))
+        )
+        self.assertEqual(parsed.fields.get("deadline_text"), "November 30th, 2026. A total of 10 scholarships will be awarded.", msg=repr(parsed.fields))
         self.assertEqual(_parse_deadline_date(parsed.fields.get("deadline_text")), "2026-11-30")
         self.assertEqual(parsed.fields.get("application_url"), SANTANDER_APPLICATION_URL)
         self.assertTrue(any("regular students" in item[2].lower() for item in parsed.criteria))
