@@ -34,6 +34,13 @@ MAX_DAAD_INDEX_PAGES = 4
 REQUEST_LIMITS = httpx.Limits(max_connections=40, max_keepalive_connections=20)
 logger = logging.getLogger(__name__)
 
+GOETTINGEN_PRIORITY_SOURCE_NAMES = frozenset({
+    "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027",
+    "University of Göttingen – Academic Degree Bursaries for International Students",
+    "University of Göttingen – Emergency Grants for Students in Financial Difficulty",
+})
+
+
 PRIORITY_SOURCE_NAMES = frozenset({
     "Heinrich Böll Foundation – Scholarships",
     "Konrad Adenauer Foundation – International Scholarships",
@@ -52,6 +59,7 @@ def _priority_sources(sources: tuple[dict, ...] | list[dict]) -> list[dict]:
     return sorted(
         selected,
         key=lambda source: (
+            source["name"] not in GOETTINGEN_PRIORITY_SOURCE_NAMES,
             source["name"] not in PRIORITY_SOURCE_NAMES,
             source["name"].casefold(),
         ),
