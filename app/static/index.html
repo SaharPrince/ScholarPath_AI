@@ -718,9 +718,12 @@ function setProfileField(name,visible){
 function updateProfileFields(){
  const current=profileForm.elements.current_education_level.value;
  const target=profileForm.elements.target_study_level.value;
+ const nationality=profileForm.elements.nationality.value.trim().toLowerCase();
  const universityLevel=["bachelors","masters","phd"].includes(current);
  const vocational=current==="vocational_training"||target==="vocational_training";
  const hasGermanStudyContext=profileForm.elements.residence_country.value.trim().toLowerCase()==="germany";
+ setProfileField("age",Boolean(target));
+ setProfileField("domicile_region",nationality.includes("pakistan"));
  setProfileField("academic_percentage",["below_matric","matric","intermediate"].includes(current));
  setProfileField("cgpa",universityLevel);
  setProfileField("education_field",["intermediate","bachelors","masters","phd","vocational_training"].includes(current));
@@ -748,6 +751,7 @@ function updateProfileFields(){
  setProfileField("has_training_contract",vocational);
 }
 ["current_education_level","target_study_level","residence_country"].forEach(name=>profileForm.elements[name].addEventListener("change",updateProfileFields));
+profileForm.elements.nationality.addEventListener("input",updateProfileFields);
 updateProfileFields();
 
 $("profileForm").addEventListener("submit",async e=>{
