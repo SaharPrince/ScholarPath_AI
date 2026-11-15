@@ -34,6 +34,29 @@ MAX_DAAD_INDEX_PAGES = 4
 REQUEST_LIMITS = httpx.Limits(max_connections=40, max_keepalive_connections=20)
 logger = logging.getLogger(__name__)
 
+PRIORITY_SOURCE_NAMES = frozenset({
+    "Heinrich Böll Foundation – Scholarships",
+    "Konrad Adenauer Foundation – International Scholarships",
+    "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027",
+    "University of Göttingen – Academic Degree Bursaries for International Students",
+    "University of Göttingen – Emergency Grants for Students in Financial Difficulty",
+})
+
+
+def _priority_sources(sources: tuple[dict, ...] | list[dict]) -> list[dict]:
+    """Put specifically curated Göttingen programmes first in the bounded live scan."""
+    selected = [
+        source for source in sources
+        if source.get("programme_urls") or source["name"] in PRIORITY_SOURCE_NAMES
+    ]
+    return sorted(
+        selected,
+        key=lambda source: (
+            source["name"] not in PRIORITY_SOURCE_NAMES,
+            source["name"].casefold(),
+        ),
+    )
+
 
 
 _GENERIC_SOURCE_TITLE_MARKERS = (
@@ -491,14 +514,7 @@ async def discover_live_scholarships() -> list[dict]:
         # scholarship foundations. Their named awards are more actionable than
         # broad indexes, while the remaining providers still receive a bounded
         # portion of the same live request budget.
-        priority_names = {
-            "Heinrich Böll Foundation – Scholarships",
-            "Konrad Adenauer Foundation – International Scholarships",
-        }
-        priority_sources = [
-            source for source in GERMANY_SOURCES
-            if source.get("programme_urls") or source["name"] in priority_names
-        ]
+        priority_sources = _priority_sources(GERMANY_SOURCES)
         secondary_sources = [
             source for source in GERMANY_SOURCES
             if source not in priority_sources
