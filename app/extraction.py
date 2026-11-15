@@ -39,7 +39,7 @@ GENERIC_PAGE_TERMS = (
     "all scholarships", "scholarship index", "scholarships & financial aid",
     "promoting mutual understanding through exchanges",
 )
-OPPORTUNITY_TERMS = ("scholarship", "fellowship", "grant", "studentship", "award", "programme", "program", "ugrad", "fulbright", "humphrey", "flta", "epos")
+OPPORTUNITY_TERMS = ("scholarship", "fellowship", "grant", "bursary", "bursaries", "studentship", "award", "programme", "program", "ugrad", "fulbright", "humphrey", "flta", "epos")
 DATE_PATTERN = re.compile(
     r"(?i)\b(?:\d{1,2}[./ -](?:\d{1,2}|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[./, -]+\d{2,4}|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}|\d{1,2}\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{4})\b"
 )
@@ -497,7 +497,8 @@ def _is_opportunity(candidate_title: str, page_title: str, page_url: str, body_t
     has_opportunity_identity = any(term in searchable for term in OPPORTUNITY_TERMS) or "/scholarships/" in path
     has_specific_fact = any(term in body_text.lower() for term in (
         "eligibility", "who can apply", "application deadline", "apply by",
-        "funding", "stipend", "tuition", "minimum gpa", "academic requirement",
+        "funding", "financial assistance", "financial difficulty", "short-term support",
+        "registered the written thesis", "stipend", "tuition", "minimum gpa", "academic requirement",
         "application period", "applications open", "voraussetzungen",
         "bewerbungsfrist", "bewerbungsportal", "stipendium",
         "studienförderung", "förderung", "finanzielle unterstützung",
@@ -556,7 +557,7 @@ def _find_labeled_text(content_root: BeautifulSoup, labels: tuple[str, ...], fie
         for label in labels:
             # Labels must begin the field text. A label appearing midway through
             # a navigation sentence is not a reliable field/value pair.
-            match = re.match(rf"^\s*{re.escape(label)}\s*[:–—-]\s*(.+)$", text, re.I)
+            match = re.match(rf"^\s*{re.escape(label)}\s*(?:(?:is|are)\s+|[:–—-]\s*)(.+)$", text, re.I)
             value = _clean(match.group(1)) if match else ""
             if not value and text.lower().rstrip(":") == label:
                 sibling = node.find_next(["p", "li", "td", "dd"])
