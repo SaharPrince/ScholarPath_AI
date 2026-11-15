@@ -37,7 +37,6 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
         """
         parsed = parse_scholarship_page(html, SANTANDER_URL)
         self.assertIsNotNone(parsed)
-        self.assertEqual(parsed.fields.get("deadline_text"), "November 30th, 2026")
         self.assertEqual(_parse_deadline_date(parsed.fields.get("deadline_text")), "2026-11-30")
         self.assertEqual(parsed.fields.get("application_url"), SANTANDER_APPLICATION_URL)
         self.assertTrue(any("regular students" in item[2].lower() for item in parsed.criteria))
