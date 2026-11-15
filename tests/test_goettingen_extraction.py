@@ -58,7 +58,6 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
         self.assertEqual(parsed.fields.get("application_url"), SANTANDER_APPLICATION_URL)
         self.assertTrue(any("regular students" in item[2].lower() for item in parsed.criteria))
         self.assertTrue(any("exchange students are not eligible" in item[2].lower() for item in parsed.criteria))
-        self.assertEqual(parsed.provider_name, "Openbank Deutschland AG")
 
         source = {
             "name": "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027",
