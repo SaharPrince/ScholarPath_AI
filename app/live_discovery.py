@@ -114,6 +114,22 @@ def _should_merge_source_eligibility(record: dict, source_url: str) -> bool:
     return record.get("source_url") == source_url
 
 
+
+def _is_excluded_candidate_url(source: dict, url: str) -> bool:
+    """Skip stale index links when a current dedicated programme page is curated."""
+    candidate = urlparse(url)
+    candidate_host = _normalized_host(url)
+    candidate_path = candidate.path.rstrip("/") or "/"
+    for excluded_url in source.get("exclude_candidate_urls", ()):
+        excluded = urlparse(excluded_url)
+        if (
+            candidate_host
+            and candidate_host == _normalized_host(excluded_url)
+            and candidate_path == (excluded.path.rstrip("/") or "/")
+        ):
+            return True
+    return False
+
 def _source_candidate_title(source: dict, url: str) -> str:
     """Use a specific, source-authored title for a curated programme URL."""
     title = source.get("programme_titles", {}).get(url)
@@ -385,7 +401,7 @@ async def discover_live_scholarships() -> list[dict]:
                 # independent requests. Start both phases together rather than
                 # waiting for one network round trip before starting the next.
                 detail_limit = 1 if source.get("programme_urls") else MAX_CANDIDATES_PER_SOURCE
-                detail_items = list(candidate_urls.items())[:detail_limit]
+                detail_items = [\n                    (url, title) for url, title in candidate_urls.items()\n                    if not _is_excluded_candidate_url(source, url)\n                ][:detail_limit]
                 if detail_items:
                     detail_task = asyncio.create_task(inspect_details(detail_items))
 
