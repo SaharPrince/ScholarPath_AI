@@ -18,7 +18,7 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
         self.assertEqual(_parse_deadline_date("November 1st, 2026"), "2026-11-01")
 
     def test_santander_page_preserves_current_cycle_deadline_application_and_eligibility(self):
-        html = """
+        html = f"""
         <html><body><main>
           <h1>Scholarships of the Openbank Deutschland AG</h1>
           <p>The Sorgenfrei Scholarship 2026/2027 offers students at the University of Göttingen
@@ -31,7 +31,7 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
           enrolled at the University of Göttingen and do not graduate from the University of Göttingen.</p>
           <h2>How to apply?</h2>
           <p>The application is made via the Santander Open Academy. You can access the application
-          portal <a href="""" + SANTANDER_APPLICATION_URL + """"">here</a>.</p>
+          portal <a href="{SANTANDER_APPLICATION_URL}">here</a>.</p>
           <p>The scholarships are offered by Openbank Deutschland AG.</p>
         </main></body></html>
         """
