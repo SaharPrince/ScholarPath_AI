@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 
 html = Path("app/static/index.html").read_text(encoding="utf-8")
-scripts = re.findall(r"<script\\b[^>]*>(.*?)</script>", html, flags=re.IGNORECASE | re.DOTALL)
+scripts = re.findall(r"<script\b[^>]*>(.*?)</script>", html, flags=re.IGNORECASE | re.DOTALL)
 if len(scripts) != 1:
     raise SystemExit(f"Expected exactly one inline script, found {len(scripts)}")
 
