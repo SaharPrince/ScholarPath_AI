@@ -718,38 +718,17 @@ function setProfileField(name,visible){
 function updateProfileFields(){
  const current=profileForm.elements.current_education_level.value;
  const target=profileForm.elements.target_study_level.value;
- const nationality=profileForm.elements.nationality.value.trim().toLowerCase();
  const universityLevel=["bachelors","masters","phd"].includes(current);
- const vocational=current==="vocational_training"||target==="vocational_training";
- // Keep the first screen to the four essentials. Reveal specialist questions
- // only for the education route that can actually use them.
- setProfileField("age",false);
- setProfileField("domicile_region",false);
+ // Fail closed: every field starts hidden and disabled. Only the short starter
+ // profile is revealed here; specialist details are requested by the adaptive
+ // eligibility flow after the first match check.
+ profileForm.querySelectorAll(".profile-field").forEach(wrapper=>{
+  wrapper.hidden=true;
+  wrapper.querySelectorAll("input,select,textarea").forEach(control=>{control.disabled=true;});
+ });
+ ["nationality","current_education_level","target_study_level"].forEach(name=>setProfileField(name,true));
  setProfileField("academic_percentage",["below_matric","matric","intermediate"].includes(current));
  setProfileField("cgpa",universityLevel);
- setProfileField("education_field",false);
- setProfileField("german_language_level",false);
- setProfileField("professional_experience_years",false);
- setProfileField("residence_country",false);
- setProfileField("admission_confirmed",false);
- setProfileField("doctoral_admission_confirmed",target==="phd");
- setProfileField("doctoral_project_final_phase",target==="phd");
- setProfileField("months_in_germany",false);
- setProfileField("residence_duration_exception",false);
- setProfileField("german_residence_permit",false);
- setProfileField("currently_enrolled_in_germany",false);
- setProfileField("current_university_name",false);
- setProfileField("currently_enrolled_at_current_university",false);
- setProfileField("applied_to_current_university",false);
- setProfileField("months_remaining_in_program",false);
- setProfileField("remaining_semesters_in_program",false);
- setProfileField("current_semester_in_program",false);
- setProfileField("first_semester_timing",false);
- setProfileField("standard_programme_semesters",false);
- setProfileField("apprenticeship_year",vocational);
- setProfileField("apprenticeship_second_year_stage",vocational);
- setProfileField("recognized_apprenticeship",vocational);
- setProfileField("has_training_contract",vocational);
 }
 ["current_education_level","target_study_level"].forEach(name=>profileForm.elements[name].addEventListener("change",updateProfileFields));
 updateProfileFields();
