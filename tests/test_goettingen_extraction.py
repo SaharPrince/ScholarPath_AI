@@ -40,7 +40,9 @@ class GoettingenScholarshipExtractionTests(unittest.TestCase):
           </div>
         </article></body></html>
         """
-        parsed = parse_scholarship_page(\n            html, SANTANDER_URL, "Santander Sorgenfrei Scholarship 2026/2027"\n        )
+        parsed = parse_scholarship_page(
+            html, SANTANDER_URL, "Santander Sorgenfrei Scholarship 2026/2027"
+        )
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed.fields.get("deadline_text"), "November 30th, 2026. A total of 10 scholarships will be awarded.")
         self.assertEqual(_parse_deadline_date(parsed.fields.get("deadline_text")), "2026-11-30")
