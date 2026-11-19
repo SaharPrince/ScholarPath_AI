@@ -34,6 +34,16 @@ assert.equal(
   "Have good German-language skills at B2 level."
 );
 
+
+assert.equal(
+  summarizeRequirement("gesellschaftspolitisch engagiert sein"),
+  "Be actively engaged in social and political issues."
+);
+assert.equal(
+  summarizeRequirement("sich mit den Werten der sozialen Demokratie identifizieren"),
+  "Identify with the values of social democracy."
+);
+
 const compound =
   "Students of all disciplines may apply, and must study full-time at a state-recognized university.";
 assert.equal(summarizeRequirement(compound), compound);

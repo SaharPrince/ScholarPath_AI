@@ -36,6 +36,7 @@ from app.extraction import (
     GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GERMAN_URL,
     _augment_goettingen_deutschlandstipendium,
 )
+from datetime import datetime, timedelta, timezone
 import sqlite3
 import unittest
 
@@ -211,11 +212,15 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
 
     def test_regensburg_deutschlandstipendium_extracts_current_call_and_study_rules(self):
         parsed = ExtractedPage("Regensburg Deutschlandstipendium", None, "University of Regensburg")
-        html = """
+        today = datetime.now(timezone.utc).date()
+        start_date = (today - timedelta(days=1)).strftime("%d %B %Y").lstrip("0")
+        future_deadline = today + timedelta(days=30)
+        deadline_text = future_deadline.strftime("%d %B %Y").lstrip("0")
+        html = f"""
         <html><body><main>
           <p>The selection process for the Deutschlandstipendium at the University of Regensburg for the funding period covering the summer semester 2027 and the winter semester 2027–28 will take place during the winter semester 2026–27.</p>
-          <p>Start of the application period | 2 November 2026</p>
-          <p>Application deadline | 15 November 2026</p>
+          <p>Start of the application period | {start_date}</p>
+          <p>Application deadline | {deadline_text}</p>
           <p>You are enrolled on a degree programme at the University of Regensburg.</p>
           <p>Students on doctoral programmes are not eligible for funding.</p>
           <p>You are studying within the standard period of study.</p>
@@ -227,7 +232,7 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         </main></body></html>
         """
         result = _augment_regensburg_deutschlandstipendium(parsed, html)
-        self.assertEqual(result.fields["deadline_date"], "2026-11-15")
+        self.assertEqual(result.fields["deadline_date"], future_deadline.isoformat())
         self.assertEqual(result.fields["application_status"], "open")
         self.assertEqual(result.application_status, "open")
         self.assertIn("€300 per month", result.fields["funding_summary"])
