@@ -541,17 +541,48 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const nice=v=>String(v||"unknown").replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 const statusClass=v=>["open","closed","upcoming"].includes(v)?v:"unknown";
 const shortText=v=>v?String(v):"Not stated by the source";
+function hasMultipleClauses(value){
+ return /[;,]|\b(?:and|or|but|unless|except|as well as|whereas|while|und|oder|aber|außer|ausgenommen|sowie|während|auch wenn)\b/i.test(String(value||""));
+}
 function summarizeRequirement(text,label){
  const raw=String(text||"").replace(/\s+/g," ").trim();
  const lower=raw.toLowerCase();
  if(!raw)return "Check the official provider page for the full condition.";
+ // Translate German proficiency wording without weakening "very good" to "good"
+ // or dropping a provider-published level and its English-programme clarification.
+ const germanLanguageMatch=raw.match(/\b(sehr\s+gute|gute)\s+(?:deutsche?\s+sprachkenntnisse|deutschkenntnisse|kenntnisse\s+der\s+deutschen\s+sprache)\b/i);
+ if(germanLanguageMatch){
+  const languageRemainder=raw
+   .replace(/,?\s*auch wenn die dissertation auf englisch verfasst wird/ig,"")
+   .replace(/\([^)]*\)/g," ");
+  if(hasMultipleClauses(languageRemainder))return raw;
+  const levelMatch=raw.match(/\b(?:niveau|level)\s*(?:of\s*)?(A1|A2|B1|B2|C1|C2)\b/i)
+   ||raw.match(/\b(A1|A2|B1|B2|C1|C2)\s*[- ]?niveau\b/i);
+  const dshMatch=raw.match(/\bDSH\s*(?:I{1,3}|[1-3])\b/i);
+  const levels=[];
+  if(levelMatch)levels.push(levelMatch[1].toUpperCase()+" level");
+  if(dshMatch)levels.push(dshMatch[0].replace(/\s+/g," ").toUpperCase());
+  const proof=/\b(?:nachweis|nachweisen|beleg|bescheinigung)\b/i.test(raw);
+  const dissertationEnglish=/auch wenn die dissertation auf englisch verfasst wird/i.test(raw);
+  let summary=(proof?"Provide proof of ":"Have ")+(germanLanguageMatch[1].toLowerCase().startsWith("sehr")?"very good":"good")+" German-language skills";
+  if(levels.length)summary+=" at "+levels.join(" or ");
+  if(dissertationEnglish)summary+=", even if your dissertation is written in English";
+  summary+=".";
+  if(!levels.length)summary+=" The provider does not state a clear level here, so confirm what level they accept.";
+  return summary;
+ }
+
+ // A German age guideline may have a statutory exception; keep that qualification visible.
+ if(/\bunter\s+45\s+jahre\b/.test(lower)&&/(?:ausnahme|§\s*10|baf[oö]g)/i.test(raw)){
+  return "The provider gives a general under-45 age guideline and notes that statutory exceptions may apply. Confirm the relevant exception with the provider.";
+ }
+
  // Narrow translations of recurring German scholarship conditions.
  const german=[
   [/am anfang des ersten und spätestens am anfang des zweiten ausbildungsjahres stehen/,"Be in the first year of your apprenticeship, or no later than the start of year two."],
   [/einen staatlich anerkannten ausbildungsberuf erlernen/,"Be training in an occupation officially recognized by the German state."],
   [/einen ausbildungsvertrag oder die schriftliche zusage für einen ausbildungsplatz haben/,"Have an apprenticeship contract or written confirmation of a training place."],
   [/bereits an einer deutschen.*hochschule eingeschrieben sein|bereits an einer deutschen hochschule studieren/,"Already be enrolled at a university in Germany."],
-  [/gute deutsche sprachkenntnisse|sehr gute deutsche sprachkenntnisse/,"Have good German-language skills. The provider does not state a clear level here, so confirm what level they accept."],
   [/keine anderen stipendienleistungen aus öffentlichen mitteln erhalten/,"Not receive another scholarship funded by public money."],
   [/gesellschaftspolitisch engagiert sein/,"Be actively involved in community or public-life activities."],
   [/sich mit den werten der sozialen demokratie identifizieren/,"Support the values of social democracy."],
@@ -559,7 +590,12 @@ function summarizeRequirement(text,label){
   [/unter 45 jahre/,"Be younger than 45."],
   [/deutsche staatsangehörige.*eu- oder ewr-staates.*geflüchtete/,"Meet one of the listed status conditions: German citizenship, EU/EEA citizenship, refugee status, or tolerated residence status."]
  ];
- for(const [pattern,summary] of german)if(pattern.test(lower))return summary;
+ for(const [pattern,summary] of german)if(pattern.test(lower)){
+  if(hasMultipleClauses(raw)&&!/deutsche staatsangehörige.*eu- oder ewr-staates.*geflüchtete/i.test(raw))return raw;
+  return summary;
+ }
+ // Do not replace a multi-part rule with a short summary of only its first clause.
+ if(hasMultipleClauses(raw))return raw;
  if(/no upper age limit|there is no upper age limit/.test(lower))return "There is no upper age limit.";
  let m=raw.match(/minimum score of (\d+) out of (\d+) in ([A-Za-z-]+)/i);
  if(m)return "Score at least "+m[1]+" out of "+m[2]+" in "+m[3].toUpperCase()+".";
@@ -606,6 +642,12 @@ function requirementKey(type,label,text){
 function requirementPairs(type,label,text){
  const raw=String(text||"").replace(/\s+/g," ").trim();
  const lower=raw.toLowerCase();
+ // Keep compound criteria as one complete statement instead of showing only
+ // the subset that happens to match the compact-label shortcuts below.
+ if(hasMultipleClauses(raw)){
+  const complete=summarizeRequirement(raw,label).replace(/[.;]$/,"").trim();
+  return [[requirementKey(type,label,raw),complete||raw]];
+ }
  const pairs=[];
  if(/completed their first degree abroad/.test(lower))pairs.push(["Education","First degree completed abroad"]);
  if(/completed their graduate degree abroad/.test(lower))pairs.push(["Education","Graduate degree completed abroad"]);

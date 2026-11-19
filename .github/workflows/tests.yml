@@ -34,6 +34,8 @@ jobs:
           python -m pip install -r requirements.txt
       - name: Check browser JavaScript syntax
         run: python scripts/check_frontend_js.py
+      - name: Test plain-language requirement summaries
+        run: node scripts/test_frontend_requirements.js
       - name: Compile application and tests
         run: python -m compileall -q app tests
       - name: Run complete test suite
