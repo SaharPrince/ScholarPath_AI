@@ -36,6 +36,23 @@ jobs:
         run: python scripts/check_frontend_js.py
       - name: Test plain-language requirement summaries
         run: node scripts/test_frontend_requirements.js
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Start static app for browser tests
+        run: |
+          python -m http.server 8000 --directory app/static > /tmp/scholarpath-static.log 2>&1 &
+          for attempt in {1..20}; do
+            if curl --silent --fail http://127.0.0.1:8000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/scholarpath-static.log
+          exit 1
+      - name: Test requirements panel on desktop and mobile
+        run: node scripts/test_frontend_browser.mjs
       - name: Compile application and tests
         run: python -m compileall -q app tests
       - name: Run complete test suite
