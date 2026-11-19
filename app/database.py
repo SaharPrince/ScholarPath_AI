@@ -8,6 +8,10 @@ from app.config import settings
 
 
 SQLITE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS app_migrations (
+    name TEXT PRIMARY KEY,
+    applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -1,132 +1,105 @@
 # ScholarPath AI
 
-ScholarPath AI helps students discover scholarship opportunities from trustworthy official sources and understand whether they meet each opportunity's eligibility requirements.
+ScholarPath AI helps students discover Germany-focused scholarship opportunities from official sources and understand the requirements published by each provider.
 
-## Project scope
+## Product scope
 
-- Discover scholarships in Pakistan and internationally.
-- Gather the eligibility criteria published by each scholarship provider.
-- Compare a student's answers with every applicable requirement.
-- Explain why a student appears eligible, ineligible, or needs more information.
-- Display the official source, application link, deadline, funding details, and verification status whenever those details are available.
+The product is deliberately limited to two jobs:
 
-## Accuracy and trust
+1. Discover individual scholarship opportunities from official German scholarship providers, foundations, universities, and government sources.
+2. Compare a student's profile with the opportunity's published eligibility requirements and explain what is met, not met, or still unknown.
 
-- Do not invent scholarships, providers, deadlines, funding amounts, eligibility rules, or application links.
-- Prefer official scholarship-provider and government/university sources.
-- Treat newly discovered opportunities as unverified until their authenticity and current status have been checked.
-- A webpage being reachable does not, by itself, prove that a scholarship is genuine or currently open.
-- Clearly distinguish confirmed facts from missing or uncertain information.
+## Live-only scholarship data
 
-## Planned technology
+**Scholarship opportunities are not stored in a database.**
 
-- Python
-- FastAPI
-- SQLite
-- HTTPX and Beautiful Soup for source retrieval and parsing
-- HTML, CSS, and JavaScript for the interface
+- When the shared edge cache expires, a scholarship request fetches current pages from the configured official sources.
+- Public scholarship list/detail responses are edge-cached for 60 seconds, with stale-while-revalidate for up to 5 minutes to reduce repeat serverless invocations.
+- Each serverless instance also shares one in-memory source scan for 60 seconds; concurrent requests wait for the same scan instead of launching duplicate provider requests.
+- The static source registry is edge-cached for one hour because it changes only with a code deployment.
+- Results and extracted criteria are assembled in memory; no scholarship result is written to a database.
+- The source registry is configuration in `app/source_catalog.py`; it is not a stored scholarship catalogue.
+- A URL-derived identifier refers to a result within a response. It is not a database record.
+- Applicant-specific `POST /api/match` responses are never placed in a shared public cache.
 
-## Initial development focus
+After the cache windows expire, the next request fetches the sources again. Results can change when a provider updates a page, blocks automated requests, or publishes a new application cycle.
 
-Build a reliable foundation for source discovery, scholarship records, eligibility data, and transparent matching. Keep the product limited to scholarship discovery and eligibility matching; do not add unrelated features.
+## Official-source and evidence rules
 
+- The source registry contains curated official German provider, foundation, government, and university pages.
+- Broad directories and provider indexes are not treated as individual scholarships.
+- When a source links to a specific programme or eligibility page, discovery follows same-host official links where possible.
+- Each extracted requirement retains the official URL that supports it.
+- Generic directory descriptions, incomplete statements, and application instructions are not presented as applicant eligibility rules.
+- Explicit requirements are distinguished from preferences such as “priority is given to”.
+- Missing facts remain unknown. The application never invents deadlines, funding amounts, providers, nationality rules, or eligibility thresholds.
+- An official source is evidence of what that provider published; it does not automatically prove that an application cycle is currently open or that the opportunity has been independently verified.
+
+Some providers restrict automated requests or return HTTP 403. Those sources may be temporarily unavailable; the application must not fill the gap with guessed scholarship data.
+
+## Eligibility matching
+
+The matcher evaluates only criteria supported by the official source:
+
+- **Pass:** the supplied profile satisfies the published condition.
+- **Fail:** the supplied profile conflicts with a mandatory condition.
+- **Unknown / more information needed:** the source or profile does not provide enough information to decide.
+
+Unknown must never be treated as eligible. Master's and PhD conditions are distinguished from undergraduate study so a Bachelor's applicant is not shown a graduate-only award as a match.
+
+## Language
+
+The website interface is intentionally English-only. It does not call a translation provider, send page content to a translation service, or store a language preference. Scholarship providers may publish source material in other languages; the original official source link is always available so applicants can review the provider's own wording.
+
+
+## Trust and application status
+
+These are separate concepts:
+
+- `status` is the verification state. Newly discovered records remain `unverified`.
+- `application_status` describes the application cycle when the source provides enough evidence: `open`, `upcoming`, `closed`, `discontinued`, `shortlisted_only`, or `unknown`.
+
+A reachable page, an official provider name, or a future deadline alone does not prove that applications are open.
+
+## API
+
+- `GET /api/health` — live-discovery service health.
+- `GET /api/sources` — configured official source registry.
+- `GET /api/scholarships` — fetch current opportunities from official sources; supports the available status filter.
+- `GET /api/scholarships/{id}` — resolve a result by its URL-derived identifier using fresh source data.
+- `POST /api/match` — match a student profile against freshly discovered criteria.
+- `GET /api/cron/discover` — retired legacy database-discovery route; returns HTTP 410.
+
+The scholarship list and detail endpoints do not read from a persisted scholarship catalogue.
 
 ## Run locally
 
 1. Use Python 3.11 or newer.
 2. Create and activate a virtual environment.
-3. Install dependencies with `pip install -r requirements.txt`.
-4. Copy `.env.example` to `.env` if you want to customize local settings.
-5. Start the API with `uvicorn app.main:app --reload`.
-6. Open `http://127.0.0.1:8000/docs` for the API documentation.
+3. Install dependencies:
 
-The database is created automatically at the path configured by `DATABASE_PATH` (default: `data/scholarpath.db`). The `/api/health` endpoint reports basic API and database readiness.
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Initial tests
+4. Start the API:
 
-Run the standard-library test suite with `python -m unittest discover -s tests`.
+   ```bash
+   uvicorn app.main:app --reload
+   ```
 
-The current foundation creates source, scholarship, and eligibility-criteria tables. It does not yet perform live scholarship discovery or claim that any scholarship is verified.
+5. Open `http://127.0.0.1:8000`.
 
+## Tests
 
-## Initial API endpoints
-
-- `GET /api/health` — API/database readiness.
-- `GET /api/sources` — active configured sources.
-- `GET /api/scholarships` — stored scholarships, with optional `country`, `status`, `limit`, and `offset` filters.
-- `GET /api/scholarships/{id}` — one scholarship and its recorded eligibility criteria.
-
-The API is read-only for scholarship data at this stage. No example scholarships or sources are inserted automatically, so an empty database returns empty lists rather than fabricated opportunities. A record's `candidate` or `unverified` status must not be presented as verified.
-
-
-## Official-source discovery foundation
-
-The curated source catalog contains official indexes from:
-
-- HEC International Scholarships
-- HEC National Scholarships
-- HEC Learning Opportunities Abroad
-- Ministry of Federal Education and Professional Training
-- United States Educational Foundation in Pakistan (USEFP)
-- DAAD Pakistan
-
-The catalog stores source homepages/indexes, not scholarship claims. These sources are based on the providers' own official scholarship/funding pages and Pakistan's federal education ministry scholarship directory. The catalog must be reviewed and maintained as providers change their websites.
-
-At application startup, the catalog is inserted without overwriting existing source records. The obsolete HEC `Site/Scholarship/default.aspx` entry is deactivated while its historical records are preserved. To run a discovery pass locally:
+Run the complete test suite:
 
 ```bash
-python -m app.run_discovery
+python -m unittest discover -s tests -v
 ```
 
-Discovery looks for scholarship-related links on configured official listing pages. It saves same-host HTTPS links as review candidates, using visible text and accessible labels (including image alt text) for candidate titles. It does not yet extract full scholarship details, follow external application links, create scholarship records, or decide eligibility. Candidate links are not verified scholarships.
+The tests cover extraction, evidence retention, directory-page filtering, official-source constraints, live discovery, and eligibility matching.
 
-New endpoint:
+## Deployment and review
 
-- `GET /api/discovery/candidates` — list candidate links, with optional `status`, `limit`, and `offset`.
-
-Discovery requests have time and response-size limits, do not follow redirects, and only retain links on the configured source's host. Links to third-party providers are not followed merely because they appear in a directory; those providers must be independently added as trusted sources.
-
-
-## Scholarship detail extraction (v0.2)
-
-After running homepage discovery, extract visible details from each unprocessed
-candidate page:
-
-```powershell
-python -m app.run_extraction
-```
-
-The extractor conservatively captures page title, description, provider label,
-and clearly labelled deadline, funding, and eligibility-related text. It stores
-source snippets in `scholarship_evidence` and structured eligibility text in
-`eligibility_criteria`. Records created by extraction are always `unverified`. The extractor separately
-classifies application-cycle status and applicant category only when the page
-contains clear supporting language; it does not decide whether a student qualifies.
-
-Useful endpoints:
-
-- `GET /api/discovery/extraction-attempts`
-- `GET /api/scholarships/{id}/evidence`
-
-Extraction is deliberately limited to candidate pages on their original HTTPS
-host. It does not follow redirects, fetch external application forms, infer
-missing facts, or treat an informational page as proof of an open scholarship.
-
-
-## Evidence-based opportunity classification (v0.4)
-
-Each extracted record now has two separate classifications:
-
-- `status` remains the trust/verification state (`unverified` is not a verified scholarship).
-- `application_status` describes the specific application cycle: `open`, `upcoming`, `closed`, `discontinued`, `shortlisted_only`, or `unknown`.
-- `applicant_category` identifies a clearly signalled audience: `student`, `graduate`, `professional`, `faculty`, `institution`, or `unknown`.
-
-A past explicit deadline marks that cycle `closed`; a future deadline alone does not prove that applications are open. Rolling applications or explicit open/upcoming/discontinued/shortlist wording can support the corresponding state. Pages that provide only a deadline and no meaningful programme facts are not promoted as scholarship records. Unknown is used whenever the page does not provide enough evidence.
-
-Existing SQLite databases are upgraded additively when the API or extraction command starts. Existing records receive `unknown` classifications until they are reprocessed. To refresh the stored classifications from official source pages:
-
-```powershell
-python -m app.run_extraction --reprocess
-```
-
-The new fields are returned by both scholarship list and detail endpoints. Reprocessing does not make records verified.
+Changes are developed on `feature/germany-scholarship-catalogue` and reviewed through pull request #16. Preview deployments are for testing. Production is not changed until the pull request is explicitly approved and merged.

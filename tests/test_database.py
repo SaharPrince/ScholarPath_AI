@@ -103,12 +103,16 @@ class DatabaseSchemaTests(unittest.TestCase):
 
 
     def test_official_source_seeding_is_idempotent(self) -> None:
-        from app.source_catalog import LEGACY_HEC_URL, OFFICIAL_SOURCES, seed_official_sources
+        from app.source_catalog import LEGACY_HEC_URL, LEGACY_KIEL_DEUTSCHLANDSTIPENDIUM_PDF_URL, OFFICIAL_SOURCES, seed_official_sources
 
         with database.get_connection() as connection:
             connection.execute(
                 "INSERT INTO sources (name, official_url) VALUES (?, ?)",
                 ("Legacy HEC source", LEGACY_HEC_URL),
+            )
+            connection.execute(
+                "INSERT INTO sources (name, official_url) VALUES (?, ?)",
+                ("Legacy Kiel PDF source", LEGACY_KIEL_DEUTSCHLANDSTIPENDIUM_PDF_URL),
             )
 
         first_inserted = seed_official_sources()
@@ -122,8 +126,9 @@ class DatabaseSchemaTests(unittest.TestCase):
 
         self.assertEqual(first_inserted, len(OFFICIAL_SOURCES))
         self.assertEqual(second_inserted, 0)
-        self.assertEqual(len(by_url), len(OFFICIAL_SOURCES) + 1)
+        self.assertEqual(len(by_url), len(OFFICIAL_SOURCES) + 2)
         self.assertEqual(by_url[LEGACY_HEC_URL], 0)
+        self.assertEqual(by_url[LEGACY_KIEL_DEUTSCHLANDSTIPENDIUM_PDF_URL], 0)
         for source in OFFICIAL_SOURCES:
             self.assertEqual(by_url[source["official_url"]], 1)
 
