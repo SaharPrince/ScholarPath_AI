@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 const sourceUrl = "https://www.rosalux.de/stiftung/studienwerk/stipendien/promotionsstipendium";
 const expectedSummary =
-  "Provide proof of very good German-language skills at B2 level, even if your dissertation is written in English.";
+  "Provide proof of very good German-language skills at B2 level, even if your dissertation is written in English";
 
 const scholarship = [{
   id: 42,
