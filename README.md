@@ -18,6 +18,8 @@ The product is deliberately limited to two jobs:
 - Each serverless instance also shares one in-memory source scan for 60 seconds; concurrent requests wait for the same scan instead of launching duplicate provider requests.
 - The static source registry is edge-cached for one hour because it changes only with a code deployment.
 - Results and extracted criteria are assembled in memory; no scholarship result is written to a database.
+- Each extracted opportunity includes a `last_checked_at` timestamp for when its source page was fetched; this timestamp is not independent verification.
+- `GET /api/discovery-status` reports source checks, timeouts, unavailable pages, and whether the latest scan was partial. The website warns students when coverage is incomplete; an incomplete scan is never presented as a complete catalogue.
 - The source registry is configuration in `app/source_catalog.py`; it is not a stored scholarship catalogue.
 - A URL-derived identifier refers to a result within a response. It is not a database record.
 - Applicant-specific `POST /api/match` responses are never placed in a shared public cache.
@@ -65,6 +67,7 @@ A reachable page, an official provider name, or a future deadline alone does not
 
 - `GET /api/health` — live-discovery service health.
 - `GET /api/sources` — configured official source registry.
+- `GET /api/discovery-status` — coverage metadata for the latest scan, including completed, failed, and timed-out sources.
 - `GET /api/scholarships` — fetch current opportunities from official sources; supports the available status filter.
 - `GET /api/scholarships/{id}` — resolve a result by its URL-derived identifier using fresh source data.
 - `POST /api/match` — match a student profile against freshly discovered criteria.
@@ -98,7 +101,7 @@ Run the complete test suite:
 python -m unittest discover -s tests -v
 ```
 
-The tests cover extraction, evidence retention, directory-page filtering, official-source constraints, live discovery, and eligibility matching.
+The tests cover extraction, evidence retention, directory-page filtering, official-source constraints, partial-discovery reporting, adaptive eligibility matching, and desktop/mobile browser interactions. The manual-only GitHub Actions live-source workflow independently checks configured official pages with longer request timeouts.
 
 ## Deployment and review
 
