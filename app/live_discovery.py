@@ -6,6 +6,7 @@ Only the curated source registry is persistent (as application code).
 import asyncio
 import hashlib
 import logging
+from datetime import datetime, timezone
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -33,6 +34,12 @@ DISCOVERY_BUDGET_SECONDS = 8.0
 MAX_DAAD_INDEX_PAGES = 4
 REQUEST_LIMITS = httpx.Limits(max_connections=40, max_keepalive_connections=20)
 logger = logging.getLogger(__name__)
+LAST_DISCOVERY_REPORT: dict = {}
+
+
+def get_last_discovery_report() -> dict:
+    """Return a copy of metadata describing the most recent bounded live scan."""
+    return dict(LAST_DISCOVERY_REPORT)
 
 GOETTINGEN_PRIORITY_SOURCE_NAMES = frozenset({
     "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027",
@@ -292,6 +299,14 @@ async def discover_live_scholarships() -> list[dict]:
     semaphore = asyncio.Semaphore(40)
     results: dict[str, dict] = {}
     successful_pages = 0
+    pages_attempted = 0
+    pages_unavailable = 0
+    pages_cancelled = 0
+    source_completed: list[str] = []
+    source_failed: list[str] = []
+    source_timed_out: list[str] = []
+    sources_with_unavailable_pages: set[str] = set()
+    scan_started_at = datetime.now(timezone.utc).isoformat()
 
     async with httpx.AsyncClient(
         timeout=REQUEST_TIMEOUT,
@@ -300,13 +315,25 @@ async def discover_live_scholarships() -> list[dict]:
         follow_redirects=False,
     ) as client:
 
-        async def fetch(url: str):
+        async def fetch(url: str, source_name: str):
+            nonlocal pages_attempted, successful_pages, pages_unavailable, pages_cancelled
             async with semaphore:
-                return await _fetch_page(client, url)
+                pages_attempted += 1
+                try:
+                    html, error = await _fetch_page(client, url)
+                except asyncio.CancelledError:
+                    pages_cancelled += 1
+                    sources_with_unavailable_pages.add(source_name)
+                    raise
+                if html:
+                    successful_pages += 1
+                else:
+                    pages_unavailable += 1
+                    sources_with_unavailable_pages.add(source_name)
+                return html, error
 
         async def inspect_page(source: dict, url: str, candidate_title: str | None = None):
-            nonlocal successful_pages
-            html, error = await fetch(url)
+            html, error = await fetch(url, source["name"])
             if not html:
                 logger.warning(
                     "Official source page unavailable: source=%s url=%s error=%s",
@@ -315,7 +342,6 @@ async def discover_live_scholarships() -> list[dict]:
                     error or "no response body",
                 )
                 return None, [], None
-            successful_pages += 1
             parsed = parse_scholarship_page(html, url, candidate_title)
             host = _normalized_host(url)
             links = _candidate_links(html, url, host) if host else []
@@ -328,7 +354,7 @@ async def discover_live_scholarships() -> list[dict]:
 
             async def fetch_eligibility_pages():
                 return await asyncio.gather(
-                    *(fetch(url) for url in eligibility_urls),
+                    *(fetch(url, source["name"]) for url in eligibility_urls),
                     return_exceptions=True,
                 )
 
@@ -346,7 +372,7 @@ async def discover_live_scholarships() -> list[dict]:
                 if not requests:
                     return
                 pages = await asyncio.gather(
-                    *(fetch(url) for _record, url in requests),
+                    *(fetch(url, record["source_name"]) for record, url in requests),
                     return_exceptions=True,
                 )
                 for (record, requirements_url), page_result in zip(requests, pages):
@@ -497,26 +523,34 @@ async def discover_live_scholarships() -> list[dict]:
 
 
         async def run_source_group(sources: list[dict], timeout: float) -> None:
-            if not sources or timeout <= 0:
+            if not sources:
                 return
-            tasks = [
-                asyncio.create_task(inspect_source(dict(source)))
+            if timeout <= 0:
+                source_timed_out.extend(source["name"] for source in sources)
+                return
+            task_sources = {
+                asyncio.create_task(inspect_source(dict(source))): source["name"]
                 for source in sources
-            ]
+            }
+            tasks = list(task_sources)
             done, pending = await asyncio.wait(
                 tasks,
                 timeout=timeout,
                 return_when=asyncio.ALL_COMPLETED,
             )
             for task in pending:
+                source_timed_out.append(task_sources[task])
                 # Do not await cancellation cleanup here: nested HTTP requests may
                 # otherwise keep the public API blocked well beyond the discovery
                 # budget. Cancel them and return the opportunities collected so far.
                 task.cancel()
             for task in done:
+                source_name = task_sources[task]
+                source_completed.append(source_name)
                 try:
                     task.result()
                 except Exception:
+                    source_failed.append(source_name)
                     logger.exception("Official source scan failed")
 
         # Prioritize curated individual programme pages and the main
@@ -548,4 +582,31 @@ async def discover_live_scholarships() -> list[dict]:
             item["title"].casefold(),
         ),
     )
+    global LAST_DISCOVERY_REPORT
+    total_sources = len(GERMANY_SOURCES)
+    completed_names = sorted(set(source_completed))
+    failed_names = sorted(set(source_failed))
+    timed_out_names = sorted(set(source_timed_out))
+    unavailable_names = sorted(sources_with_unavailable_pages)
+    partial = bool(
+        len(completed_names) < total_sources
+        or failed_names
+        or timed_out_names
+        or unavailable_names
+        or pages_cancelled
+    )
+    LAST_DISCOVERY_REPORT = {
+        "scan_started_at": scan_started_at,
+        "scan_completed_at": datetime.now(timezone.utc).isoformat(),
+        "partial": partial,
+        "total_sources": total_sources,
+        "completed_sources": len(completed_names),
+        "failed_sources": failed_names,
+        "timed_out_sources": timed_out_names,
+        "sources_with_unavailable_pages": unavailable_names,
+        "pages_attempted": pages_attempted,
+        "pages_succeeded": successful_pages,
+        "pages_unavailable": pages_unavailable,
+        "pages_cancelled": pages_cancelled,
+    }
     return ordered[:MAX_LIVE_RESULTS]
