@@ -13,6 +13,8 @@ class GermanyGuideTests(unittest.TestCase):
         self.assertIn("accommodation", ids)
         self.assertIn("pakistani-community", ids)
         self.assertIn("first-weeks", ids)
+        self.assertIn("apply-yourself", ids)
+        self.assertIn("avoid-scams", ids)
         self.assertEqual(guide["version"], GUIDE_VERSION)
 
     def test_every_item_has_short_bullets_and_valid_official_links(self):
@@ -41,11 +43,25 @@ class GermanyGuideTests(unittest.TestCase):
         self.assertIn("scam", all_bullets)
         self.assertIn("parent/legal guardian", all_bullets)
 
+    def test_self_application_and_anti_scam_guidance_is_present(self):
+        guide = get_germany_guide()
+        content = " ".join(
+            bullet
+            for section in guide["sections"]
+            for item in section["items"]
+            for bullet in item["bullets"]
+        ).lower()
+        self.assertIn("do not require agencies", content)
+        self.assertIn("guaranteed scholarship", content)
+        self.assertIn("do not sell land", content)
+        self.assertIn("nccia", content)
+        self.assertIn("trusted family member", content)
+
     def test_guide_api_returns_the_catalogue(self):
         result = api.germany_guide()
         self.assertEqual(result["country"], "Germany")
         self.assertEqual(result["audience"], "Students planning to travel from Pakistan")
-        self.assertGreaterEqual(len(result["sections"]), 7)
+        self.assertGreaterEqual(len(result["sections"]), 9)
         self.assertIn("confirm details", result["notice"].lower())
 
 
