@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from app.config import settings
 from app.currency import CurrencyRateUnavailable, get_currency_snapshot
 from app.germany_guide import get_germany_guide
-from app.live_discovery import discover_live_scholarships, get_last_discovery_report
+from app.live_discovery import clear_last_discovery_report, discover_live_scholarships, get_last_discovery_report
 from app.matching import match_profile_to_scholarships
 from app.source_catalog import GERMANY_SOURCES
 
@@ -131,6 +131,7 @@ async def _live_results() -> list[dict]:
         if _discovery_cache_rows is not None and now < _discovery_cache_expires_at:
             return copy.deepcopy(_discovery_cache_rows)
         try:
+            clear_last_discovery_report()
             rows = await discover_live_scholarships()
         except TimeoutError as exc:
             raise HTTPException(
