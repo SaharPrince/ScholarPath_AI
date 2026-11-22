@@ -34,6 +34,15 @@ GERMANY_GUIDE = [
         ],
     },
     {
+        "id": "choosing-trusted-consultant",
+        "title": "If you choose a consultant, verify them first",
+        "subtitle": "Professional help can be optional, but your applications and decisions must remain under your control.",
+        "items": [
+            {"title": "Check the person and business independently", "bullets": ["Get the consultant's full legal name, business name, physical address and written contact details; independently check that the business exists.", "Ask what relevant education-admissions experience they have and request references you can contact independently; do not rely only on testimonials they publish.", "Check any claimed professional registration or licence directly with the issuing authority. Do not assume a general business or tax registration proves admissions expertise or guarantees results.", "Ask whether they receive commissions from universities or other providers, and whether that affects the recommendations they make.", "If you cannot independently verify important claims, pause and contact the university or scholarship provider directly."], "links": [{"label": "German Missions in Pakistan — official agency warning", "url": "https://pakistan.diplo.de/service"}]},
+            {"title": "Agree on the service before paying", "bullets": ["Request a written contract listing each task, exact fee, payment schedule, refund and cancellation terms, and what happens if an application is unsuccessful.", "Ask for an itemised invoice and a receipt for every payment; verify any official application fee on the institution's own website and pay the institution through its published channel.", "Never accept a guarantee of admission, scholarship, visa approval, special embassy access or an earlier appointment.", "Keep your own email address, passwords, one-time codes and application accounts; review every form and document before submission.", "You should receive copies of every application, document, message, submission confirmation and payment record."], "links": [{"label": "German Missions in Pakistan — student visa process", "url": "https://pakistan.diplo.de/pk-en/service/2-study-visa-seite-1676104"}, {"label": "German Missions in Pakistan — fraud warning", "url": "https://pakistan.diplo.de/service"}]}
+        ],
+    },
+    {
         "id": "avoid-scams",
         "title": "Protect your family from agents and application scams",
         "subtitle": "Pause and verify every claim before paying, borrowing or selling family assets.",
