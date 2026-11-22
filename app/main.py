@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.currency import CurrencyRateUnavailable, get_currency_snapshot
+from app.germany_guide import get_germany_guide
 from app.live_discovery import discover_live_scholarships
 from app.matching import match_profile_to_scholarships
 from app.source_catalog import GERMANY_SOURCES
@@ -69,6 +70,12 @@ async def currency_rates() -> dict:
             detail="Official exchange rates are temporarily unavailable. Please retry later.",
             headers={"Retry-After": "300"},
         ) from exc
+
+
+@app.get("/api/germany-guide", tags=["guide"])
+def germany_guide() -> dict:
+    """Return concise, official-source-linked Germany preparation guidance."""
+    return get_germany_guide()
 
 
 @app.get("/api/sources", tags=["sources"])
