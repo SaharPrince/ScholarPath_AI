@@ -227,4 +227,4 @@ try {
   await browser.close();
 }
 
-process.stdout.write("Requirements detail-panel browser checks passed at desktop and mobile viewports.\n");
+process.stdout.write("Scholarship detail and adaptive eligibility browser checks passed at desktop and mobile viewports.\n");
