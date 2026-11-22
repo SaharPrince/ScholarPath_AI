@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime
 from dataclasses import replace
 
 from app.extraction import ExtractedPage
@@ -45,6 +46,7 @@ class LiveDiscoveryRecordTests(unittest.TestCase):
         self.assertEqual(record["criteria"][0]["evidence_url"], "https://provider.example/eligibility")
         self.assertEqual(record["evidence"][0]["evidence_url"], "https://provider.example/funding")
         self.assertEqual(record["status"], "unverified")
+        self.assertIsNotNone(datetime.fromisoformat(record["last_checked_at"]))
 
         # When a page does not expose a provider name, retain the curated
         # official source name rather than returning an empty provider field.
