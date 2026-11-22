@@ -449,7 +449,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         # Strict upper-bound wording ("under 45", "younger than 45",
         # German "unter/jünger als 45") excludes applicants at the boundary.
         strict_maximum = re.search(
-            r"(?i)\\b(?:under|younger than|less than|below|unter|jünger als)\\s+(?:the age of\\s+)?(\\d{2})\\s*(?:years?|yrs?|jahre?)?\\b",
+            r"(?i)\b(?:under|younger than|less than|below|unter|jünger als)\s+(?:the age of\s+)?(\d{2})\s*(?:years?|yrs?|jahre?)?\b",
             lower,
         )
         if strict_maximum:
