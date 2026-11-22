@@ -59,8 +59,34 @@ try {
       body: JSON.stringify([{ name: "Rosa-Luxemburg-Stiftung" }])
     }));
 
+    await page.route("**/api/germany-guide", route => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        version: "2026-11-22",
+        country: "Germany",
+        notice: "Confirm details with official authorities.",
+        sections: [{
+          id: "flight-from-pakistan",
+          title: "Travelling from Pakistan to Germany",
+          subtitle: "Prepare before departure.",
+          items: [{
+            title: "Pack your documents",
+            bullets: ["Keep your passport and admission letter in hand luggage."],
+            links: [{ label: "Official travel guidance", url: "https://www.make-it-in-germany.com/" }]
+          }]
+        }]
+      })
+    }));
+
     await page.goto("http://127.0.0.1:8000/", { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".card");
+
+    await page.waitForSelector(".guide-section");
+    assert.match(await page.locator("#germanyGuideTitle").innerText(), /Germany preparation guide/);
+    assert.match(await page.locator(".guide-section summary").innerText(), /Travelling from Pakistan/);
+    await page.locator("[data-guide-task]").check();
+    assert.match(await page.locator("#guideProgressText").innerText(), /1 of 1 tasks completed/);
     await page.locator("button.detailbtn").click();
     await page.waitForSelector("#overlay.show");
 
