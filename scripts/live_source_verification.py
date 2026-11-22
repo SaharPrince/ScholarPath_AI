@@ -218,6 +218,77 @@ async def main() -> None:
         "https://www.rosalux.de/stiftung/studienwerk/stipendien/promotionsstipendium",
         "https://www.rosalux.de/berufliche-bildung",
     }
+    # Independently check every curated individual-programme page with the
+    # verifier's longer timeout. This separates source reachability from the
+    # intentionally short request-time discovery budget.
+    curated_programme_sources = {}
+    for source in GERMANY_SOURCES:
+        programme_urls = source.get("programme_urls", ())
+        if not programme_urls and source.get("source_type") in {"official_programme", "government", "university"}:
+            programme_urls = (source["official_url"],)
+        for url in programme_urls:
+            curated_programme_sources.setdefault(url, source)
+    expected_programme_urls.update(curated_programme_sources)
+
+    direct_reachable = set()
+    direct_unparsed = []
+    direct_semaphore = asyncio.Semaphore(5)
+
+    async def check_curated_page(client: httpx.AsyncClient, url: str):
+        async with direct_semaphore:
+            source = curated_programme_sources.get(url)
+            try:
+                html, final_url = await get_page(client, url)
+                title = (source or {}).get("programme_titles", {}).get(url)
+                parsed = parse_scholarship_page(html, final_url, title)
+                return url, final_url, parsed, None
+            except Exception as exc:
+                return url, None, None, exc
+
+    async with httpx.AsyncClient(
+        timeout=TIMEOUT,
+        follow_redirects=True,
+        headers=HEADERS,
+        limits=httpx.Limits(max_connections=5, max_keepalive_connections=3),
+    ) as client:
+        direct_results = await asyncio.gather(
+            *(check_curated_page(client, url) for url in sorted(expected_programme_urls))
+        )
+
+    for url, final_url, parsed, error in direct_results:
+        source = curated_programme_sources.get(url, {})
+        label = source.get("name", url)
+        if error is not None:
+            status_code = getattr(getattr(error, "response", None), "status_code", None)
+            message = f"{label}: {type(error).__name__}: {error}"
+            if status_code in {403, 429}:
+                access_restricted.append(message)
+                print(f"CURATED PAGE ACCESS RESTRICTED | {label} | HTTP {status_code}")
+            else:
+                blocking_failures.append(message)
+                print(f"CURATED PAGE UNAVAILABLE | {label} | {type(error).__name__}: {error}")
+            continue
+        direct_reachable.add(url)
+        if parsed is None:
+            direct_unparsed.append(label)
+            print(f"CURATED PAGE REACHABLE BUT NOT PARSED | {label} | {final_url}")
+        else:
+            print(
+                f"CURATED PAGE OK | {label} | title={parsed.title!r} | "
+                f"criteria={len(parsed.criteria)} | {final_url}"
+            )
+
+    print(
+        "CURATED PROGRAMME DIRECT CHECK | "
+        f"reachable={len(direct_reachable)}/{len(expected_programme_urls)} | "
+        f"access_restricted={sum(1 for item in direct_results if item[3] is not None and getattr(getattr(item[3], 'response', None), 'status_code', None) in {403, 429})} | "
+        f"not_parsed={len(direct_unparsed)}"
+    )
+    if direct_unparsed:
+        print("PROGRAMME PAGES REACHABLE BUT NOT EXTRACTED:")
+        for label in direct_unparsed:
+            print("-", label)
+
     found_programme_urls = {record.get("source_url") for record in records}
     missing_programmes = expected_programme_urls - found_programme_urls
     if not records:
