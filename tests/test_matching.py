@@ -482,6 +482,13 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(c, {"age": 25})["status"], "pass")
         self.assertEqual(evaluate_criterion(c, {"age": 36})["status"], "fail")
 
+    def test_strict_under_age_limit_excludes_exact_boundary(self):
+        english = self.criterion("age_limit", "Age", "Applicants must be younger than 45 years.")
+        german = self.criterion("age_limit", "Alter", "Bewerber müssen jünger als 45 Jahre sein.")
+        for criterion in (english, german):
+            self.assertEqual(evaluate_criterion(criterion, {"age": 44})["status"], "pass")
+            self.assertEqual(evaluate_criterion(criterion, {"age": 45})["status"], "fail")
+
 
     def test_age_over_35_explicitly_allowed_by_provider_is_not_failure(self):
         c = self.criterion(
