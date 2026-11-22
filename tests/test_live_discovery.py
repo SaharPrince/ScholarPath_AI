@@ -273,5 +273,50 @@ class SourcePagePromotionTests(unittest.TestCase):
         )
 
 
+    def test_live_scan_report_marks_a_timed_out_source_as_partial(self):
+        from unittest.mock import AsyncMock, patch
+        import asyncio
+        from app import live_discovery
+
+        sources = (
+            {
+                "name": "Fast official source",
+                "official_url": "https://fast.example/scholarships",
+                "source_type": "official_index",
+                "country": "Germany",
+            },
+            {
+                "name": "Slow official source",
+                "official_url": "https://slow.example/scholarships",
+                "source_type": "official_index",
+                "country": "Germany",
+            },
+        )
+
+        async def fake_fetch(_client, url):
+            if "slow.example" in url:
+                await asyncio.sleep(0.1)
+            return "<html><body><main>No individual awards listed.</main></body></html>", None
+
+        async def run():
+            with (
+                patch.object(live_discovery, "GERMANY_SOURCES", sources),
+                patch.object(live_discovery, "DISCOVERY_BUDGET_SECONDS", 0.02),
+                patch.object(live_discovery, "_fetch_page", new=AsyncMock(side_effect=fake_fetch)),
+                patch.object(live_discovery, "parse_scholarship_page", return_value=None),
+            ):
+                rows = await live_discovery.discover_live_scholarships()
+            return rows, live_discovery.get_last_discovery_report()
+
+        rows, report = asyncio.run(run())
+        self.assertEqual(rows, [])
+        self.assertTrue(report["partial"])
+        self.assertEqual(report["total_sources"], 2)
+        self.assertEqual(report["completed_sources"], 1)
+        self.assertEqual(report["timed_out_sources"], ["Slow official source"])
+        self.assertGreaterEqual(report["pages_attempted"], 1)
+        self.assertGreaterEqual(report["pages_succeeded"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
