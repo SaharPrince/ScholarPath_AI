@@ -439,27 +439,15 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
 .card:hover{transform:translateY(-6px);box-shadow:var(--shadow)}
 .card:before{content:"";position:absolute;inset:0 0 auto;height:4px;background:linear-gradient(90deg,var(--green),#b8dc77);transform:scaleX(0);transform-origin:left;transition:transform .35s var(--ease)}
 .card:hover:before{transform:scaleX(1)}
-.motionlab{margin:54px 0 0;background:#172f27;color:#eff8f1;border-radius:24px;padding:27px 30px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:22px;flex-wrap:wrap}
-.motionlab:after{content:"";position:absolute;right:-55px;top:-100px;width:260px;height:260px;border:1px solid #a7d5b12a;border-radius:50%;box-shadow:0 0 0 22px #a7d5b10d,0 0 0 44px #a7d5b10a,0 0 0 66px #a7d5b108;pointer-events:none}
-.motion-copy,.labcontrols,.motion-status{position:relative;z-index:1}
-.motion-copy .kicker{color:#b7d5bf}
-.motionlab h3{font-size:19px;margin:4px 0;letter-spacing:-.4px}
-.motionlab p{color:#b8c9be;font-size:12px;margin:0;max-width:430px}
-.labcontrols{display:flex;gap:9px;flex-wrap:wrap}
-.labcontrols button{border:1px solid #49665a;background:#24463a;color:#e7f4e9;border-radius:10px;padding:9px 12px;font-size:11px;font-weight:750;transition:all .2s}
-.labcontrols button:hover{background:#315b49;transform:translateY(-2px)}
-.labcontrols button.on{background:var(--lime);color:#203327;border-color:var(--lime)}
-.motion-status{width:100%;font-size:11px;color:#b7d5bf;min-height:18px;margin-top:-10px}
 .footer{margin-top:34px}
 @keyframes sc-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(-13px,17px,0)}}
 @keyframes sc-pulse{0%,100%{box-shadow:0 0 0 4px #41a87922}50%{box-shadow:0 0 0 8px #41a87908}}
 @keyframes sc-pattern{to{background-position:34px 34px}}
 @keyframes sc-card-in{from{opacity:0;transform:translateY(22px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body.reduced-motion *,body.reduced-motion *:before,body.reduced-motion *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 @media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.navlinks{gap:14px}.hero{padding-top:62px}.pattern{right:-3%}}
-@media(max-width:620px){.shell{padding:0 17px}.topbar,.nav{height:65px}.navlinks{display:none}.navnote{font-size:10px}.hero{padding:52px 0 58px}.hero h1{font-size:clamp(38px,10vw,52px);letter-spacing:-2.4px}.hero p{font-size:14px}.pattern{right:-100px;top:20px}.orb.one{right:-50px}.orb.two{right:25%;top:200px}.searchbox{padding:8px 8px 8px 13px;gap:7px}.searchbox .primary{padding:11px 12px;font-size:11px}.searchbox input{font-size:13px}.trustline{gap:10px 16px;font-size:11px}.stats{margin-top:-22px}.grid{grid-template-columns:1fr}.motionlab{padding:22px 18px;display:block}.labcontrols{margin-top:17px}.motion-status{margin-top:14px}.footer{padding:22px 0}}
-@media(max-width:390px){.searchbox{flex-wrap:wrap}.searchbox input{flex-basis:calc(100% - 40px)}.searchbox .primary{width:100%}.hero h1{font-size:36px}.motionlab{border-radius:17px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.live-dot,.pulse,.pattern,.orb,.card{animation:none!important}.card,.labcontrols button{transition:none!important}}
+@media(max-width:620px){.shell{padding:0 17px}.topbar,.nav{height:65px}.navlinks{display:none}.navnote{font-size:10px}.hero{padding:52px 0 58px}.hero h1{font-size:clamp(38px,10vw,52px);letter-spacing:-2.4px}.hero p{font-size:14px}.pattern{right:-100px;top:20px}.orb.one{right:-50px}.orb.two{right:25%;top:200px}.searchbox{padding:8px 8px 8px 13px;gap:7px}.searchbox .primary{padding:11px 12px;font-size:11px}.searchbox input{font-size:13px}.trustline{gap:10px 16px;font-size:11px}.stats{margin-top:-22px}.grid{grid-template-columns:1fr}.footer{padding:22px 0}}
+@media(max-width:390px){.searchbox{flex-wrap:wrap}.searchbox input{flex-basis:calc(100% - 40px)}.searchbox .primary{width:100%}.hero h1{font-size:36px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.live-dot,.pulse,.pattern,.orb,.card{animation:none!important}}
 
 
 /* Plain-language requirement cards: no clipped sentences or unexplained walls of text. */
@@ -540,7 +528,7 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 </style>
 </head>
 <body>
-<header class="topbar"><div class="shell nav"><a class="brand" href="#" aria-label="ScholarCompass home"><span class="brandmark">✦</span> ScholarCompass</a><nav class="navlinks" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#profilePanel">Eligibility</a><a href="#motion-lab">Experience</a></nav><div class="navnote"><span class="live-dot"></span> Live official sources</div></div></header>
+<header class="topbar"><div class="shell nav"><a class="brand" href="#" aria-label="ScholarPath AI home"><span class="brandmark">✦</span> ScholarPath AI</a><nav class="navlinks" aria-label="Main navigation"><a href="#discover">Discover</a><a href="#profilePanel">Eligibility</a></nav><div class="navnote"><span class="live-dot"></span> Live official sources</div></div></header>
 <section class="hero"><div class="pattern" aria-hidden="true"></div><div class="orb one" aria-hidden="true"></div><div class="orb two" aria-hidden="true"></div><div class="shell hero-inner"><div class="eyebrow"><span class="pulse"></span> A clearer path to your future</div><h1>Find scholarships.<br><em>Know where you stand.</em></h1><p>Discover current opportunities from official German providers, understand the eligibility rules, and see what still needs checking — without guesswork.</p><div class="searchbox"><span class="search-icon" aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search by scholarship, provider or destination…" aria-label="Search scholarships"><button class="primary" id="heroSearch">Explore opportunities <span aria-hidden="true">→</span></button></div><div class="trustline"><span><b class="check">✓</b> Official-source links</span><span><b class="check">✓</b> Clear eligibility criteria</span><span><b class="check">✓</b> Verification status shown</span></div></div></section>
 <main class="shell">
 <div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Live opportunities found</span></div><div class="stat"><strong id="openCount">—</strong><span>Open according to source</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
@@ -620,9 +608,8 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 <div class="resultsline"><span id="resultCount">Loading scholarships…</span><span>Only source-backed records are shown</span></div>
 <div class="grid" id="cards"><div class="loading">Loading official-source opportunities…</div></div>
 </section>
-<section class="motionlab" id="motion-lab"><div class="motion-copy"><div class="kicker">A little interaction</div><h3>Motion playground</h3><p>Explore the interface effects. These controls only change the page presentation — they never make extra API requests.</p></div><div class="labcontrols"><button type="button" id="replayMotion">↻ Replay entrance</button><button type="button" id="pauseMotion">Ⅱ Pause motion</button><button type="button" id="togglePattern">◎ Toggle pattern</button><button type="button" id="reduceMotion">◌ Reduced motion</button></div><div class="motion-status" id="motionStatus" aria-live="polite">Animations are on. Try the controls or hover over a scholarship card.</div></section>
 </main>
-<footer class="footer"><div class="shell"><span>© 2026 ScholarCompass · Scholarship discovery and eligibility</span><span>Always confirm details on the official provider page before applying.</span></div></footer>
+<footer class="footer"><div class="shell"><span>© 2026 ScholarPath AI · Scholarship discovery and eligibility</span><span>Always confirm details on the official provider page before applying.</span></div></footer>
 <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Scholarship details"><section class="drawer"><div class="drawerhead"><div><div class="eyebrow" style="color:#397d60">Opportunity details</div><h2 id="detailTitle">Scholarship</h2><div id="detailProvider" class="provider"></div></div><button class="close" id="close" aria-label="Close details">×</button></div><div id="detailBody"></div></section></div>
 <script>
 const $=id=>document.getElementById(id);
@@ -1214,24 +1201,13 @@ loadGermanyGuide();
 loadCurrencyRates();
 load();
 
-/* Local motion controls; these never call the discovery or matching APIs. */
-(function initMotionPlayground(){
- const body=document.body,pattern=document.querySelector(".pattern"),status=document.getElementById("motionStatus");
- const pause=document.getElementById("pauseMotion"),reduce=document.getElementById("reduceMotion");
- if(!status)return;
- let paused=false,reduced=false,patternVisible=true;
- const say=t=>{status.textContent=t;};
- document.getElementById("heroSearch")?.addEventListener("click",()=>{document.getElementById("explore-section")?.scrollIntoView({behavior:reduced?"auto":"smooth"});document.getElementById("search")?.focus({preventScroll:true});render();});
- document.getElementById("replayMotion")?.addEventListener("click",()=>{
-  body.classList.remove("replay-motion");void body.offsetWidth;body.classList.add("replay-motion");
-  document.querySelectorAll(".card").forEach(card=>{card.style.animation="none";void card.offsetWidth;card.style.animation="";});
-  say("Entrance motion replayed. Live scholarship data was not reloaded.");
-  window.setTimeout(()=>body.classList.remove("replay-motion"),900);
- });
- pause?.addEventListener("click",()=>{paused=!paused;body.classList.toggle("motion-paused",paused);pause.textContent=paused?"▶ Resume motion":"Ⅱ Pause motion";pause.classList.toggle("on",paused);say(paused?"Motion paused. Your search and filters still work.":"Motion resumed.");});
- document.getElementById("togglePattern")?.addEventListener("click",()=>{patternVisible=!patternVisible;if(pattern)pattern.style.display=patternVisible?"block":"none";say(patternVisible?"Decorative dot pattern enabled.":"Decorative dot pattern hidden.");});
- reduce?.addEventListener("click",()=>{reduced=!reduced;body.classList.toggle("reduced-motion",reduced);reduce.classList.toggle("on",reduced);reduce.textContent=reduced?"✓ Reduced motion on":"◌ Reduced motion";say(reduced?"Reduced-motion mode enabled.":"Reduced-motion mode disabled.");});
-})();
+/* Search navigation respects the visitor's reduced-motion preference. */
+const prefersReducedMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+document.getElementById("heroSearch")?.addEventListener("click",()=>{
+ document.getElementById("explore-section")?.scrollIntoView({behavior:prefersReducedMotion?"auto":"smooth"});
+ document.getElementById("search")?.focus({preventScroll:true});
+ render();
+});
 
 </script>
 </body></html>
