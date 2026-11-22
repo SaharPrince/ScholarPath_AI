@@ -28,8 +28,12 @@ async def cache_public_scholarship_reads(request, call_next):
     path = request.url.path
     is_scholarship_read = path == "/api/scholarships" or path.startswith("/api/scholarships/")
     is_source_registry = path == "/api/sources"
+    is_currency_rates = path == "/api/currency-rates"
     if request.method == "GET" and response.status_code == 200:
-        if is_scholarship_read:
+        if is_currency_rates:
+            # Rates are public and update daily; edge caching reduces repeat source fetches.
+            response.headers["Cache-Control"] = "public, s-maxage=1800, stale-while-revalidate=3600"
+        elif is_scholarship_read:
             # Keep the live catalogue fresh while allowing Vercel's edge cache to
             # absorb repeat visits instead of invoking a serverless function each time.
             response.headers["Cache-Control"] = "public, s-maxage=60, stale-while-revalidate=300"
