@@ -85,8 +85,13 @@ try {
     await page.waitForSelector(".guide-section");
     assert.match(await page.locator("#germanyGuideTitle").innerText(), /Germany preparation guide/);
     assert.match(await page.locator(".guide-section summary").innerText(), /Travelling from Pakistan/);
-    await page.locator("[data-guide-task]").check();
-    assert.match(await page.locator("#guideProgressText").innerText(), /1 of 1 tasks completed/);
+    const guideTask = page.locator("[data-guide-task]");
+    await guideTask.check();
+    assert.equal(await page.locator("#guideProgressText").innerText(), "Preparation checklist complete");
+    await guideTask.uncheck();
+    assert.match(await page.locator("#guideProgressText").innerText(), /0 of 1 tasks completed/);
+    await guideTask.check();
+    assert.equal(await page.locator("#guideProgressText").innerText(), "Preparation checklist complete");
     await page.locator("button.detailbtn").click();
     await page.waitForSelector("#overlay.show");
 
