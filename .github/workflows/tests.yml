@@ -53,8 +53,8 @@ jobs:
           exit 1
       - name: Test requirements panel on desktop and mobile
         run: node scripts/test_frontend_browser.mjs
-      - name: Compile application and tests
-        run: python -m compileall -q app tests
+      - name: Compile application, tests, and verification scripts
+        run: python -m compileall -q app tests scripts
       - name: Run complete test suite
         run: python -m unittest discover -s tests -v
 
