@@ -47,19 +47,27 @@ async def main() -> None:
     reachable = 0
     core_reachable = set()
 
+    async def check_index_source(client: httpx.AsyncClient, source: dict):
+        try:
+            html, final_url = await get_page(client, source["official_url"])
+            host = urlparse(final_url).hostname or ""
+            candidates = _candidate_links(html, final_url, host)
+            return source, final_url, candidates, None
+        except Exception as exc:
+            return source, None, [], exc
+
     async with httpx.AsyncClient(
         timeout=TIMEOUT,
         follow_redirects=True,
         headers=HEADERS,
-        limits=httpx.Limits(max_connections=4, max_keepalive_connections=2),
+        limits=httpx.Limits(max_connections=8, max_keepalive_connections=4),
     ) as client:
         print("\n========== OFFICIAL GERMAN SOURCE INDEX CHECK ==========")
-        for source in OFFICIAL_SOURCES:
-            url = source["official_url"]
-            try:
-                html, final_url = await get_page(client, url)
-                host = urlparse(final_url).hostname or ""
-                candidates = _candidate_links(html, final_url, host)
+        index_results = await asyncio.gather(
+            *(check_index_source(client, source) for source in OFFICIAL_SOURCES)
+        )
+        for source, final_url, candidates, error in index_results:
+            if error is None:
                 reachable += 1
                 if source["name"] in CORE_SOURCE_NAMES:
                     core_reachable.add(source["name"])
@@ -67,20 +75,21 @@ async def main() -> None:
                     f"OK | {source['name']} | HTTP HTML | "
                     f"candidate_links={len(candidates)} | {final_url}"
                 )
-            except Exception as exc:
-                message = f"{source['name']}: {type(exc).__name__}: {exc}"
-                failures.append(message)
-                status_code = getattr(getattr(exc, "response", None), "status_code", None)
-                if status_code in {403, 429}:
-                    # Some official providers block cloud CI traffic. This is
-                    # not evidence that the source URL is invalid; report it
-                    # distinctly rather than failing the whole PR.
-                    access_restricted.append(message)
-                    print(f"ACCESS RESTRICTED | {source['name']} | HTTP {status_code}")
-                else:
-                    if source["name"] in CORE_SOURCE_NAMES:
-                        blocking_failures.append(message)
-                    print(f"UNAVAILABLE | {source['name']} | {type(exc).__name__}: {exc}")
+                continue
+
+            message = f"{source['name']}: {type(error).__name__}: {error}"
+            failures.append(message)
+            status_code = getattr(getattr(error, "response", None), "status_code", None)
+            if status_code in {403, 429}:
+                # Some official providers block cloud CI traffic. This is
+                # not evidence that the source URL is invalid; report it
+                # distinctly rather than failing the whole PR.
+                access_restricted.append(message)
+                print(f"ACCESS RESTRICTED | {source['name']} | HTTP {status_code}")
+            else:
+                if source["name"] in CORE_SOURCE_NAMES:
+                    blocking_failures.append(message)
+                print(f"UNAVAILABLE | {source['name']} | {type(error).__name__}: {error}")
 
     missing_core = CORE_SOURCE_NAMES - core_reachable
     restricted_core = {
@@ -232,7 +241,7 @@ async def main() -> None:
 
     direct_reachable = set()
     direct_unparsed = []
-    direct_semaphore = asyncio.Semaphore(5)
+    direct_semaphore = asyncio.Semaphore(6)
 
     async def check_curated_page(client: httpx.AsyncClient, url: str):
         async with direct_semaphore:
@@ -249,7 +258,7 @@ async def main() -> None:
         timeout=TIMEOUT,
         follow_redirects=True,
         headers=HEADERS,
-        limits=httpx.Limits(max_connections=5, max_keepalive_connections=3),
+        limits=httpx.Limits(max_connections=6, max_keepalive_connections=3),
     ) as client:
         direct_results = await asyncio.gather(
             *(check_curated_page(client, url) for url in sorted(expected_programme_urls))
