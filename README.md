@@ -103,6 +103,8 @@ python -m unittest discover -s tests -v
 
 The tests cover extraction, evidence retention, directory-page filtering, official-source constraints, partial-discovery reporting, adaptive eligibility matching, and desktop/mobile browser interactions. The manual-only GitHub Actions live-source workflow independently checks configured official pages with longer request timeouts.
 
+To run the live-source verification manually, open **Actions → ScholarPath tests → Run workflow**, select `feature/germany-scholarship-catalogue`, and start the workflow. The read-only live check verifies configured official programme pages and reports access restrictions separately; it does not write scholarship data.
+
 ## Deployment and review
 
 Changes are developed on `feature/germany-scholarship-catalogue` and reviewed through pull request #16. Preview deployments are for testing. Production is not changed until the pull request is explicitly approved and merged.
