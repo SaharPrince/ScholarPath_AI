@@ -195,6 +195,8 @@ try {
     const sourceHref = await page.locator(".links a").first().getAttribute("href");
     assert.equal(evidenceHref, sourceUrl);
     assert.equal(sourceHref, sourceUrl);
+    await page.locator("#close").click();
+    await page.waitForFunction(() => !document.querySelector("#overlay")?.classList.contains("show"));
 
     const education = page.locator('#profileForm [name="current_education_level"]');
     const marksField = page.locator('#profileForm [name="academic_percentage"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
