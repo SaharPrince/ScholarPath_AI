@@ -59,6 +59,84 @@ try {
       body: JSON.stringify([{ name: "Rosa-Luxemburg-Stiftung" }])
     }));
 
+    await page.route("**/api/discovery-status", route => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "complete",
+        partial: false,
+        total_sources: 1,
+        completed_sources: 1,
+        pages_attempted: 2,
+        pages_succeeded: 2,
+        pages_unavailable: 0,
+        pages_cancelled: 0,
+        failed_sources: [],
+        timed_out_sources: [],
+        sources_with_unavailable_pages: []
+      })
+    }));
+
+    let matchRequestCount = 0;
+    await page.route("**/api/match", async route => {
+      matchRequestCount += 1;
+      const submitted = route.request().postDataJSON();
+      if (matchRequestCount === 1) {
+        assert.equal(submitted.age, undefined, "age should be requested only when a live criterion needs it");
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            total: 1,
+            likely_eligible: 0,
+            needs_more_information: 1,
+            not_eligible: 0,
+            notice: "Preliminary matching only.",
+            results: [{
+              id: 501,
+              title: "Adaptive Test Scholarship",
+              provider_name: "Official Provider",
+              deadline_text: "Not stated",
+              source_url: sourceUrl,
+              match_status: "needs_more_information",
+              checks_passed: 0,
+              checks_unknown: 1,
+              checks: [{
+                criterion_label: "Age limit",
+                requirement_text: "Applicants must meet the provider's age limit.",
+                status: "unknown",
+                explanation: "Add your age to check the published age limit.",
+                evidence_url: sourceUrl
+              }]
+            }]
+          })
+        });
+      }
+      assert.equal(submitted.age, 20, "the adaptive answer should be included in the second matching request");
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          total: 1,
+          likely_eligible: 1,
+          needs_more_information: 0,
+          not_eligible: 0,
+          notice: "Preliminary matching only.",
+          results: [{
+            id: 501,
+            title: "Adaptive Test Scholarship",
+            provider_name: "Official Provider",
+            deadline_text: "Not stated",
+            source_url: sourceUrl,
+            match_status: "likely_eligible",
+            checks_passed: 1,
+            checks_unknown: 0,
+            checks: []
+          }]
+        })
+      });
+    });
+
     await page.route("**/api/germany-guide", route => route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -83,6 +161,29 @@ try {
     await page.waitForSelector(".card");
 
     await page.waitForSelector(".guide-section");
+
+    const education = page.locator('#profileForm [name="current_education_level"]');
+    const marksField = page.locator('#profileForm [name="academic_percentage"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
+    const cgpaField = page.locator('#profileForm [name="cgpa"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
+    await education.selectOption("intermediate");
+    assert.equal(await marksField.isVisible(), true, "Intermediate applicants should see percentage marks");
+    assert.equal(await cgpaField.isVisible(), false, "Intermediate applicants should not see CGPA");
+    await education.selectOption("bachelors");
+    assert.equal(await marksField.isVisible(), false, "University applicants should not see school percentage marks");
+    assert.equal(await cgpaField.isVisible(), true, "University applicants should see CGPA");
+    await education.selectOption("intermediate");
+    await page.locator('#profileForm [name="nationality"]').fill("Pakistani");
+    await page.locator('#profileForm [name="target_study_level"]').selectOption("bachelors");
+    await page.locator("#matchButton").click();
+    await page.waitForSelector("#adaptiveContinue");
+    assert.equal(await page.locator("#matchResults h3").innerText(), "One more thing");
+    assert.equal(await page.locator("#matchResults h4").innerText(), "How old are you?");
+    assert.equal(await page.locator("#matchResults input").count(), 1, "only one adaptive question should be shown at a time");
+    await page.locator("#matchResults input").fill("20");
+    await page.locator("#adaptiveContinue").click();
+    await page.waitForFunction(() => document.querySelector("#matchResults h3")?.textContent === "Your scholarship matches");
+    assert.equal(matchRequestCount, 2, "answering the adaptive question should trigger one fresh match");
+    assert.match(await page.locator("#matchResults").innerText(), /Adaptive Test Scholarship/);
     assert.match(await page.locator("#germanyGuideTitle").innerText(), /Germany preparation guide/);
     assert.match(await page.locator(".guide-section summary").innerText(), /Travelling from Pakistan/);
     const guideTask = page.locator("[data-guide-task]");
