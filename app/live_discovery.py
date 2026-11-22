@@ -41,6 +41,12 @@ def get_last_discovery_report() -> dict:
     """Return a copy of metadata describing the most recent bounded live scan."""
     return dict(LAST_DISCOVERY_REPORT)
 
+
+def clear_last_discovery_report() -> None:
+    """Clear stale metadata before starting a new scan."""
+    global LAST_DISCOVERY_REPORT
+    LAST_DISCOVERY_REPORT = {}
+
 GOETTINGEN_PRIORITY_SOURCE_NAMES = frozenset({
     "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027",
     "University of Göttingen – Academic Degree Bursaries for International Students",
