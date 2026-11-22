@@ -34,6 +34,16 @@ class PhaseOneRegressionTests(unittest.TestCase):
         self.assertEqual(result["status"], "unknown")
         self.assertIn("name of your current university", result["explanation"])
 
+    def test_negative_exclusion_in_previous_sentence_does_not_hide_positive_enrolment_requirement(self):
+        criterion = self.criterion(
+            "eligibility",
+            "Enrolment",
+            "Exchange students are not eligible for this award. Applicants must be currently enrolled at the University of Würzburg.",
+        )
+        result = evaluate_criterion(criterion, {})
+        self.assertEqual(result["status"], "unknown")
+        self.assertIn("name of your current university", result["explanation"])
+
     def test_ambiguous_university_degree_reference_is_not_assumed_to_be_a_prerequisite(self):
         criterion = self.criterion(
             "study_level",
