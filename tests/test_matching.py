@@ -606,6 +606,16 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
             "current_education_level": "bachelors",
         })["status"], "unknown")
 
+    def test_invalid_numeric_residence_values_remain_unknown(self):
+        c = self.criterion(
+            "eligibility", "Residence duration",
+            "Applicants must not have been in Germany for more than 15 months.",
+        )
+        for invalid_value in (True, False, float("nan"), float("inf"), float("-inf")):
+            with self.subTest(value=invalid_value):
+                result = evaluate_criterion(c, {"months_in_germany": invalid_value})
+                self.assertEqual(result["status"], "unknown")
+
     def test_financial_need_is_not_inferred_or_requested(self):
         c = self.criterion("eligibility", "Financial need", "Applicants must demonstrate financial need.")
         result = evaluate_criterion(c, {})
