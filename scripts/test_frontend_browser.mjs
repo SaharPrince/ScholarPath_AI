@@ -161,31 +161,9 @@ try {
     await page.waitForSelector(".card");
 
     await page.waitForSelector(".guide-section");
-    assert.match(await page.locator("#discoveryCoverage").innerText(), /Partial official-source scan/);
+    await page.waitForFunction(() => document.querySelector("#discoveryCoverage")?.textContent?.includes("Partial official-source scan"));
     assert.match(await page.locator("#discoveryCoverage").innerText(), /Slow official provider/);
 
-    const education = page.locator('#profileForm [name="current_education_level"]');
-    const marksField = page.locator('#profileForm [name="academic_percentage"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
-    const cgpaField = page.locator('#profileForm [name="cgpa"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
-    await education.selectOption("intermediate");
-    assert.equal(await marksField.isVisible(), true, "Intermediate applicants should see percentage marks");
-    assert.equal(await cgpaField.isVisible(), false, "Intermediate applicants should not see CGPA");
-    await education.selectOption("bachelors");
-    assert.equal(await marksField.isVisible(), false, "University applicants should not see school percentage marks");
-    assert.equal(await cgpaField.isVisible(), true, "University applicants should see CGPA");
-    await education.selectOption("intermediate");
-    await page.locator('#profileForm [name="nationality"]').fill("Pakistani");
-    await page.locator('#profileForm [name="target_study_level"]').selectOption("bachelors");
-    await page.locator("#matchButton").click();
-    await page.waitForSelector("#adaptiveContinue");
-    assert.equal(await page.locator("#matchResults h3").innerText(), "One more thing");
-    assert.equal(await page.locator("#matchResults h4").innerText(), "How old are you?");
-    assert.equal(await page.locator("#matchResults input").count(), 1, "only one adaptive question should be shown at a time");
-    await page.locator("#matchResults input").fill("20");
-    await page.locator("#adaptiveContinue").click();
-    await page.waitForFunction(() => document.querySelector("#matchResults h3")?.textContent === "Your scholarship matches");
-    assert.equal(matchRequestCount, 2, "answering the adaptive question should trigger one fresh match");
-    assert.match(await page.locator("#matchResults").innerText(), /Adaptive Test Scholarship/);
     assert.match(await page.locator("#germanyGuideTitle").innerText(), /Germany preparation guide/);
     assert.match(await page.locator(".guide-section summary").innerText(), /Travelling from Pakistan/);
     const guideTask = page.locator("[data-guide-task]");
@@ -217,6 +195,29 @@ try {
     const sourceHref = await page.locator(".links a").first().getAttribute("href");
     assert.equal(evidenceHref, sourceUrl);
     assert.equal(sourceHref, sourceUrl);
+
+    const education = page.locator('#profileForm [name="current_education_level"]');
+    const marksField = page.locator('#profileForm [name="academic_percentage"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
+    const cgpaField = page.locator('#profileForm [name="cgpa"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
+    await education.selectOption("intermediate");
+    assert.equal(await marksField.isVisible(), true, "Intermediate applicants should see percentage marks");
+    assert.equal(await cgpaField.isVisible(), false, "Intermediate applicants should not see CGPA");
+    await education.selectOption("bachelors");
+    assert.equal(await marksField.isVisible(), false, "University applicants should not see school percentage marks");
+    assert.equal(await cgpaField.isVisible(), true, "University applicants should see CGPA");
+    await education.selectOption("intermediate");
+    await page.locator('#profileForm [name="nationality"]').fill("Pakistani");
+    await page.locator('#profileForm [name="target_study_level"]').selectOption("bachelors");
+    await page.locator("#matchButton").click();
+    await page.waitForSelector("#adaptiveContinue");
+    assert.equal(await page.locator("#matchResults h3").innerText(), "One more thing");
+    assert.equal(await page.locator("#matchResults h4").innerText(), "How old are you?");
+    assert.equal(await page.locator("#matchResults input").count(), 1, "only one adaptive question should be shown at a time");
+    await page.locator("#matchResults input").fill("20");
+    await page.locator("#adaptiveContinue").click();
+    await page.waitForFunction(() => document.querySelector("#matchResults h3")?.textContent === "Your scholarship matches");
+    assert.equal(matchRequestCount, 2, "answering the adaptive question should trigger one fresh match");
+    assert.match(await page.locator("#matchResults").innerText(), /Adaptive Test Scholarship/);
 
     await page.close();
   }
