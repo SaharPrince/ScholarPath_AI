@@ -8,6 +8,7 @@ from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from app.config import settings
+from app.currency import CurrencyRateUnavailable, get_currency_snapshot
 from app.live_discovery import discover_live_scholarships
 from app.matching import match_profile_to_scholarships
 from app.source_catalog import GERMANY_SOURCES
@@ -51,6 +52,19 @@ def scholarship_home() -> FileResponse:
 def health_check() -> dict[str, str]:
     """Health check without requiring a scholarship database."""
     return {"status": "ok", "discovery": "live", "scholarship_storage": "disabled"}
+
+
+@app.get("/api/currency-rates", tags=["currency"])
+async def currency_rates() -> dict:
+    """Return cached official daily PKR exchange-rate references for cost planning."""
+    try:
+        return await get_currency_snapshot()
+    except CurrencyRateUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Official exchange rates are temporarily unavailable. Please retry later.",
+            headers={"Retry-After": "300"},
+        ) from exc
 
 
 @app.get("/api/sources", tags=["sources"])
