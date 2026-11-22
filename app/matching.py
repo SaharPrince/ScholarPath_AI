@@ -73,9 +73,29 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             r"([A-Z][A-Za-zÀ-ÿ0-9&.'-]*(?:\s+(?:of|the|and|[A-Z][A-Za-zÀ-ÿ0-9&.'-]*)){0,5})",
             source_text,
         )
+    institution_clause = ""
+    if institution_match:
+        clause_start = max(
+            source_text.rfind(".", 0, institution_match.start()),
+            source_text.rfind(";", 0, institution_match.start()),
+            source_text.rfind("!", 0, institution_match.start()),
+            source_text.rfind("?", 0, institution_match.start()),
+        ) + 1
+        clause_ends = [
+            position for position in (
+                source_text.find(".", institution_match.end()),
+                source_text.find(";", institution_match.end()),
+                source_text.find("!", institution_match.end()),
+                source_text.find("?", institution_match.end()),
+            )
+            if position >= 0
+        ]
+        clause_end = min(clause_ends) if clause_ends else len(source_text)
+        institution_clause = source_text[clause_start:clause_end]
+
     if institution_match and not re.search(
         r"\b(?:not eligible|ineligible|excluded|not entitled|not funded|cannot be funded|not accepted)\b",
-        source_text[max(0, institution_match.start() - 220):institution_match.start()],
+        institution_clause,
         re.IGNORECASE,
     ):
         required_institution = institution_match.group(1).strip(" .,:;")
