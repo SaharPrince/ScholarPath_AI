@@ -73,7 +73,11 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             r"([A-Z][A-Za-zÀ-ÿ0-9&.'-]*(?:\s+(?:of|the|and|[A-Z][A-Za-zÀ-ÿ0-9&.'-]*)){0,5})",
             source_text,
         )
-    if institution_match:
+    if institution_match and not re.search(
+        r"\b(?:not eligible|ineligible|excluded|not entitled|not funded|cannot be funded|not accepted)\b",
+        source_text[max(0, institution_match.start() - 220):institution_match.start()],
+        re.IGNORECASE,
+    ):
         required_institution = institution_match.group(1).strip(" .,:;")
         if not re.fullmatch(
             r"(?i)(?:a|any|recognized|german|public|national)\s+(?:recognized\s+)?university(?:\s+in\s+germany)?",
@@ -527,6 +531,20 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("pass", "Your reported completed education level includes a Bachelor's degree.")
 
         if "university degree" in lower or "university qualification" in lower:
+            completed_degree_required = re.search(
+                r"\b(?:must|should|need to|have to|are required to)\s+(?:already\s+)?"
+                r"(?:have|hold|possess|complete|completed)\b.{0,60}\b(?:university degree|university qualification)\b|"
+                r"\b(?:applicants?|candidates?)\s+with\s+(?:a\s+)?(?:recognized\s+)?"
+                r"university\s+(?:degree|qualification)\b|"
+                r"\b(?:completed|holding|holder of)\b.{0,60}\b(?:university degree|university qualification)\b|"
+                r"\b(?:university degree|university qualification)\s+(?:is\s+)?(?:required|mandatory)\b",
+                lower,
+            )
+            if not completed_degree_required:
+                return _result(
+                    "unknown",
+                    "The source mentions a university degree but does not clearly establish whether it is a completed prerequisite or the funded study level; review the official wording.",
+                )
             current_level = (profile.get("current_education_level") or "").lower()
             level_ranks = {"below_matric": 0, "matric": 1, "intermediate": 2, "bachelors": 3, "masters": 4, "phd": 5}
             rank = level_ranks.get(current_level)
@@ -595,7 +613,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
 
         # Compare clearly stated academic marks thresholds without treating GPA,
         # division, entry-test scores, or unrelated percentages as equivalent.
-        if ("hat" not in lower and "gre" not in lower
+        if (not re.search(r"\b(?:hat|gre)\b", lower)
                 and any(term in lower for term in ("marks", "aggregate", "percentage", "percent"))):
             percentage_match = re.search(
                 r"(?:minimum|at least|not less than|above|aggregate of|score of)\s*(\d{1,3}(?:\.\d+)?)\s*%?",
@@ -641,7 +659,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 return _result("fail", "The source accepts only HAT-I, HAT-II, HAT-III or HAT-IV.")
             return _result("pass", "Your HAT category is one of the categories accepted by the source.")
 
-        if "hat" in lower and "gre" in lower and (" or " in lower or "/" in lower):
+        if re.search(r"\bhat\b", lower) and re.search(r"\bgre\b", lower) and (" or " in lower or "/" in lower):
             hat = _number(profile.get("hat_score"))
             gre = _number(profile.get("gre_score"))
             hat_ok = hat is not None and hat >= 60
@@ -661,7 +679,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("pass" if score >= minimum else "fail",
                            f"Your HAT score is {score:g}; the stated minimum is {minimum:g}.")
 
-        if "gre" in lower and re.search(r"\b300\b", lower):
+        if re.search(r"\bgre\b", lower) and re.search(r"\b300\b", lower):
             score = _number(profile.get("gre_score"))
             if score is None:
                 return _result("unknown", "Add your GRE score to check this requirement.")
@@ -859,10 +877,19 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
         "phd": r"\b(?:phd|doctoral|doctorate)\s+(?:scholarship|programme|program|applicants?|admission|study)\b|\bfor\s+(?:a\s+)?(?:phd|doctoral|doctorate)\b",
         "vocational_training": r"\b(?:ausbildung|auszubildende|apprenticeship|vocational training)\b",
     }
+    # A named multi-level award must not be narrowed by a later subclause that
+    # describes extra conditions for only one of its applicant groups.
+    level_phrase = r"(?:bachelor(?: s)?|undergraduate|master(?: s)?|postgraduate|phd|doctoral|intermediate|hssc|matric|ssc)"
+    if re.search(
+        rf"\b(?:open to|available to|for)\s+(?:both\s+)?{level_phrase}\s+(?:and|or)\s+"
+        rf"{level_phrase}\s+(?:students?|applicants?|candidates?)\b",
+        text,
+    ):
+        return None
+
     explicit_levels = {level for level, pattern in level_patterns.items() if re.search(pattern, text)}
     if (re.search(r"\b(?:promotionsstipendium|promotionsförderung|promovierende|doktorand(?:innen|en)?|doctoral|phd)\b", text)
             or re.search(r"promotions[-\s]*f[oö]rderung", title)):
-        explicit_levels.add("phd")
         explicit_levels.add("phd")
     if re.search(r"\b(?:ausbildung|auszubildende|ausbildungsvertrag|apprenticeship)\b", text):
         explicit_levels.add("vocational_training")
