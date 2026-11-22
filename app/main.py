@@ -29,6 +29,7 @@ async def cache_public_scholarship_reads(request, call_next):
     path = request.url.path
     is_scholarship_read = path == "/api/scholarships" or path.startswith("/api/scholarships/")
     is_source_registry = path == "/api/sources"
+    is_germany_guide = path == "/api/germany-guide"
     is_currency_rates = path == "/api/currency-rates"
     if request.method == "GET" and response.status_code == 200:
         if is_currency_rates:
@@ -38,8 +39,8 @@ async def cache_public_scholarship_reads(request, call_next):
             # Keep the live catalogue fresh while allowing Vercel's edge cache to
             # absorb repeat visits instead of invoking a serverless function each time.
             response.headers["Cache-Control"] = "public, s-maxage=60, stale-while-revalidate=300"
-        elif is_source_registry:
-            # The curated registry changes only with a code deployment.
+        elif is_source_registry or is_germany_guide:
+            # Curated reference content changes only with a code deployment.
             response.headers["Cache-Control"] = "public, s-maxage=3600, stale-while-revalidate=86400"
     # POST /api/match is intentionally excluded: applicant-specific results must
     # never be stored in a shared cache.
