@@ -445,6 +445,21 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             ok = age >= limit
             return _result("pass" if ok else "fail",
                            f"Your age ({int(age)}) {'meets' if ok else 'is below'} the published minimum of {limit}.")
+
+        # Strict upper-bound wording ("under 45", "younger than 45",
+        # German "unter/jünger als 45") excludes applicants at the boundary.
+        strict_maximum = re.search(
+            r"(?i)\\b(?:under|younger than|less than|below|unter|jünger als)\\s+(?:the age of\\s+)?(\\d{2})\\s*(?:years?|yrs?|jahre?)?\\b",
+            lower,
+        )
+        if strict_maximum:
+            strict_limit = int(strict_maximum.group(1))
+            ok = age < strict_limit
+            return _result(
+                "pass" if ok else "fail",
+                f"Your age ({int(age)}) {'is below' if ok else 'does not meet'} the strict age limit of under {strict_limit}.",
+            )
+
         qualified = any(profile.get(k) is True for k in (
             "regular_government_employee", "public_university_faculty", "approved_rd_researcher"
         ))
