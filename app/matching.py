@@ -5,17 +5,20 @@ Unknown or unsupported criteria are surfaced as needing review, never guessed.
 """
 from __future__ import annotations
 
+import math
 import re
 from typing import Any
 
 
 def _number(value: Any) -> float | None:
-    if value is None or value == "":
+    # Booleans are integers in Python, but are never valid measurements.
+    if value is None or isinstance(value, bool) or value == "":
         return None
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
         return None
+    return number if math.isfinite(number) else None
 
 
 def _result(state: str, explanation: str) -> dict[str, str]:
