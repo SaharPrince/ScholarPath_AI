@@ -258,9 +258,6 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
     def test_goettingen_individual_funding_programmes_are_separate_sources(self) -> None:
         sources = {source["name"]: source for source in GERMANY_SOURCES}
         expected = {
-            "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027": (
-                "https://www.uni-goettingen.de/en/santander%2Bstipendien/707360.html",
-            ),
             "University of Göttingen – Academic Degree Bursaries for International Students": (
                 "https://www.uni-goettingen.de/en/516679.html",
             ),
@@ -272,9 +269,19 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
             with self.subTest(source=name):
                 self.assertEqual(sources[name]["source_type"], "official_programme")
                 self.assertEqual(sources[name]["official_url"], url)
-        self.assertEqual(
-            sources["University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027"]["provider_name"],
-            "Openbank Deutschland AG",
+
+        # The university's old Santander detail URL now serves a privacy notice,
+        # while its funding index lists only the expired summer 2026 call.
+        self.assertNotIn(
+            "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027",
+            sources,
+        )
+        goettingen_index = sources[
+            "University of Göttingen – Scholarships and Funding for International Students"
+        ]
+        self.assertIn(
+            "https://uni-goettingen.de/en/707360.html",
+            goettingen_index.get("exclude_candidate_urls", ()),
         )
 
     def test_goettingen_outgoing_promos_and_dead_funding_page_are_not_added(self) -> None:
