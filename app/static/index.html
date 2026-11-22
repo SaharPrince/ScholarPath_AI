@@ -10,6 +10,7 @@
 .topbar{background:#102c2a;color:#fff}.nav{height:76px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:-.03em;font-size:19px}.brandmark{width:36px;height:36px;border-radius:12px;background:#d7f1e4;color:#145b48;display:grid;place-items:center;font-size:19px}.navnote{font-size:13px;color:#b8ccc4}
 .hero{background:radial-gradient(ellipse at 82% 20%,rgba(86,160,119,.24),transparent 36%),linear-gradient(120deg,#102c2a,#174b3d);color:#fff;padding:65px 0 80px}.eyebrow{color:#b9e5ce;text-transform:uppercase;font-size:11px;font-weight:800;letter-spacing:.16em}.hero h1{font-size:clamp(34px,5vw,54px);line-height:1.08;letter-spacing:-.055em;max-width:690px;margin:15px 0}.hero p{max-width:600px;color:#d0dfd8;font-size:16px;margin:0}.hero-tags{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}.tag{border:1px solid #55766a;border-radius:30px;padding:6px 12px;color:#e0eee6;font-size:12px}
 main{padding:0 0 70px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:-30px;position:relative}.stat{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 20px;box-shadow:var(--shadow)}.stat strong{display:block;font-size:25px;letter-spacing:-.04em}.stat span{font-size:12px;color:var(--muted)}
+.coverage-notice{margin:12px 0 28px;padding:12px 15px;border:1px solid #dce8df;border-radius:12px;background:#f4f8f4;color:#425d4d;font-size:12px;line-height:1.6}.coverage-notice.partial{border-color:#ead7a8;background:#fff9e9;color:#795b20}.coverage-notice.unknown{border-color:#e5d9c7;background:#faf7f1;color:#75614b}
 .section-head{display:flex;justify-content:space-between;align-items:end;gap:20px;margin:44px 0 18px}.section-head h2{font-size:25px;letter-spacing:-.04em;margin:0}.section-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
 .filters{display:grid;grid-template-columns:minmax(220px,1fr) 190px 190px;gap:10px;background:#fff;border:1px solid var(--line);padding:12px;border-radius:16px;margin-bottom:18px}.field{position:relative}.field input,.field select{width:100%;height:44px;border:1px solid var(--line);border-radius:10px;background:#fbfdfb;color:var(--ink);padding:0 13px;outline:none}.field input:focus,.field select:focus{border-color:#5b9c7d;box-shadow:0 0 0 3px #dff2e9}
 .resultsline{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin:12px 2px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.card{background:#fff;border:1px solid var(--line);border-radius:17px;padding:21px;transition:transform .18s,border-color .18s;box-shadow:0 5px 22px rgba(24,54,44,.035)}.card:hover{transform:translateY(-2px);border-color:#b9d8c7}.cardtop{display:flex;justify-content:space-between;align-items:center;gap:10px}.pill{display:inline-flex;align-items:center;border-radius:30px;padding:5px 10px;font-size:11px;font-weight:750;background:#edf3ef;color:#52655c}.pill.open{background:#e0f4e8;color:#176b45}.pill.closed{background:#fcebe8;color:#a34a3c}.pill.upcoming{background:#fff4dc;color:#94651a}.pill.unknown{background:#edf0f1;color:#667276}.trust{font-size:11px;color:#778781}.card h3{font-size:19px;line-height:1.3;letter-spacing:-.025em;margin:16px 0 6px}.provider{font-size:13px;color:var(--muted)}.meta{display:flex;gap:16px;flex-wrap:wrap;margin:17px 0;color:#53645f;font-size:12px}.meta span{display:flex;gap:6px;align-items:center}.funding{border-top:1px solid #edf1ee;padding-top:13px;color:#40544c;font-size:13px;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.cardfoot{display:flex;justify-content:space-between;align-items:center;margin-top:17px}.source{font-size:11px;color:#74827d;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.detailbtn{border:0;background:#e2f2e9;color:#176348;padding:9px 13px;border-radius:9px;font-weight:750;font-size:12px}.detailbtn:hover{background:#cde9da}
@@ -543,6 +544,7 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 <section class="hero"><div class="pattern" aria-hidden="true"></div><div class="orb one" aria-hidden="true"></div><div class="orb two" aria-hidden="true"></div><div class="shell hero-inner"><div class="eyebrow"><span class="pulse"></span> A clearer path to your future</div><h1>Find scholarships.<br><em>Know where you stand.</em></h1><p>Discover current opportunities from official German providers, understand the eligibility rules, and see what still needs checking — without guesswork.</p><div class="searchbox"><span class="search-icon" aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search by scholarship, provider or destination…" aria-label="Search scholarships"><button class="primary" id="heroSearch">Explore opportunities <span aria-hidden="true">→</span></button></div><div class="trustline"><span><b class="check">✓</b> Official-source links</span><span><b class="check">✓</b> Clear eligibility criteria</span><span><b class="check">✓</b> Verification status shown</span></div></div></section>
 <main class="shell">
 <div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Live opportunities found</span></div><div class="stat"><strong id="openCount">—</strong><span>Open according to source</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
+<div id="discoveryCoverage" class="coverage-notice unknown" role="status" aria-live="polite">Checking how many official sources are reachable…</div>
 <section class="currency-panel" id="currency-panel" aria-labelledby="currency-title">
  <div class="currency-heading"><div><div class="eyebrow" style="color:#397d60">Plan your move with current rates</div><h2 id="currency-title">Live currency exchange reference</h2><p>Estimate what accommodation, food, transport and travel may cost when your money is converted abroad.</p></div><span class="currency-badge">Official daily rates</span></div>
  <div class="currency-layout">
@@ -626,6 +628,27 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 const $=id=>document.getElementById(id);
 let allScholarships=[];
 let activeSourceCount=0;
+function renderDiscoveryCoverage(report){
+ const box=$("discoveryCoverage");
+ box.classList.remove("partial","unknown");
+ if(!report||report.status==="unknown"){
+  box.classList.add("unknown");
+  box.textContent="Source coverage could not be confirmed. Treat this list as incomplete until the scan status is available.";
+  return;
+ }
+ const completed=Number(report.completed_sources||0),total=Number(report.total_sources||0);
+ const failed=(report.failed_sources||[]),timedOut=(report.timed_out_sources||[]),unavailable=(report.sources_with_unavailable_pages||[]);
+ if(report.partial){
+  box.classList.add("partial");
+  const details=[];
+  if(timedOut.length)details.push("Timed out: "+timedOut.join(", "));
+  if(failed.length)details.push("Failed: "+failed.join(", "));
+  if(unavailable.length)details.push("Some pages unavailable: "+unavailable.join(", "));
+  box.textContent="Partial official-source scan: "+completed+" of "+total+" source checks completed; "+Number(report.pages_succeeded||0)+" of "+Number(report.pages_attempted||0)+" pages responded successfully. This is not a complete list of available scholarships. "+details.join(" · ")+" Recheck later and confirm opportunities directly with providers.";
+ }else{
+  box.textContent="Official-source scan completed: "+completed+" of "+total+" configured source checks finished; "+Number(report.pages_succeeded||0)+" pages responded successfully. Individual scholarship details are still unverified until confirmed with the provider.";
+ }
+}
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const currencyNames={PKR:"Pakistani Rupee",EUR:"Euro",USD:"US Dollar",GBP:"British Pound",CAD:"Canadian Dollar",AUD:"Australian Dollar",AED:"UAE Dirham",SAR:"Saudi Riyal",CHF:"Swiss Franc",CNY:"Chinese Yuan",JPY:"Japanese Yen",INR:"Indian Rupee",TRY:"Turkish Lira",NZD:"New Zealand Dollar",SGD:"Singapore Dollar",SEK:"Swedish Krona",NOK:"Norwegian Krone",DKK:"Danish Krone",PLN:"Polish Zloty",CZK:"Czech Koruna",HUF:"Hungarian Forint",RON:"Romanian Leu",ZAR:"South African Rand",BRL:"Brazilian Real",MXN:"Mexican Peso",KRW:"South Korean Won",IDR:"Indonesian Rupiah",THB:"Thai Baht",PHP:"Philippine Peso",HKD:"Hong Kong Dollar",ILS:"Israeli Shekel",ISK:"Icelandic Krona"};
 let currencySnapshot=null;
@@ -843,20 +866,24 @@ async function load(){
  $("resultCount").textContent="Searching live sources…";
  try{
   // Fetch the live catalogue and static source count together to avoid serial network waits.
-  const [r,sourceResponse]=await Promise.all([
+  const [r,sourceResponse,coverageResponse]=await Promise.all([
    fetch("/api/scholarships?status=all&limit=100",{cache:"no-store"}),
-   fetch("/api/sources",{cache:"default"})
+   fetch("/api/sources",{cache:"default"}),
+   fetch("/api/discovery-status",{cache:"no-store"}).catch(()=>null)
   ]);
   if(!r.ok){const p=await r.json().catch(()=>({}));throw new Error(p.detail||"Live scholarship scan returned "+r.status);}
-  const [scholarships,sources]=await Promise.all([
+  const [scholarships,sources,coverage]=await Promise.all([
    r.json(),
-   sourceResponse.ok?sourceResponse.json():Promise.resolve([])
+   sourceResponse.ok?sourceResponse.json():Promise.resolve([]),
+   coverageResponse?.ok?coverageResponse.json():Promise.resolve(null)
   ]);
   allScholarships=scholarships;
   activeSourceCount=sources.length;
+  renderDiscoveryCoverage(coverage);
   render();
  }catch(e){
   $("cards").innerHTML='<div class="empty"><strong>Live discovery is temporarily unavailable</strong>'+esc(e.message)+' Please try again shortly.</div>';
+  renderDiscoveryCoverage(null);
   $("resultCount").textContent="Live scan unavailable";
   $("totalCount").textContent="—";$("openCount").textContent="—";$("sourceCount").textContent=activeSourceCount||"—";
  }
