@@ -63,17 +63,17 @@ try {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        status: "complete",
-        partial: false,
-        total_sources: 1,
-        completed_sources: 1,
-        pages_attempted: 2,
-        pages_succeeded: 2,
-        pages_unavailable: 0,
-        pages_cancelled: 0,
+        status: "partial",
+        partial: true,
+        total_sources: 5,
+        completed_sources: 3,
+        pages_attempted: 8,
+        pages_succeeded: 6,
+        pages_unavailable: 1,
+        pages_cancelled: 1,
         failed_sources: [],
-        timed_out_sources: [],
-        sources_with_unavailable_pages: []
+        timed_out_sources: ["Slow official provider"],
+        sources_with_unavailable_pages: ["Restricted provider"]
       })
     }));
 
@@ -161,6 +161,8 @@ try {
     await page.waitForSelector(".card");
 
     await page.waitForSelector(".guide-section");
+    assert.match(await page.locator("#discoveryCoverage").innerText(), /Partial official-source scan/);
+    assert.match(await page.locator("#discoveryCoverage").innerText(), /Slow official provider/);
 
     const education = page.locator('#profileForm [name="current_education_level"]');
     const marksField = page.locator('#profileForm [name="academic_percentage"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
