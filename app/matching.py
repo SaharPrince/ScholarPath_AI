@@ -534,6 +534,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             completed_degree_required = re.search(
                 r"\b(?:must|should|need to|have to|are required to)\s+(?:already\s+)?"
                 r"(?:have|hold|possess|complete|completed)\b.{0,60}\b(?:university degree|university qualification)\b|"
+                r"\b(?:have|hold|possess)\s+(?:a\s+)?(?:recognized\s+)?university\s+(?:degree|qualification)\b|"
                 r"\b(?:applicants?|candidates?)\s+with\s+(?:a\s+)?(?:recognized\s+)?"
                 r"university\s+(?:degree|qualification)\b|"
                 r"\b(?:completed|holding|holder of)\b.{0,60}\b(?:university degree|university qualification)\b|"
