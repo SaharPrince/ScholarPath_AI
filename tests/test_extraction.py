@@ -2703,5 +2703,27 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(all(result.criteria_sources[item] == FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
 
 
+    def test_privacy_only_santander_page_is_not_promoted_as_a_scholarship(self):
+        html = """
+        <html><head><title>Scholarships of the Openbank Deutschland AG</title></head>
+        <body><main>
+          <h1>Scholarships of the Openbank Deutschland AG</h1>
+          <p>The collection and processing of data is necessary to carry out a
+          selection procedure for scholarships and to enable scholarships to
+          be awarded to selected people.</p>
+          <p>The following information must be provided in accordance with
+          the General Data Protection Regulation when personal data is collected.</p>
+          <p>Nationality, current student status, highest level of education,
+          year of commencement and average grade are collected.</p>
+        </main></body></html>
+        """
+        result = parse_scholarship_page(
+            html,
+            "https://www.uni-goettingen.de/en/707360.html",
+            "Santander Sorgenfrei Scholarship 2026/2027",
+        )
+        self.assertIsNone(result)
+
+
 if __name__ == "__main__":
     unittest.main()
