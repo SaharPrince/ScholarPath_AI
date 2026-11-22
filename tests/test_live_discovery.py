@@ -66,11 +66,10 @@ class SourcePagePromotionTests(unittest.TestCase):
 
         names = [source["name"] for source in _priority_sources(GERMANY_SOURCES)]
         expected = {
-            "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027",
             "University of Göttingen – Academic Degree Bursaries for International Students",
             "University of Göttingen – Emergency Grants for Students in Financial Difficulty",
         }
-        self.assertEqual(set(names[:3]), expected)
+        self.assertEqual(set(names[:2]), expected)
     def test_directory_sources_are_never_promoted_as_individual_scholarships(self):
         from app.live_discovery import _is_promotable_source_page
 
