@@ -48,7 +48,6 @@ def clear_last_discovery_report() -> None:
     LAST_DISCOVERY_REPORT = {}
 
 GOETTINGEN_PRIORITY_SOURCE_NAMES = frozenset({
-    "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027",
     "University of Göttingen – Academic Degree Bursaries for International Students",
     "University of Göttingen – Emergency Grants for Students in Financial Difficulty",
 })
@@ -57,7 +56,6 @@ GOETTINGEN_PRIORITY_SOURCE_NAMES = frozenset({
 PRIORITY_SOURCE_NAMES = frozenset({
     "Heinrich Böll Foundation – Scholarships",
     "Konrad Adenauer Foundation – International Scholarships",
-    "University of Göttingen – Santander Sorgenfrei Scholarship 2026/2027",
     "University of Göttingen – Academic Degree Bursaries for International Students",
     "University of Göttingen – Emergency Grants for Students in Financial Difficulty",
 })
