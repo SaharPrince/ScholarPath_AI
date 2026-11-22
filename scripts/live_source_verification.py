@@ -60,6 +60,27 @@ def _is_transient_failure(error: Exception) -> bool:
     return status_code is not None and 500 <= status_code < 600
 
 
+def _programme_candidate_title(source: dict | None, url: str) -> str | None:
+    """Supply a grounded programme name when checking a curated detail page.
+
+    Many official pages use generic headings such as "Basic Principles" or
+    German titles such as "Stipendien". Their catalogue entry already names
+    the specific programme, so use that name as parser context rather than
+    treating a generic page heading as proof that the page is not an award.
+    Broad index pages do not receive this override.
+    """
+    if not source:
+        return None
+    explicit_title = source.get("programme_titles", {}).get(url)
+    if explicit_title:
+        return explicit_title
+    is_curated_detail = (
+        url in source.get("programme_urls", ())
+        or source.get("source_type") in {"official_programme", "government"}
+    )
+    return source.get("name") if is_curated_detail else None
+
+
 async def main() -> None:
     failures: list[str] = []
     blocking_failures: list[str] = []
@@ -190,7 +211,7 @@ async def main() -> None:
             source = curated_programme_sources.get(url)
             try:
                 html, final_url = await get_page(client, url)
-                title = (source or {}).get("programme_titles", {}).get(url)
+                title = _programme_candidate_title(source, url)
                 parsed = parse_scholarship_page(html, final_url, title)
                 return url, final_url, parsed, None
             except Exception as exc:
