@@ -290,7 +290,7 @@ def _as_record(parsed, source: dict, url: str) -> dict:
         "source_url": url,
         "criteria": criteria,
         "evidence": evidence,
-        "last_checked_at": None,
+        "last_checked_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
