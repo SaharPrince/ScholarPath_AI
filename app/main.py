@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from app.config import settings
 from app.currency import CurrencyRateUnavailable, get_currency_snapshot
 from app.germany_guide import get_germany_guide
-from app.live_discovery import discover_live_scholarships
+from app.live_discovery import discover_live_scholarships, get_last_discovery_report
 from app.matching import match_profile_to_scholarships
 from app.source_catalog import GERMANY_SOURCES
 
@@ -28,6 +28,7 @@ async def cache_public_scholarship_reads(request, call_next):
     response = await call_next(request)
     path = request.url.path
     is_scholarship_read = path == "/api/scholarships" or path.startswith("/api/scholarships/")
+    is_discovery_status = path == "/api/discovery-status"
     is_source_registry = path == "/api/sources"
     is_germany_guide = path == "/api/germany-guide"
     is_currency_rates = path == "/api/currency-rates"
@@ -35,7 +36,7 @@ async def cache_public_scholarship_reads(request, call_next):
         if is_currency_rates:
             # Rates are public and update daily; edge caching reduces repeat source fetches.
             response.headers["Cache-Control"] = "public, s-maxage=1800, stale-while-revalidate=3600"
-        elif is_scholarship_read:
+        elif is_scholarship_read or is_discovery_status:
             # Keep the live catalogue fresh while allowing Vercel's edge cache to
             # absorb repeat visits instead of invoking a serverless function each time.
             response.headers["Cache-Control"] = "public, s-maxage=60, stale-while-revalidate=300"
@@ -99,12 +100,25 @@ def list_sources() -> list[dict]:
 # This is a short-lived process cache only: no scholarship data is written to disk or a database.
 _DISCOVERY_CACHE_TTL_SECONDS = 60
 _discovery_cache_rows: list[dict] | None = None
+_discovery_cache_report: dict = {
+    "partial": True,
+    "status": "unknown",
+    "total_sources": len(GERMANY_SOURCES),
+    "completed_sources": 0,
+    "failed_sources": [],
+    "timed_out_sources": [],
+    "sources_with_unavailable_pages": [],
+    "pages_attempted": 0,
+    "pages_succeeded": 0,
+    "pages_unavailable": 0,
+    "pages_cancelled": 0,
+}
 _discovery_cache_expires_at = 0.0
 _discovery_cache_lock = asyncio.Lock()
 
 
 async def _live_results() -> list[dict]:
-    global _discovery_cache_rows, _discovery_cache_expires_at
+    global _discovery_cache_rows, _discovery_cache_report, _discovery_cache_expires_at
 
     now = monotonic()
     if _discovery_cache_rows is not None and now < _discovery_cache_expires_at:
@@ -130,9 +144,33 @@ async def _live_results() -> list[dict]:
             ) from exc
 
         _discovery_cache_rows = copy.deepcopy(rows)
+        report = get_last_discovery_report()
+        if report:
+            report["status"] = "partial" if report.get("partial") else "complete"
+            _discovery_cache_report = copy.deepcopy(report)
+        else:
+            _discovery_cache_report = {
+                "partial": True,
+                "status": "unknown",
+                "total_sources": len(GERMANY_SOURCES),
+                "completed_sources": 0,
+                "failed_sources": [],
+                "timed_out_sources": [],
+                "sources_with_unavailable_pages": [],
+                "pages_attempted": 0,
+                "pages_succeeded": 0,
+                "pages_unavailable": 0,
+                "pages_cancelled": 0,
+            }
         _discovery_cache_expires_at = monotonic() + _DISCOVERY_CACHE_TTL_SECONDS
         return copy.deepcopy(_discovery_cache_rows)
 
+
+@app.get("/api/discovery-status", tags=["scholarships"])
+async def discovery_status() -> dict:
+    """Expose whether the most recent live scan covered all configured sources."""
+    await _live_results()
+    return copy.deepcopy(_discovery_cache_report)
 
 @app.get("/api/scholarships", tags=["scholarships"])
 async def list_scholarships(
