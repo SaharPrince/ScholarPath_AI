@@ -14,6 +14,7 @@ class GermanyGuideTests(unittest.TestCase):
         self.assertIn("pakistani-community", ids)
         self.assertIn("first-weeks", ids)
         self.assertIn("apply-yourself", ids)
+        self.assertIn("choosing-trusted-consultant", ids)
         self.assertIn("avoid-scams", ids)
         self.assertEqual(guide["version"], GUIDE_VERSION)
 
@@ -56,6 +57,10 @@ class GermanyGuideTests(unittest.TestCase):
         self.assertIn("do not sell land", content)
         self.assertIn("nccia", content)
         self.assertIn("trusted family member", content)
+        self.assertIn("full legal name", content)
+        self.assertIn("written contract", content)
+        self.assertIn("one-time codes", content)
+        self.assertIn("issuing authority", content)
 
     def test_guide_api_returns_the_catalogue(self):
         result = api.germany_guide()
