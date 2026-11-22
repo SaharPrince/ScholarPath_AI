@@ -479,6 +479,28 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 @media(max-width:620px){.criterion{padding:14px}.criterion-copy{font-size:13px}.requirements-intro{font-size:12px}}
 
 
+
+/* Daily official exchange-rate planner */
+.currency-panel{margin:28px 0 12px;padding:25px 27px;background:#fff;border:1px solid var(--line);border-radius:19px;box-shadow:var(--shadow)}
+.currency-heading{display:flex;justify-content:space-between;align-items:start;gap:18px;margin-bottom:17px}
+.currency-heading h2{font-size:24px;letter-spacing:-.04em;margin:4px 0}
+.currency-heading p{font-size:13px;color:var(--muted);margin:0;max-width:650px}
+.currency-badge{flex:0 0 auto;border-radius:30px;background:#e5f3e9;color:#176b55;padding:6px 11px;font-size:11px;font-weight:750}
+.currency-layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(220px,.7fr);gap:15px}
+.currency-converter{background:#f7faf7;border:1px solid #e7eee8;border-radius:14px;padding:16px}
+.currency-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.currency-fields label{display:block;font-size:11px;color:#61736a;font-weight:700}
+.currency-fields input,.currency-fields select{display:block;width:100%;height:43px;margin-top:5px;padding:0 10px;border:1px solid #dce6df;border-radius:9px;background:white;color:var(--ink);min-width:0}
+.currency-result{margin-top:14px;padding:13px 14px;background:#e8f4ec;border-radius:10px;color:#145b42;font-weight:750;font-size:19px;overflow-wrap:anywhere}
+.currency-result small{display:block;font-size:11px;font-weight:500;color:#5b7567;margin-top:3px}
+.currency-source{padding:15px;border:1px solid #e7eee8;border-radius:14px;display:flex;flex-direction:column;justify-content:center;gap:8px;font-size:12px;color:var(--muted);min-width:0}
+.currency-source strong{color:var(--ink);font-size:13px}
+.currency-source a{color:#176b55;font-weight:700;text-decoration:none;overflow-wrap:anywhere}
+.currency-source a:hover{text-decoration:underline}
+.currency-note{font-size:11px;color:#77847e;margin:13px 1px 0;line-height:1.6}
+.currency-error{color:#9a4b39}
+@media(max-width:720px){.currency-panel{padding:18px 16px;margin-top:22px}.currency-layout{grid-template-columns:1fr}.currency-heading{display:block}.currency-badge{display:inline-flex;margin-top:10px}.currency-fields{grid-template-columns:1fr 1fr}.currency-fields label:first-child{grid-column:1/-1}}
+@media(max-width:390px){.currency-fields{grid-template-columns:1fr}.currency-fields label:first-child{grid-column:auto}}
 </style>
 </head>
 <body>
@@ -486,6 +508,21 @@ body.motion-paused *,body.motion-paused *:before,body.motion-paused *:after,body
 <section class="hero"><div class="pattern" aria-hidden="true"></div><div class="orb one" aria-hidden="true"></div><div class="orb two" aria-hidden="true"></div><div class="shell hero-inner"><div class="eyebrow"><span class="pulse"></span> A clearer path to your future</div><h1>Find scholarships.<br><em>Know where you stand.</em></h1><p>Discover current opportunities from official German providers, understand the eligibility rules, and see what still needs checking — without guesswork.</p><div class="searchbox"><span class="search-icon" aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search by scholarship, provider or destination…" aria-label="Search scholarships"><button class="primary" id="heroSearch">Explore opportunities <span aria-hidden="true">→</span></button></div><div class="trustline"><span><b class="check">✓</b> Official-source links</span><span><b class="check">✓</b> Clear eligibility criteria</span><span><b class="check">✓</b> Verification status shown</span></div></div></section>
 <main class="shell">
 <div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Live opportunities found</span></div><div class="stat"><strong id="openCount">—</strong><span>Open according to source</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
+<section class="currency-panel" id="currency-panel" aria-labelledby="currency-title">
+ <div class="currency-heading"><div><div class="eyebrow" style="color:#397d60">Plan your move with current rates</div><h2 id="currency-title">Live currency exchange reference</h2><p>Estimate what accommodation, food, transport and travel may cost when your money is converted abroad.</p></div><span class="currency-badge">Official daily rates</span></div>
+ <div class="currency-layout">
+  <div class="currency-converter">
+   <div class="currency-fields">
+    <label>Amount<input id="currencyAmount" type="number" min="0" step="any" value="1" inputmode="decimal"></label>
+    <label>From<select id="currencyFrom" aria-label="Convert from currency"></select></label>
+    <label>To<select id="currencyTo" aria-label="Convert to currency"></select></label>
+   </div>
+   <div class="currency-result" id="currencyResult" aria-live="polite">Loading official exchange rates…</div>
+  </div>
+  <div class="currency-source"><strong id="currencyAsOf">Fetching latest publication…</strong><span id="currencySourceText">Rates are retrieved directly from central-bank publications.</span><span id="currencySourceLinks"></span></div>
+ </div>
+ <p class="currency-note" id="currencyNote">Rates are indicative daily references, not guaranteed bank, card, cash-exchange or money-transfer prices. Actual costs may include provider fees and different buying/selling rates.</p>
+</section>
 
 <section class="profile-panel" id="profilePanel">
  <div class="eyebrow" style="color:#397d60">Your personal scholarship finder</div>
@@ -538,6 +575,49 @@ const $=id=>document.getElementById(id);
 let allScholarships=[];
 let activeSourceCount=0;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const currencyNames={PKR:"Pakistani Rupee",EUR:"Euro",USD:"US Dollar",GBP:"British Pound",CAD:"Canadian Dollar",AUD:"Australian Dollar",AED:"UAE Dirham",SAR:"Saudi Riyal",CHF:"Swiss Franc",CNY:"Chinese Yuan",JPY:"Japanese Yen",INR:"Indian Rupee",TRY:"Turkish Lira",NZD:"New Zealand Dollar",SGD:"Singapore Dollar",SEK:"Swedish Krona",NOK:"Norwegian Krone",DKK:"Danish Krone",PLN:"Polish Zloty",CZK:"Czech Koruna",HUF:"Hungarian Forint",RON:"Romanian Leu",ZAR:"South African Rand",BRL:"Brazilian Real",MXN:"Mexican Peso",KRW:"South Korean Won",IDR:"Indonesian Rupiah",THB:"Thai Baht",PHP:"Philippine Peso",HKD:"Hong Kong Dollar",ILS:"Israeli Shekel",ISK:"Icelandic Krona"};
+let currencySnapshot=null;
+function currencyFormat(value,code){
+ try{return new Intl.NumberFormat(undefined,{style:"currency",currency:code,maximumFractionDigits:value<1?4:2}).format(value);}
+ catch{return Number(value).toLocaleString(undefined,{maximumFractionDigits:4})+" "+code;}
+}
+function renderCurrencyConversion(){
+ if(!currencySnapshot)return;
+ const amount=Number($("currencyAmount").value),from=$("currencyFrom").value,to=$("currencyTo").value;
+ const result=$("currencyResult");
+ if(!Number.isFinite(amount)||amount<0){result.textContent="Enter a valid non-negative amount.";return;}
+ const fromRate=currencySnapshot.rates[from]?.pkr_per_unit,toRate=currencySnapshot.rates[to]?.pkr_per_unit;
+ if(!fromRate||!toRate){result.textContent="This currency pair is not available in the latest published data.";return;}
+ const converted=amount*fromRate/toRate;
+ result.innerHTML=esc(currencyFormat(converted,to))+"<small>"+esc(currencyFormat(amount,from))+" at the published indicative rate</small>";
+}
+async function loadCurrencyRates(){
+ const result=$("currencyResult");
+ try{
+  const response=await fetch("/api/currency-rates",{cache:"no-store"});
+  const payload=await response.json();
+  if(!response.ok)throw new Error(payload.detail||"Official exchange rates are temporarily unavailable.");
+  currencySnapshot=payload;
+  const codes=Object.keys(payload.rates||{}).filter(code=>payload.rates[code]?.pkr_per_unit>0).sort((a,b)=>a==="PKR"?-1:b==="PKR"?1:a.localeCompare(b));
+  const options=codes.map(code=>'<option value="'+esc(code)+'">'+esc(code+" — "+(currencyNames[code]||code))+"</option>").join("");
+  $("currencyFrom").innerHTML=options;$("currencyTo").innerHTML=options;
+  $("currencyFrom").value="PKR";$("currencyTo").value=codes.includes("EUR")?"EUR":(codes.find(code=>code!=="PKR")||"PKR");
+  $("currencyAsOf").textContent="SBP publication: "+(payload.rate_date||"date not stated")+(payload.is_stale?" · last successful snapshot":"");
+  $("currencySourceText").textContent="Daily reference rates · "+codes.length+" currencies available";
+  $("currencySourceLinks").innerHTML=(payload.sources||[]).map(source=>'<a href="'+esc(source.url)+'" target="_blank" rel="noopener">'+esc(source.name)+" ("+esc(source.rate_date||"latest")+") ↗</a>").join("<br>");
+  $("currencyNote").textContent=payload.notice||"Indicative daily rates only. Actual bank, card, cash-exchange and transfer rates may differ and may include fees.";
+  if(payload.is_stale)$("currencyAsOf").classList.add("currency-error");
+  renderCurrencyConversion();
+ }catch(error){
+  result.textContent=error.message;
+  result.classList.add("currency-error");
+  $("currencyAsOf").textContent="Rates unavailable";
+  $("currencySourceText").textContent="No unverified or invented rates are shown. Please try again later.";
+ }
+}
+$("currencyAmount").addEventListener("input",renderCurrencyConversion);
+$("currencyFrom").addEventListener("change",renderCurrencyConversion);
+$("currencyTo").addEventListener("change",renderCurrencyConversion);
 const nice=v=>String(v||"unknown").replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 const statusClass=v=>["open","closed","upcoming"].includes(v)?v:"unknown";
 const shortText=v=>v?String(v):"Not stated by the source";
@@ -1001,6 +1081,7 @@ function showMatchDetail(id,rows){
  document.addEventListener("keydown",event=>{if(event.key==="Escape"&&activeMenu){closeMenu();}});
 })();
 
+loadCurrencyRates();
 load();
 
 /* Local motion controls; these never call the discovery or matching APIs. */
