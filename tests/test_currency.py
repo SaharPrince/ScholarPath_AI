@@ -60,6 +60,18 @@ class CurrencyParsingTests(unittest.TestCase):
         with self.assertRaises(CurrencyRateUnavailable):
             parse_rate_response(payload)
 
+    def test_rejects_oversized_provider_timestamp(self):
+        payload = provider_payload()
+        payload["time_last_update_unix"] = 10**1000
+        with self.assertRaises(CurrencyRateUnavailable):
+            parse_rate_response(payload)
+
+    def test_ignores_oversized_provider_rate(self):
+        payload = provider_payload()
+        payload["rates"]["BAD"] = 10**1000
+        result = parse_rate_response(payload)
+        self.assertNotIn("BAD", result["rates"])
+
     def test_ignores_invalid_rate_values(self):
         payload = provider_payload()
         payload["rates"]["BAD"] = -1
