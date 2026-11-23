@@ -81,12 +81,16 @@ class OfficialDiscoveryTargetTests(unittest.TestCase):
     def test_avicenna_national_and_international_programmes_are_separate(self) -> None:
         sources = {source["name"]: source for source in GERMANY_SOURCES}
         self.assertEqual(
-            sources["Avicenna Studienwerk – Scholarships"]["official_url"],
+            sources["Avicenna Studienwerk – Scholarships and Funding Overview"]["official_url"],
             "https://www.avicenna-studienwerk.de/stipendium/",
         )
         self.assertEqual(
             sources["Avicenna Studienwerk – International Scholarship Programme"]["official_url"],
             "https://www.avicenna-studienwerk.de/internationales-stipendienprogramm/",
+        )
+        self.assertEqual(
+            sources["Avicenna Studienwerk – Scholarships and Funding Overview"]["source_type"],
+            "official_index",
         )
         self.assertEqual(
             sources["Avicenna Studienwerk – International Scholarship Programme"]["source_type"],
