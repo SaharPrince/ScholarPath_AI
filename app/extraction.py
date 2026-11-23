@@ -1395,7 +1395,10 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
         "eligibility": (
             "Eligibility Criteria", "Eligibility", "Who can apply", "Eligible applicants",
             "Technical Eligibility Requirements", "Wer kann sich bewerben",
-            "Voraussetzungen", "Fördervoraussetzungen",
+            "Voraussetzungen", "Fördervoraussetzungen", "Bewerbungsvoraussetzungen",
+            "Vorausgesetzt werden", "Was bringst du mit?",
+            "Requirements for the application for a scholarship",
+            "Requirements for the application for doctoral scholarship support",
         ),
         "ineligibility": (
             "Ineligibility", "Who cannot apply", "Who is not eligible",
@@ -1440,7 +1443,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             (
                 index for index, statement in enumerate(statements)
                 if re.search(
-                    r"(?i)individuals in the following circumstances are not eligible",
+                    r"(?i)^(?:individuals in the following circumstances are not eligible|nicht förderfähig)\\b",
                     statement,
                 )
             ),
