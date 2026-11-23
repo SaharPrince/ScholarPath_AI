@@ -35,6 +35,7 @@ from app.extraction import (
     GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL,
     GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GERMAN_URL,
     _augment_goettingen_deutschlandstipendium,
+    augment_curated_programme,
 )
 import sqlite3
 import unittest
@@ -330,6 +331,43 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any(item[1] == "Other funding" and "BAföG" in item[2] for item in result.criteria))
         self.assertTrue(all(result.criteria_sources[item] in {GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GERMAN_URL} for item in result.criteria))
         self.assertTrue(all(result.evidence_sources[item] in {GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GUIDELINES_URL, GOETTINGEN_DEUTSCHLANDSTIPENDIUM_GERMAN_URL} for item in result.evidence))
+
+    def test_live_curated_fallback_uses_gottingen_rules_when_generic_parser_returns_none(self):
+        html = """
+        <html><body><main>
+          <h1>Landesstipendium Niedersachsen</h1>
+          <p>The application portal was open from 1 September 2026 to 30 September 2026!</p>
+          <p>The Niedersachsen scholarships are awarded on the grounds of special achievements or outstanding ability as a one-off grant of 500 euros.</p>
+          <p>Anyone is eligible to apply who is already enrolled at Göttingen University.</p>
+          <p>An enrolled student is not on leave of absence at the beginning of the funding period.</p>
+          <p>Doctoral/phd students are not eligible.</p>
+        </main></body></html>
+        """
+        result = augment_curated_programme(
+            None,
+            html,
+            GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL,
+            "University of Göttingen – Niedersachsenstipendium",
+            "University of Göttingen",
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result.title, "Lower Saxony Scholarship (Niedersachsenstipendium)")
+        self.assertEqual(result.provider_name, "University of Göttingen")
+        self.assertEqual(result.fields["deadline_date"], "2026-09-30")
+        self.assertEqual(result.application_status, "closed")
+        self.assertTrue(any(label == "University of Göttingen enrolment" for _, label, _ in result.criteria))
+        self.assertTrue(any(kind == "ineligibility" and "doctoral" in text.lower() for kind, _, text in result.criteria))
+        self.assertTrue(all(result.criteria_sources[item] == GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL for item in result.criteria))
+
+    def test_live_curated_fallback_does_not_create_record_without_extracted_criteria(self):
+        result = augment_curated_programme(
+            None,
+            "<html><body><p>General university information.</p></body></html>",
+            GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL,
+            "University of Göttingen – Niedersachsenstipendium",
+            "University of Göttingen",
+        )
+        self.assertIsNone(result)
 
     def test_goettingen_niedersachsenstipendium_extracts_current_call_and_keeps_sensitive_factors_manual(self):
         parsed = ExtractedPage("Landesstipendium Niedersachsen", None, "University of Göttingen")
