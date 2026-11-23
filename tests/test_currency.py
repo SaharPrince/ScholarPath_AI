@@ -46,6 +46,20 @@ class CurrencyParsingTests(unittest.TestCase):
         with self.assertRaises(CurrencyRateUnavailable):
             parse_rate_response(payload)
 
+    def test_rejects_non_finite_provider_timestamps(self):
+        for invalid_time in (float("nan"), float("inf"), float("-inf")):
+            payload = provider_payload()
+            payload["time_last_update_unix"] = invalid_time
+            with self.subTest(invalid_time=invalid_time):
+                with self.assertRaises(CurrencyRateUnavailable):
+                    parse_rate_response(payload)
+
+    def test_rejects_invalid_provider_refresh_schedule(self):
+        payload = provider_payload()
+        payload["time_next_update_unix"] = payload["time_last_update_unix"]
+        with self.assertRaises(CurrencyRateUnavailable):
+            parse_rate_response(payload)
+
     def test_ignores_invalid_rate_values(self):
         payload = provider_payload()
         payload["rates"]["BAD"] = -1
