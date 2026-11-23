@@ -31,14 +31,18 @@ class CurrencyRateUnavailable(RuntimeError):
 
 
 def _utc_from_unix(value: object, field: str) -> datetime:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise CurrencyRateUnavailable("The exchange-rate provider returned an invalid update time.")
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+    ):
+        raise CurrencyRateUnavailable(f"The exchange-rate provider returned an invalid {field} time.")
     try:
         parsed = datetime.fromtimestamp(value, tz=timezone.utc)
     except (OverflowError, OSError, ValueError) as exc:
-        raise CurrencyRateUnavailable("The exchange-rate provider returned an invalid update time.") from exc
+        raise CurrencyRateUnavailable(f"The exchange-rate provider returned an invalid {field} time.") from exc
     if parsed.timestamp() <= 0:
-        raise CurrencyRateUnavailable("The exchange-rate provider returned an invalid update time.")
+        raise CurrencyRateUnavailable(f"The exchange-rate provider returned an invalid {field} time.")
     return parsed
 
 
