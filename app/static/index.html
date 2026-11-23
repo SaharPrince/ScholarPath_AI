@@ -511,22 +511,6 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
 <main class="shell">
 <div class="stats"><div class="stat"><strong id="totalCount">—</strong><span>Live opportunities found</span></div><div class="stat"><strong id="openCount">—</strong><span>Open according to source</span></div><div class="stat"><strong id="sourceCount">—</strong><span>Active official sources</span></div></div>
 <div id="discoveryCoverage" class="coverage-notice unknown" role="status" aria-live="polite">Checking how many official sources are reachable…</div>
-<section class="currency-panel" id="currency-panel" aria-labelledby="currency-title">
- <div class="currency-heading"><div><div class="eyebrow" style="color:#397d60">Plan your move with current rates</div><h2 id="currency-title">Live currency exchange reference</h2><p>Estimate what accommodation, food, transport and travel may cost when your money is converted abroad.</p></div><span class="currency-badge">Official daily rates</span></div>
- <div class="currency-layout">
-  <div class="currency-converter">
-   <div class="currency-fields">
-    <label>Amount<input id="currencyAmount" type="number" min="0" step="any" value="1" inputmode="decimal"></label>
-    <label>From<select id="currencyFrom" aria-label="Convert from currency"></select></label>
-    <label>To<select id="currencyTo" aria-label="Convert to currency"></select></label>
-   </div>
-   <div class="currency-result" id="currencyResult" aria-live="polite">Loading official exchange rates…</div>
-  </div>
-  <div class="currency-source"><strong id="currencyAsOf">Fetching latest publication…</strong><span id="currencySourceText">Rates are retrieved directly from central-bank publications.</span><span id="currencySourceLinks"></span></div>
- </div>
- <p class="currency-note" id="currencyNote">Rates are indicative daily references, not guaranteed bank, card, cash-exchange or money-transfer prices. Actual costs may include provider fees and different buying/selling rates.</p>
-</section>
-
 <section class="germany-guide" id="germany-guide" aria-labelledby="germanyGuideTitle">
  <div class="guide-heading">
   <div><div class="eyebrow" style="color:#397d60">Pakistan to Germany · practical roadmap</div>
@@ -540,7 +524,18 @@ html{scroll-behavior:smooth;scroll-padding-top:24px}
   <div class="guide-progress-track"><span id="guideProgressBar"></span></div>
  </div>
  <div class="guide-notice" id="guideNotice">Loading the latest guide content…</div>
- <div class="guide-sections" id="guideSecn><option value="vocational_training">Vocational training / Ausbildung</option></select></div>
+ <div class="guide-sections" id="guideSections"></div>
+ <p class="guide-footnote">Visa rules, financial amounts and local housing availability can change. Always confirm details with the German Missions in Pakistan, your university or the relevant German authority.</p>
+</section>
+
+<section class="profile-panel" id="profilePanel">
+ <div class="eyebrow" style="color:#397d60">Your personal scholarship finder</div>
+ <h2>Find scholarships in Germany that fit you</h2>
+ <p>Tell us your nationality and study plans. Add language level, experience or admission details when you know them; missing facts stay marked for review.</p>
+ <form id="profileForm"><div class="profile-grid">
+  <div class="profile-field"><label>Nationality <span style="color:#a34a3c">required</span></label><input name="nationality" type="text" required maxlength="80" placeholder="e.g. Pakistani, Indian, Afghan"></div>
+  <div class="profile-field"><label>Age</label><input name="age" type="number" min="13" max="100" placeholder="Your age"></div>
+  <div class="profile-field"><label>Highest education completed <span style="color:#a34a3c">required</span></label><select name="current_education_level" required><option value="">Choose</option><option value="below_matric">Below Matric</option><option value="matric">Matric / SSC</option><option value="intermediate">Intermediate / HSSC</option><option value="bachelors">Bachelor's</option><option value="masters">Master's / MS / MPhil</option><option value="phd">PhD</option><option value="vocational_training">Vocational training / Ausbildung</option></select></div>
   <div class="profile-field"><label>What do you want to study next? <span style="color:#a34a3c">required</span></label><select name="target_study_level" required><option value="">Choose</option><option value="matric">Matric / SSC</option><option value="intermediate">Intermediate / FA / FSc / ICS / ICom</option><option value="bachelors">Bachelor's / Undergraduate</option><option value="master">Master's / MS / MPhil</option><option value="phd">PhD</option><option value="vocational_training">Vocational training / Ausbildung</option></select></div>
   <div class="profile-field"><label>Marks in your latest completed class (%) <span style="font-weight:400;color:#7b8983">optional</span></label><input name="academic_percentage" type="number" min="0" max="100" step="0.01" placeholder="e.g. 82.5"></div>
   <div class="profile-field" data-cgpa-field hidden><label>CGPA (out of 4.0) <span style="font-weight:400;color:#7b8983">optional</span></label><input name="cgpa" type="number" min="0" max="4" step="0.01" placeholder="e.g. 3.45" disabled></div>
@@ -591,61 +586,59 @@ function renderDiscoveryCoverage(report){
   box.textContent="We could not check all official sources. This list may be incomplete.";
   return;
  }
- const completed=Number(report.completed_sources||0),total=Number(report.total_sources||0);
  const succeeded=Number(report.pages_succeeded||0),attempted=Number(report.pages_attempted||0);
  const failed=report.failed_sources||[],timedOut=report.timed_out_sources||[],unavailable=report.sources_with_unavailable_pages||[];
- const partial=Boolean(report.partial);
- if(partial)box.classList.add("partial");
+ if(report.partial)box.classList.add("partial");
  const summary=document.createElement("span");
- summary.textContent=partial
+ summary.textContent=report.partial
   ? "Some official pages could not be reached. "+succeeded+" of "+attempted+" pages checked successfully. This list may be incomplete."
   : "Official-source check completed. "+succeeded+" pages checked successfully. Check each scholarship's official page before applying.";
  box.appendChild(summary);
- const problems=[["Timed out",timedOut],["Failed checks",failed],["Pages unavailable",unavailable]];
- const entries=problems.filter(([,items])=>items.length);
- if(entries.length){
-  const disclosure=document.createElement("details");
-  disclosure.style.marginTop="7px";
-  const heading=document.createElement("summary");
-  heading.textContent="See which checks had problems";
-  heading.style.cursor="pointer";
-  disclosure.appendChild(heading);
-  for(const [label,items] of entries){
-   const line=document.createElement("p");
-   line.style.margin="7px 0 0";
-   line.textContent=label+": "+items.join(", ");
-   disclosure.appendChild(line);
-  }
+ const groups=[["Timed out",timedOut],["Failed checks",failed],["Pages unavailable",unavailable]].filter(([,items])=>items.length);
+ if(groups.length){
+  const disclosure=document.createElement("details");disclosure.style.marginTop="7px";
+  const heading=document.createElement("summary");heading.textContent="See which checks had problems";heading.style.cursor="pointer";disclosure.appendChild(heading);
+  for(const [label,items] of groups){const line=document.createElement("p");line.style.margin="7px 0 0";line.textContent=label+": "+items.join(", ");disclosure.appendChild(line);}
   box.appendChild(disclosure);
  }
 }
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const currencyNames={PKR:"Pakistani Rupee",EUR:"Euro",USD:"US Dollar",GBP:"British Pound",CAD:"Canadian Dollar",AUD:"Australian Dollar",AED:"UAE Dirham",SAR:"Saudi Riyal",CHF:"Swiss Franc",CNY:"Chinese Yuan",JPY:"Japanese Yen",INR:"Indian Rupee",TRY:"Turkish Lira",NZD:"New Zealand Dollar",SGD:"Singapore Dollar",SEK:"Swedish Krona",NOK:"Norwegian Krone",DKK:"Danish Krone",PLN:"Polish Zloty",CZK:"Czech Koruna",HUF:"Hungarian Forint",RON:"Romanian Leu",ZAR:"South African Rand",BRL:"Brazilian Real",MXN:"Mexican Peso",KRW:"South Korean Won",IDR:"Indonesian Rupiah",THB:"Thai Baht",PHP:"Philippine Peso",HKD:"Hong Kong Dollar",ILS:"Israeli Shekel",ISK:"Icelandic Krona"};
-let currencySnapshot=null;
-function currencyFormat(value,code){
- try{return new Intl.NumberFormat(undefined,{style:"currency",currency:code,maximumFractionDigits:value<1?4:2}).format(value);}
- catch{return Number(value).toLocaleString(undefined,{maximumFractionDigits:4})+" "+code;}
+const nice=v=>String(v||"unknown").replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
+const statusClass=v=>["open","closed","upcoming"].includes(v)?v:"unknown";
+const shortText=v=>v?String(v):"Not stated by the source";
+function hasMultipleClauses(value){
+ return /[;,]|\b(?:and|or|but|unless|except|as well as|whereas|while|und|oder|aber|außer|ausgenommen|sowie|während|auch wenn)\b/i.test(String(value||""));
 }
-function renderCurrencyConversion(){
- if(!currencySnapshot)return;
- const amount=Number($("currencyAmount").value),from=$("currencyFrom").value,to=$("currencyTo").value;
- const result=$("currencyResult");
- if(!Number.isFinite(amount)||amount<0){result.textContent="Enter a valid non-negative amount.";return;}
- const fromRate=currencySnapshot.rates[from]?.pkr_per_unit,toRate=currencySnapshot.rates[to]?.pkr_per_unit;
- if(!fromRate||!toRate){result.textContent="This currency pair is not available in the latest published data.";return;}
- const converted=amount*fromRate/toRate;
- result.innerHTML=esc(currencyFormat(converted,to))+"<small>"+esc(currencyFormat(amount,from))+" at the published indicative rate</small>";
-}
-async function loadCurrencyRates(){
- const result=$("currencyResult");
- try{
-  const response=await fetch("/api/currency-rates",{cache:"no-store"});
-  const payload=await response.json();
-  if(!response.ok)throw new Error(payload.detail||"Official exchange rates are temporarily unavailable.");
-  currencySnapshot=payload;
-  const codes=Object.keys(payload.rates||{}).filter(code=>payload.rates[code]?.pkr_per_unit>0).sort((a,b)=>a==="PKR"?-1:b==="PKR"?1:a.localeCompare(b));
-  const options=codes.map(code=>'<option value="'+esc(code)+'">'+esc(code+" — "+(currencyNames[code]||code))+"</option>").join("");
-  $("currencyFrom").innerH[oö]g)/i.test(raw)){
+function summarizeRequirement(text,label){
+ const raw=String(text||"").replace(/\s+/g," ").trim();
+ const lower=raw.toLowerCase();
+ if(!raw)return "Check the official provider page for the full condition.";
+ // Translate German proficiency wording without weakening "very good" to "good"
+ // or dropping a provider-published level and its English-programme clarification.
+ const germanLanguageMatch=raw.match(/\b(sehr\s+gute|gute)\s+(?:deutsche?\s+sprachkenntnisse|deutschkenntnisse|kenntnisse\s+der\s+deutschen\s+sprache)\b/i);
+ if(germanLanguageMatch){
+  const languageRemainder=raw
+   .replace(/,?\s*auch wenn die dissertation auf englisch verfasst wird/ig,"")
+   .replace(/\([^)]*\)/g," ");
+  if(hasMultipleClauses(languageRemainder))return raw;
+  const levelMatch=raw.match(/\b(?:niveau|level)\s*(?:of\s*)?(A1|A2|B1|B2|C1|C2)\b/i)
+   ||raw.match(/\b(A1|A2|B1|B2|C1|C2)\s*[- ]?niveau\b/i);
+  const dshMatch=raw.match(/\bDSH\s*(?:I{1,3}|[1-3])\b/i);
+  const levels=[];
+  if(levelMatch)levels.push(levelMatch[1].toUpperCase()+" level");
+  if(dshMatch)levels.push(dshMatch[0].replace(/\s+/g," ").toUpperCase());
+  const proof=/\b(?:nachweis|nachweisen|beleg|bescheinigung)\b/i.test(raw);
+  const dissertationEnglish=/auch wenn die dissertation auf englisch verfasst wird/i.test(raw);
+  let summary=(proof?"Provide proof of ":"Have ")+(germanLanguageMatch[1].toLowerCase().startsWith("sehr")?"very good":"good")+" German-language skills";
+  if(levels.length)summary+=" at "+levels.join(" or ");
+  if(dissertationEnglish)summary+=", even if your dissertation is written in English";
+  summary+=".";
+  if(!levels.length)summary+=" The provider does not state a clear level here, so confirm what level they accept.";
+  return summary;
+ }
+
+ // A German age guideline may have a statutory exception; keep that qualification visible.
+ if(/\bunter\s+45\s+jahre\b/.test(lower)&&/(?:ausnahme|§\s*10|baf[oö]g)/i.test(raw)){
   return "The provider gives a general under-45 age guideline and notes that statutory exceptions may apply. Confirm the relevant exception with the provider.";
  }
 
