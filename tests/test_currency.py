@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
@@ -6,95 +7,100 @@ from fastapi import HTTPException
 from app import main as api
 from app.currency import (
     CurrencyRateUnavailable,
-    _official_https_url,
-    find_sbp_pdf_url,
-    parse_ecb_xml,
-    parse_sbp_rate_text,
+    build_conversion,
+    parse_rate_response,
 )
 
 
+def provider_payload():
+    updated = int(datetime(2026, 11, 22, tzinfo=timezone.utc).timestamp())
+    next_update = int(datetime(2026, 11, 23, tzinfo=timezone.utc).timestamp())
+    return {
+        "result": "success",
+        "base_code": "PKR",
+        "time_last_update_unix": updated,
+        "time_next_update_unix": next_update,
+        "rates": {"PKR": 1, "USD": 0.0036, "EUR": 0.0031, "GBP": 0.0027},
+    }
+
+
 class CurrencyParsingTests(unittest.TestCase):
-    def test_parses_sbp_customer_rates_and_publication_date(self):
-        text = """
-        Weighted Average Customer Exchange Rates as on 20-Nov-26
-        CURRENCY BUYING SELLING
-        AED 75.2202 75.3357
-        EUR 304.3672 304.8692
-        USD 276.2672 276.7241
-        """
-        result = parse_sbp_rate_text(text)
-        self.assertEqual(result["rate_date"], "2026-11-20")
-        self.assertAlmostEqual(result["rates"]["EUR"]["buying"], 304.3672)
-        self.assertAlmostEqual(result["rates"]["EUR"]["selling"], 304.8692)
-        self.assertAlmostEqual(result["rates"]["EUR"]["mid"], (304.3672 + 304.8692) / 2)
+    def test_parses_provider_snapshot_and_timestamps(self):
+        result = parse_rate_response(provider_payload())
+        self.assertEqual(result["base"], "PKR")
+        self.assertEqual(result["rate_date"], "2026-11-22")
+        self.assertAlmostEqual(result["rates"]["USD"], 0.0036)
+        self.assertIn("next_update_at", result)
 
-    def test_rejects_sbp_pdf_text_without_rate_rows(self):
+    def test_rejects_wrong_base_or_failed_provider_response(self):
+        payload = provider_payload()
+        payload["base_code"] = "USD"
         with self.assertRaises(CurrencyRateUnavailable):
-            parse_sbp_rate_text("The report is temporarily unavailable.")
-
-    def test_finds_only_the_official_sbp_customer_rate_pdf(self):
-        html = '''
-        <a href="/assets/document/weighted-average-customer-exchange-rates-20-November-2026.pdf">
-          Download
-        </a>
-        '''
-        url = find_sbp_pdf_url(html)
-        self.assertEqual(
-            url,
-            "https://www.sbp.org.pk/assets/document/weighted-average-customer-exchange-rates-20-November-2026.pdf",
-        )
-
-    def test_rejects_untrusted_rate_pdf_host(self):
-        html = '<a href="https://example.com/weighted-average-customer-exchange-rates.pdf">PDF</a>'
+            parse_rate_response(payload)
         with self.assertRaises(CurrencyRateUnavailable):
-            find_sbp_pdf_url(html)
+            parse_rate_response({"result": "error"})
 
-    def test_rejects_non_https_or_untrusted_source_url(self):
+    def test_rejects_missing_essential_rates(self):
+        payload = provider_payload()
+        payload["rates"].pop("EUR")
         with self.assertRaises(CurrencyRateUnavailable):
-            _official_https_url("http://www.sbp.org.pk/rates.pdf", {"www.sbp.org.pk"})
-        with self.assertRaises(CurrencyRateUnavailable):
-            _official_https_url("https://evil.example/rates.pdf", {"www.sbp.org.pk"})
+            parse_rate_response(payload)
 
-    def test_parses_ecb_xml_reference_rates_and_date(self):
-        xml = """<?xml version="1.0" encoding="UTF-8"?>
-        <gesmes:Envelope xmlns:gesmes="http://www.gesmes.org/xml/2002-08-01"
-          xmlns="http://www.ecb.int/vocabulary/2002-08-01/eurofxref">
-          <Cube><Cube time="2026-11-20">
-            <Cube currency="USD" rate="1.0990"/>
-            <Cube currency="GBP" rate="0.83735"/>
-          </Cube></Cube>
-        </gesmes:Envelope>"""
-        result = parse_ecb_xml(xml)
-        self.assertEqual(result["rate_date"], "2026-11-20")
-        self.assertAlmostEqual(result["rates"]["USD"], 1.0990)
-        self.assertAlmostEqual(result["rates"]["GBP"], 0.83735)
+    def test_ignores_invalid_rate_values(self):
+        payload = provider_payload()
+        payload["rates"]["BAD"] = -1
+        payload["rates"]["NAN"] = float("nan")
+        result = parse_rate_response(payload)
+        self.assertNotIn("BAD", result["rates"])
+        self.assertNotIn("NAN", result["rates"])
 
-    def test_rejects_ecb_xml_without_a_dated_reference_set(self):
+    def test_cross_currency_conversion_uses_pkr_base_rates(self):
+        snapshot = {
+            "rates": {"PKR": 1.0, "USD": 0.004, "EUR": 0.003},
+            "rate_date": "2026-11-22",
+            "updated_at": "2026-11-22T00:00:00+00:00",
+            "next_update_at": "2026-11-23T00:00:00+00:00",
+            "source": {"name": "Provider", "url": "https://example.com"},
+        }
+        result = build_conversion(snapshot, 100, "USD", "EUR")
+        self.assertAlmostEqual(result["rate"], 0.75)
+        self.assertAlmostEqual(result["converted_amount"], 75)
+
+    def test_rejects_unsupported_currency_pair(self):
+        snapshot = {
+            "rates": {"PKR": 1.0, "USD": 0.004},
+            "rate_date": "2026-11-22",
+            "updated_at": "2026-11-22T00:00:00+00:00",
+            "next_update_at": "2026-11-23T00:00:00+00:00",
+            "source": {"name": "Provider", "url": "https://example.com"},
+        }
         with self.assertRaises(CurrencyRateUnavailable):
-            parse_ecb_xml("<root><rate currency='USD' rate='1.1'/></root>")
+            build_conversion(snapshot, 1, "USD", "EUR")
 
 
 class CurrencyApiTests(unittest.IsolatedAsyncioTestCase):
-    async def test_currency_endpoint_returns_the_cached_snapshot(self):
+    async def test_currency_endpoint_returns_only_requested_conversion(self):
         snapshot = {
-            "base": "PKR",
-            "rate_date": "2026-11-20",
-            "rates": {"PKR": {"pkr_per_unit": 1.0}, "EUR": {"pkr_per_unit": 304.6}},
-            "sources": [],
+            "rates": {"PKR": 1.0, "USD": 0.004, "EUR": 0.003},
+            "rate_date": "2026-11-22",
+            "updated_at": "2026-11-22T00:00:00+00:00",
+            "next_update_at": "2026-11-23T00:00:00+00:00",
+            "source": {"name": "Provider", "url": "https://example.com"},
             "is_stale": False,
         }
         with patch("app.main.get_currency_snapshot", new=AsyncMock(return_value=snapshot)):
-            result = await api.currency_rates()
-        self.assertEqual(result["base"], "PKR")
-        self.assertIn("EUR", result["rates"])
+            result = await api.currency_rates(amount=100, from_currency="USD", to_currency="EUR")
+        self.assertAlmostEqual(result["converted_amount"], 75)
+        self.assertNotIn("rates", result)
+        self.assertEqual(result["from_currency"], "USD")
 
-    async def test_currency_endpoint_returns_503_when_no_official_rates_are_available(self):
+    async def test_currency_endpoint_returns_503_when_source_is_unavailable(self):
         with patch(
             "app.main.get_currency_snapshot",
             new=AsyncMock(side_effect=CurrencyRateUnavailable("offline")),
         ):
             with self.assertRaises(HTTPException) as raised:
-                await api.currency_rates()
+                await api.currency_rates(amount=1, from_currency="PKR", to_currency="EUR")
         self.assertEqual(raised.exception.status_code, 503)
 
 
