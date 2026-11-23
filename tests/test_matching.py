@@ -535,6 +535,59 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(result["status"], "informational")
         self.assertIn("not an automatic age-based rejection", result["explanation"])
 
+    def test_malformed_profile_text_values_remain_unknown_without_crashing(self):
+        cases = [
+            (
+                self.criterion("eligibility", "Residence duration", "Applicants must not have been in Germany for more than 15 months, unless prior study or study preparation applies."),
+                {"months_in_germany": 16, "residence_duration_exception": {"unexpected": "object"}},
+            ),
+            (
+                self.criterion("eligibility", "Residence permit", "Hold a residence permit for study purposes."),
+                {"german_residence_permit": ["study"]},
+            ),
+            (
+                self.criterion("eligibility", "Application timing", "Apply before the beginning of the first semester."),
+                {"first_semester_timing": {"stage": "not_started"}},
+            ),
+            (
+                self.criterion("academic_requirements", "Study level", "For Master's applicants."),
+                {"target_study_level": ["master"]},
+            ),
+            (
+                self.criterion("nationality", "Nationality", "Pakistani nationals"),
+                {"nationality": {"country": "Pakistan"}},
+            ),
+            (
+                self.criterion("language_requirements", "German language", "German language level B2 required."),
+                {"german_language_level": {"level": "B2"}},
+            ),
+            (
+                self.criterion("academic_requirements", "Completed degree", "Applicants must have completed a Bachelor's degree."),
+                {"current_education_level": ["bachelors"]},
+            ),
+            (
+                self.criterion("academic_requirements", "HAT category", "Accepted HAT categories HAT-I, HAT-II, HAT-III or HAT-IV."),
+                {"hat_category": {"category": "HAT-I"}},
+            ),
+            (
+                self.criterion("academic_requirements", "Degree division", "Applicants must have a first division."),
+                {"latest_degree_division": ["first"]},
+            ),
+        ]
+        for criterion, profile in cases:
+            with self.subTest(criterion=criterion["criterion_label"]):
+                self.assertEqual(evaluate_criterion(criterion, profile)["status"], "unknown")
+
+    def test_malformed_criterion_text_is_preserved_as_unknown(self):
+        criterion = {
+            "criterion_type": [],
+            "criterion_label": {"unexpected": "object"},
+            "requirement_text": ["not", "text"],
+            "is_mandatory": True,
+        }
+        self.assertEqual(evaluate_criterion(criterion, {})["status"], "unknown")
+
+
 if __name__ == "__main__":
     unittest.main()
 
