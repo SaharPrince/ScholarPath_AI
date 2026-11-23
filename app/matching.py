@@ -21,6 +21,11 @@ def _number(value: Any) -> float | None:
     return number if math.isfinite(number) else None
 
 
+def _boolean(value: Any) -> bool | None:
+    """Accept only actual JSON booleans; never interpret strings or numbers as consent/status."""
+    return value if isinstance(value, bool) else None
+
+
 def _result(state: str, explanation: str) -> dict[str, str]:
     return {"status": state, "explanation": explanation}
 
@@ -121,7 +126,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 str(profile.get("current_university_name") or "")
             )
             required_normalized = canonical_institution(required_institution)
-            enrolled_here = profile.get("currently_enrolled_at_current_university")
+            enrolled_here = _boolean(profile.get("currently_enrolled_at_current_university"))
             if not applicant_institution:
                 return _result("unknown", "If you wish, enter the name of your current university to check this institution-specific condition.")
             if enrolled_here is None:
@@ -141,7 +146,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
 
 
     if kind == "category_ii_eligibility" and re.search(r"applied to begin.*?tu berlin|applied.*?tu berlin", lower):
-        applied = profile.get("applied_to_current_university")
+        applied = _boolean(profile.get("applied_to_current_university"))
         if applied is None:
             return _result("unknown", "Confirm whether you have applied to start a programme at TU Berlin in the upcoming winter semester.")
         return _result(
@@ -174,7 +179,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                        else "This programme requires a German residence permit for study purposes.")
 
     if re.search(r"(?:already (?:be )?studying in germany|currently enrolled.*germany|an einer deutschen hochschule eingeschrieben|bereits an einer deutschen hochschule studieren)", lower):
-        enrolled = profile.get("currently_enrolled_in_germany")
+        enrolled = _boolean(profile.get("currently_enrolled_in_germany"))
         if enrolled is None:
             return _result("unknown", "Confirm whether you are currently enrolled at a German university.")
         if not enrolled:
@@ -310,7 +315,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         r"bbig|hwo|bundesgesetzlich geregelt.{0,80}gesundheitswesen|landesrechtlich geregelt)",
         lower,
     ) and re.search(r"(?:training|occupation|ausbildung|ausbildungsberuf|berufsausbildung|bbig|hwo)", lower):
-        recognized = profile.get("recognized_apprenticeship")
+        recognized = _boolean(profile.get("recognized_apprenticeship"))
         if recognized is None:
             return _result("unknown", "Confirm whether your apprenticeship is recognised under the training framework listed by the provider.")
         return _result("pass" if recognized else "fail",
@@ -318,7 +323,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                        else "This award requires an apprenticeship recognised under the provider's listed framework.")
 
     if re.search(r"(?:training contract|contract for training|ausbildungsvertrag|written confirmation.*training place)", lower):
-        contract = profile.get("has_training_contract")
+        contract = _boolean(profile.get("has_training_contract"))
         if contract is None:
             return _result("unknown", "Confirm whether you have an apprenticeship contract or written training-place offer.")
         return _result("pass" if contract else "fail",
@@ -342,7 +347,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 if residence not in {"pakistan", "pakistani"}:
                     return _result("fail", "The published requirement also requires permanent residence in Pakistan/AJ&K.")
             if "dual national" in lower or "dual nationals" in lower:
-                dual = profile.get("dual_national")
+                dual = _boolean(profile.get("dual_national"))
                 if dual is None:
                     return _result("unknown", "Tell us whether you hold another nationality.")
                 if dual:
@@ -463,17 +468,17 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 f"Your age ({int(age)}) {'is below' if ok else 'does not meet'} the strict age limit of under {strict_limit}.",
             )
 
-        qualified = any(profile.get(k) is True for k in (
+        qualified = any(_boolean(profile.get(k)) is True for k in (
             "regular_government_employee", "public_university_faculty", "approved_rd_researcher"
         ))
         flags = ("regular_government_employee", "public_university_faculty", "approved_rd_researcher")
         if "all other cases" in lower and qualified:
             return _result("informational", "This lower age limit applies to other applicants; your profile indicates a specified public-sector category.")
-        if "all other cases" in lower and not qualified and all(profile.get(k) is None for k in flags):
+        if "all other cases" in lower and not qualified and all(_boolean(profile.get(k)) is None for k in flags):
             return _result("unknown", "Confirm whether you belong to one of the specified public-sector employment categories before applying the general age limit.")
         if "regular government" in lower or "public sector" in lower or "approved r&d" in lower:
             if not qualified:
-                if all(profile.get(k) is not False for k in flags):
+                if all(_boolean(profile.get(k)) is not False for k in flags):
                     return _result("unknown", "Confirm whether you are a regular government employee, public university faculty member, or approved R&D researcher.")
                 return _result("informational", "The higher public-sector age limit does not apply to the employment category you selected.")
         ok = age <= limit
@@ -483,14 +488,14 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
 
     if kind == "ineligibility":
         if "other scholarship" in lower or "other scholarship" in text.lower():
-            value = profile.get("receiving_other_scholarship")
+            value = _boolean(profile.get("receiving_other_scholarship"))
             if value is None:
                 return _result("unknown", "Tell us whether you are currently receiving another scholarship.")
             return _result("fail" if value else "pass",
                            "The source excludes applicants receiving another scholarship." if value
                            else "You indicated that you are not receiving another scholarship.")
         if "phd" in lower and ("having phd" in lower or "already hold" in lower or "phd degree" in lower):
-            value = profile.get("has_phd")
+            value = _boolean(profile.get("has_phd"))
             if value is None:
                 return _result("unknown", "Tell us whether you already hold a PhD.")
             return _result("fail" if value else "pass",
@@ -499,7 +504,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         return _result("unknown", "This exclusion needs a specific answer or manual review.")
 
     if re.search(r"(?:doctoral|phd|promotion|promovierende|promotionsstudium)", lower) and re.search(r"(?:admission|admitted|zulassung|zugelassen)", lower):
-        admitted = profile.get("doctoral_admission_confirmed")
+        admitted = _boolean(profile.get("doctoral_admission_confirmed"))
         if admitted is None:
             return _result("unknown", "Confirm whether you have formal admission to the doctoral programme.")
         return _result("pass" if admitted else "fail",
@@ -507,7 +512,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                        else "This programme requires formal admission to doctoral studies.")
 
     if kind == "doctoral_admission":
-        admitted = profile.get("doctoral_admission_confirmed")
+        admitted = _boolean(profile.get("doctoral_admission_confirmed"))
         if admitted is None:
             return _result("unknown", "Confirm whether a university or doctoral committee has formally admitted you to doctoral studies.")
         return _result(
@@ -517,7 +522,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         )
 
     if kind == "doctoral_project_stage":
-        final_phase = profile.get("doctoral_project_final_phase")
+        final_phase = _boolean(profile.get("doctoral_project_final_phase"))
         if final_phase is None:
             return _result("unknown", "Confirm whether your doctoral project is already in its final phase.")
         return _result(
@@ -755,7 +760,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
 
         if "top 50" in lower or "qs 1–50" in lower or "qs 1-50" in lower:
             rank = _number(profile.get("university_qs_rank"))
-            admitted = profile.get("admission_confirmed")
+            admitted = _boolean(profile.get("admission_confirmed"))
             if rank is None or admitted is None:
                 return _result("unknown", "Add your university's QS rank and confirm whether you have admission.")
             ok = rank <= 50 and admitted
@@ -764,7 +769,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                            else "This category requires confirmed admission to a QS top-50 university.")
         if "top 51-100" in lower or "top 51–100" in lower or "51-100" in lower or "51–100" in lower:
             rank = _number(profile.get("university_qs_rank"))
-            admitted = profile.get("admission_confirmed")
+            admitted = _boolean(profile.get("admission_confirmed"))
             if rank is None or admitted is None:
                 return _result("unknown", "Add your university's QS rank and confirm whether you have admission.")
             ok = 51 <= rank <= 100 and admitted
@@ -773,7 +778,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                            else "This category requires confirmed admission to a QS 51–100 university.")
 
         if "phd" in lower and ("already hold" in lower or "phd degree" in lower):
-            value = profile.get("has_phd")
+            value = _boolean(profile.get("has_phd"))
             if value is None:
                 return _result("unknown", "Tell us whether you already hold a PhD.")
             return _result("fail" if value else "pass",
