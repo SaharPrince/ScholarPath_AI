@@ -1433,6 +1433,24 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             fields[field_name] = merged[:4000]
             evidence.append((field_name, fields[field_name]))
 
+    # Some German providers introduce exclusions with a standalone label
+    # rather than an HTML heading. Preserve the following list as exclusions.
+    for marker in content_root.find_all(["p", "h2", "h3", "h4", "h5"]):
+        marker_text = _clean(marker.get_text(" ", strip=True)).rstrip(":?! .").casefold()
+        if marker_text != "nicht förderfähig":
+            continue
+        excluded_items = []
+        for node in marker.find_all_next(["h1", "h2", "h3", "h4", "h5", "li"]):
+            if node.name in {"h1", "h2", "h3", "h4", "h5"}:
+                break
+            item_text = _clean(node.get_text(" ", strip=True))
+            if item_text and item_text not in excluded_items:
+                excluded_items.append(item_text)
+        if excluded_items:
+            fields["ineligibility"] = "\\n".join(excluded_items)[:4000]
+            evidence.append(("ineligibility", fields["ineligibility"]))
+        break
+
     # Some official pages place exclusion rules inside a broader technical
     # eligibility section. Split at the explicit exclusion-introduction sentence.
     embedded_ineligibility_context = (
