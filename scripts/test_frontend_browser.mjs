@@ -58,6 +58,26 @@ try {
       contentType: "application/json",
       body: JSON.stringify([{ name: "Rosa-Luxemburg-Stiftung" }])
     }));
+    await page.route("**/api/currency-rates**", route => {
+      const url = new URL(route.request().url());
+      const amount = Number(url.searchParams.get("amount") || 1);
+      const from = url.searchParams.get("from_currency") || "PKR";
+      const to = url.searchParams.get("to_currency") || "EUR";
+      const rates = { PKR: 1, EUR: 0.003, USD: 0.004 };
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          amount, from_currency: from, to_currency: to,
+          rate: rates[to] / rates[from],
+          converted_amount: amount * rates[to] / rates[from],
+          updated_at: "2026-11-22T00:00:00+00:00",
+          next_update_at: "2026-11-23T00:00:00+00:00",
+          source: { name: "Test provider", url: "https://example.com" },
+          is_stale: false
+        })
+      });
+    });
 
     await page.route("**/api/discovery-status", route => route.fulfill({
       status: 200,
@@ -161,8 +181,17 @@ try {
     await page.waitForSelector(".card");
 
     await page.waitForSelector(".guide-section");
-    await page.waitForFunction(() => document.querySelector("#discoveryCoverage")?.textContent?.includes("Partial official-source scan"));
+    await page.waitForFunction(() => document.querySelector("#discoveryCoverage")?.textContent?.includes("Some official pages could not be reached"));
+    assert.match(await page.locator("#discoveryCoverage").innerText(), /6 of 8 pages checked successfully/);
+    await page.locator("#discoveryCoverage details summary").click();
     assert.match(await page.locator("#discoveryCoverage").innerText(), /Slow official provider/);
+
+    await page.waitForFunction(() => document.querySelector("#currencyResult strong")?.textContent?.length > 0);
+    assert.match(await page.locator("#currencyResult").innerText(), /EUR/);
+    await page.locator("#currencySwap").click();
+    await page.waitForFunction(() => document.querySelector("#currencyResult strong")?.textContent?.length > 0);
+    assert.equal(await page.locator("#currencyFrom").inputValue(), "EUR");
+    assert.equal(await page.locator("#currencyTo").inputValue(), "PKR");
 
     assert.match(await page.locator("#germanyGuideTitle").innerText(), /Germany preparation guide/);
     assert.match(await page.locator(".guide-section summary").innerText(), /Travelling from Pakistan/);
