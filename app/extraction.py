@@ -23,7 +23,7 @@ FIELD_LABELS = {
     "application_status": ("current status",),
     "funding_summary": ("funding", "scholarship value", "financial support", "tuition fee", "stipend"),
     "eligibility": ("eligibility", "who can apply", "eligible applicants"),
-    "ineligibility": ("ineligibility", "who cannot apply", "who is not eligible", "not eligible"),
+    "ineligibility": ("ineligibility", "who cannot apply", "who is not eligible", "not eligible", "nicht förderfähig"),
     "study_level": ("degree level", "study level", "level of study", "programme level", "program level"),
     "nationality": ("nationality", "citizenship", "eligible countries", "country of residence"),
     "academic_requirements": ("academic requirements", "minimum marks", "minimum gpa", "grade requirement"),
@@ -527,6 +527,7 @@ def _is_opportunity(candidate_title: str, page_title: str, page_url: str, body_t
         "bewerbungsfrist", "bewerbungsportal", "stipendium",
         "studienförderung", "förderung", "finanzielle unterstützung",
         "we support", "applicants must", "must be submitted",
+        "financial aid", "requirements for the application", "bewerbungsvoraussetzungen",
         "residence permit", "come from a country", "belong to the catholic church",
         "have sufficient knowledge",
     ))
