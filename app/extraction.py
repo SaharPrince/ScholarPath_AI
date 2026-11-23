@@ -642,7 +642,7 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
                 or (
                     node.name == "p"
                     and re.search(
-                        r"(?i)^(?:individuals in the following circumstances are not eligible|nicht förderfähig)\b",
+                        r"(?i)individuals in the following circumstances are not eligible",
                         _clean(node.get_text(" ", strip=True)),
                     )
                 )
@@ -1435,7 +1435,10 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
 
     # Some official pages place exclusion rules inside a broader technical
     # eligibility section. Split at the explicit exclusion-introduction sentence.
-    embedded_ineligibility_context = _has_explicit_not_supported_heading(content_root)
+    embedded_ineligibility_context = (
+        _has_explicit_not_supported_heading(content_root)
+        or re.search(r"(?i)\\bnicht förderfähig\\b", body_text) is not None
+    )
     eligibility_section = fields.get("eligibility")
     if eligibility_section:
         statements = _split_criteria_statements(eligibility_section)
@@ -1443,7 +1446,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             (
                 index for index, statement in enumerate(statements)
                 if re.search(
-                    r"(?i)^(?:individuals in the following circumstances are not eligible|nicht förderfähig)\\b",
+                    r"(?i)^(?:individuals in the following circumstances are not eligible|nicht förderfähig)",
                     statement,
                 )
             ),
