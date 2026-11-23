@@ -1,29 +1,24 @@
-"""Daily exchange-rate snapshots fetched from official central-bank publications.
+"""Indicative daily currency conversions using ExchangeRate-API Open Access.
 
-Rates are indicative planning references, not executable trading quotes.
+The provider's raw rate table stays server-side. The public API returns only the
+requested pair conversion, source attribution, and update timestamps.
 """
 from __future__ import annotations
 
 import asyncio
 import copy
-import re
 from datetime import datetime, timezone
-from io import BytesIO
 from time import monotonic
-from urllib.parse import urljoin, urlparse
-from xml.etree import ElementTree
 
 import httpx
-from bs4 import BeautifulSoup
-from pypdf import PdfReader
 
 
-SBP_INDEX_URL = "https://www.sbp.org.pk/economic-data"
-ECB_XML_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
-SBP_HOSTS = {"sbp.org.pk", "www.sbp.org.pk"}
-ECB_HOSTS = {"ecb.europa.eu", "www.ecb.europa.eu"}
-CACHE_TTL_SECONDS = 3 * 60 * 60
-_REQUEST_TIMEOUT_SECONDS = 12
+RATE_URL = "https://open.er-api.com/v6/latest/PKR"
+SOURCE_URL = "https://www.exchangerate-api.com/docs/free"
+SOURCE_NAME = "ExchangeRate-API (Open Access)"
+CACHE_FALLBACK_SECONDS = 24 * 60 * 60
+MAX_RATE_AGE_SECONDS = 72 * 60 * 60
+_REQUEST_TIMEOUT_SECONDS = 10
 
 _cache: dict | None = None
 _cache_expires_at = 0.0
@@ -31,194 +26,73 @@ _cache_lock = asyncio.Lock()
 
 
 class CurrencyRateUnavailable(RuntimeError):
-    """Raised when no safe, current official rate snapshot can be fetched."""
+    """Raised when no usable exchange-rate snapshot is available."""
 
 
-def _official_https_url(candidate: str, allowed_hosts: set[str]) -> str:
-    parsed = urlparse(candidate)
-    if parsed.scheme != "https" or parsed.hostname not in allowed_hosts:
-        raise CurrencyRateUnavailable("The exchange-rate source returned an unexpected URL.")
-    return candidate
-
-
-def find_sbp_pdf_url(html: str, page_url: str = SBP_INDEX_URL) -> str:
-    soup = BeautifulSoup(html, "html.parser")
-    for anchor in soup.find_all("a", href=True):
-        href = str(anchor["href"])
-        text = anchor.get_text(" ", strip=True)
-        if "weighted-average-customer-exchange-rates" in href.lower() or (
-            "weighted average customer exchange rates" in text.lower()
-            and href.lower().endswith(".pdf")
-        ):
-            return _official_https_url(urljoin(page_url, href), SBP_HOSTS)
-    raise CurrencyRateUnavailable("The State Bank of Pakistan has not exposed its latest customer-rate PDF link.")
-
-
-def parse_sbp_rate_text(text: str) -> dict:
-    date_match = re.search(
-        r"as\s+on\s+(\d{1,2})[-\s]+([A-Za-z]{3,9})[-\s]+(\d{2,4})",
-        text,
-        re.IGNORECASE,
-    )
-    rate_date = None
-    if date_match:
-        day, month, year = date_match.groups()
-        year = int(year)
-        if year < 100:
-            year += 2000
-        for fmt in ("%d-%b-%Y", "%d-%B-%Y"):
-            try:
-                rate_date = datetime.strptime(f"{int(day)}-{month}-{year}", fmt).date().isoformat()
-                break
-            except ValueError:
-                continue
-
-    number = r"([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)"
-    row_pattern = re.compile(rf"\b([A-Z]{{3}})\s+{number}\s+{number}\b")
-    rates = {}
-    for match in row_pattern.finditer(text.upper()):
-        code, buying, selling = match.groups()
-        buying_value = float(buying.replace(",", ""))
-        selling_value = float(selling.replace(",", ""))
-        if 0 < buying_value < 10_000_000 and 0 < selling_value < 10_000_000:
-            rates[code] = {
-                "buying": buying_value,
-                "selling": selling_value,
-                "mid": (buying_value + selling_value) / 2,
-                "source": "SBP weighted-average customer rates",
-            }
-    if not rates:
-        raise CurrencyRateUnavailable("The State Bank of Pakistan PDF did not contain recognizable currency rows.")
-    return {"rate_date": rate_date, "rates": rates}
-
-
-def parse_ecb_xml(xml_text: str) -> dict:
+def _utc_from_unix(value: object, field: str) -> datetime:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise CurrencyRateUnavailable("The exchange-rate provider returned an invalid update time.")
     try:
-        root = ElementTree.fromstring(xml_text)
-    except ElementTree.ParseError as exc:
-        raise CurrencyRateUnavailable("The ECB reference-rate feed could not be parsed.") from exc
-
-    rate_date = None
-    rates = {}
-    for element in root.iter():
-        if element.tag.endswith("Cube") and element.attrib.get("time"):
-            rate_date = element.attrib["time"]
-        code = element.attrib.get("currency")
-        value = element.attrib.get("rate")
-        if code and value:
-            try:
-                parsed = float(value)
-            except ValueError:
-                continue
-            if parsed > 0:
-                rates[code.upper()] = parsed
-    if not rate_date or "USD" not in rates:
-        raise CurrencyRateUnavailable("The ECB feed did not contain a dated reference-rate set.")
-    return {"rate_date": rate_date, "rates": rates}
+        parsed = datetime.fromtimestamp(value, tz=timezone.utc)
+    except (OverflowError, OSError, ValueError) as exc:
+        raise CurrencyRateUnavailable("The exchange-rate provider returned an invalid update time.") from exc
+    if parsed.timestamp() <= 0:
+        raise CurrencyRateUnavailable("The exchange-rate provider returned an invalid update time.")
+    return parsed
 
 
-async def _get_sbp_rates(client: httpx.AsyncClient) -> dict:
-    page = await client.get(SBP_INDEX_URL)
-    page.raise_for_status()
-    pdf_url = find_sbp_pdf_url(page.text, str(page.url))
-    pdf_response = await client.get(pdf_url)
-    pdf_response.raise_for_status()
-    if urlparse(str(pdf_response.url)).hostname not in SBP_HOSTS:
-        raise CurrencyRateUnavailable("The State Bank PDF redirected outside its official domain.")
-    try:
-        reader = PdfReader(BytesIO(pdf_response.content))
-        text = "\n".join(page.extract_text() or "" for page in reader.pages)
-    except Exception as exc:
-        raise CurrencyRateUnavailable("The State Bank PDF could not be read.") from exc
-    result = parse_sbp_rate_text(text)
-    result["source_url"] = pdf_url
-    return result
+def parse_rate_response(payload: dict) -> dict:
+    if not isinstance(payload, dict) or payload.get("result") != "success":
+        raise CurrencyRateUnavailable("The exchange-rate provider did not return a successful response.")
+    if payload.get("base_code") != "PKR" or not isinstance(payload.get("rates"), dict):
+        raise CurrencyRateUnavailable("The exchange-rate provider returned an unexpected base currency.")
 
+    updated = _utc_from_unix(payload.get("time_last_update_unix"), "last update")
+    next_update = _utc_from_unix(payload.get("time_next_update_unix"), "next update")
+    now = datetime.now(timezone.utc)
+    if updated > now.replace(microsecond=0):
+        raise CurrencyRateUnavailable("The exchange-rate provider returned a future update time.")
+    if next_update <= updated:
+        raise CurrencyRateUnavailable("The exchange-rate provider returned an invalid refresh schedule.")
 
-async def _get_ecb_rates(client: httpx.AsyncClient) -> dict:
-    response = await client.get(ECB_XML_URL)
-    response.raise_for_status()
-    if urlparse(str(response.url)).hostname not in ECB_HOSTS:
-        raise CurrencyRateUnavailable("The ECB feed redirected outside its official domain.")
-    result = parse_ecb_xml(response.text)
-    result["source_url"] = ECB_XML_URL
-    return result
-
-
-async def _fetch_snapshot() -> dict:
-    headers = {"User-Agent": "ScholarCompass/1.0 (public scholarship cost-planning rates)"}
-    async with httpx.AsyncClient(
-        timeout=_REQUEST_TIMEOUT_SECONDS,
-        follow_redirects=True,
-        headers=headers,
-    ) as client:
-        sbp, ecb = await asyncio.gather(
-            _get_sbp_rates(client),
-            _get_ecb_rates(client),
-            return_exceptions=True,
-        )
-
-    if isinstance(sbp, BaseException):
-        raise CurrencyRateUnavailable("The latest SBP PKR rates are temporarily unavailable.") from sbp
-    if isinstance(ecb, BaseException):
-        ecb = None
-
-    eur_pkr = sbp["rates"].get("EUR", {}).get("mid")
-    if not eur_pkr:
-        raise CurrencyRateUnavailable("The SBP publication did not include an EUR/PKR reference rate.")
-
-    rates = {
-        "PKR": {
-            "pkr_per_unit": 1.0,
-            "source": "Base currency",
-            "rate_type": "identity",
-        }
-    }
-    for code, values in sbp["rates"].items():
-        rates[code] = {
-            "pkr_per_unit": values["mid"],
-            "buying": values["buying"],
-            "selling": values["selling"],
-            "source": values["source"],
-            "rate_type": "SBP indicative customer rate",
-        }
-
-    sources = [{
-        "name": "State Bank of Pakistan — Weighted Average Customer Exchange Rates",
-        "url": sbp["source_url"],
-        "rate_date": sbp["rate_date"],
-    }]
-    if ecb:
-        # ECB quotes foreign-currency units per EUR. Convert each to PKR using
-        # the SBP EUR/PKR customer midpoint; SBP-published pairs take precedence.
-        for code, units_per_eur in ecb["rates"].items():
-            if code not in rates and units_per_eur > 0:
-                rates[code] = {
-                    "pkr_per_unit": eur_pkr / units_per_eur,
-                    "source": "ECB reference rate cross-calculated through EUR/PKR",
-                    "rate_type": "ECB-derived indicative reference",
-                }
-        sources.append({
-            "name": "European Central Bank — Euro foreign exchange reference rates",
-            "url": ecb["source_url"],
-            "rate_date": ecb["rate_date"],
-        })
+    rates = {"PKR": 1.0}
+    for code, raw_rate in payload["rates"].items():
+        if not isinstance(code, str) or len(code) != 3 or not code.isalpha():
+            continue
+        if isinstance(raw_rate, bool) or not isinstance(raw_rate, (int, float)):
+            continue
+        rate = float(raw_rate)
+        if 0 < rate < 1_000_000:
+            rates[code.upper()] = rate
+    if "EUR" not in rates or "USD" not in rates:
+        raise CurrencyRateUnavailable("The exchange-rate provider omitted essential currencies.")
 
     return {
         "base": "PKR",
-        "rate_date": sbp["rate_date"],
         "rates": rates,
-        "sources": sources,
-        "is_stale": False,
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
-        "notice": (
-            "Indicative daily reference rates for planning only. Actual bank, card, "
-            "cash-exchange and transfer rates may differ and may include fees."
-        ),
+        "rate_date": updated.date().isoformat(),
+        "updated_at": updated.isoformat(),
+        "next_update_at": next_update.isoformat(),
+        "is_stale": (now - updated).total_seconds() > MAX_RATE_AGE_SECONDS,
     }
 
 
+async def _fetch_snapshot() -> dict:
+    headers = {"User-Agent": "ScholarPath-AI/1.0 (student cost-planning currency converter)"}
+    async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT_SECONDS, headers=headers) as client:
+        response = await client.get(RATE_URL)
+        response.raise_for_status()
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise CurrencyRateUnavailable("The exchange-rate provider returned unreadable data.") from exc
+    snapshot = parse_rate_response(payload)
+    snapshot["source"] = {"name": SOURCE_NAME, "url": SOURCE_URL}
+    return snapshot
+
+
 async def get_currency_snapshot() -> dict:
+    """Return an in-process cached provider snapshot; never expose it from the API."""
     global _cache, _cache_expires_at
     now = monotonic()
     if _cache is not None and now < _cache_expires_at:
@@ -234,12 +108,43 @@ async def get_currency_snapshot() -> dict:
             if _cache is not None:
                 stale = copy.deepcopy(_cache)
                 stale["is_stale"] = True
-                stale["notice"] += " The source could not be refreshed; showing the last successful snapshot."
+                stale["notice"] = "Showing the last successful rate snapshot because the source could not be refreshed."
                 return stale
             if isinstance(exc, CurrencyRateUnavailable):
                 raise
-            raise CurrencyRateUnavailable("Official exchange-rate sources are temporarily unavailable.") from exc
+            raise CurrencyRateUnavailable("The exchange-rate provider is temporarily unavailable.") from exc
 
         _cache = copy.deepcopy(snapshot)
-        _cache_expires_at = monotonic() + CACHE_TTL_SECONDS
+        next_update = datetime.fromisoformat(snapshot["next_update_at"])
+        seconds_until_refresh = max(60, (next_update - datetime.now(timezone.utc)).total_seconds())
+        _cache_expires_at = monotonic() + min(seconds_until_refresh, CACHE_FALLBACK_SECONDS)
         return copy.deepcopy(_cache)
+
+
+def build_conversion(snapshot: dict, amount: float, from_currency: str, to_currency: str) -> dict:
+    if not isinstance(from_currency, str) or not isinstance(to_currency, str):
+        raise CurrencyRateUnavailable("Choose two supported currencies.")
+    source = from_currency.upper()
+    target = to_currency.upper()
+    rates = snapshot.get("rates", {})
+    if source not in rates or target not in rates:
+        raise CurrencyRateUnavailable("That currency pair is not available.")
+    if isinstance(amount, bool) or not isinstance(amount, (int, float)) or amount < 0:
+        raise CurrencyRateUnavailable("Enter a valid amount.")
+    rate = rates[target] / rates[source]
+    return {
+        "amount": float(amount),
+        "from_currency": source,
+        "to_currency": target,
+        "rate": rate,
+        "converted_amount": float(amount) * rate,
+        "rate_date": snapshot["rate_date"],
+        "updated_at": snapshot["updated_at"],
+        "next_update_at": snapshot["next_update_at"],
+        "source": snapshot["source"],
+        "is_stale": bool(snapshot.get("is_stale", False)),
+        "notice": snapshot.get(
+            "notice",
+            "Indicative daily rate only. Your bank, card or transfer service may use a different rate or add fees.",
+        ),
+    }
