@@ -612,6 +612,15 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         value = "Spring 2027: 15 January 2027 until 1 March 2027 Fall 2027: 15 July 2027 until 1 September 2027"
         self.assertEqual(_parse_deadline_date(value), "2027-03-01")
 
+    def test_application_windows_skip_past_round_when_a_later_round_is_upcoming(self) -> None:
+        from datetime import date
+
+        value = "Spring 2027: 15 January 2027 until 1 March 2027 Fall 2027: 15 July 2027 until 1 September 2027"
+        self.assertEqual(
+            _parse_deadline_date(value, today=date(2027, 4, 1)),
+            "2027-09-01",
+        )
+
     def test_normalizes_german_application_window_closing_date(self) -> None:
         value = "15. November 2026 bis einschließlich 15. Januar 2027"
         self.assertEqual(_parse_deadline_date(value), "2027-01-15")
