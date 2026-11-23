@@ -31,11 +31,11 @@ class CurrencyRateUnavailable(RuntimeError):
 
 
 def _utc_from_unix(value: object, field: str) -> datetime:
-    if (
-        isinstance(value, bool)
-        or not isinstance(value, (int, float))
-        or not math.isfinite(value)
-    ):
+    try:
+        is_finite = math.isfinite(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else False
+    except (OverflowError, TypeError, ValueError):
+        is_finite = False
+    if not is_finite:
         raise CurrencyRateUnavailable(f"The exchange-rate provider returned an invalid {field} time.")
     try:
         parsed = datetime.fromtimestamp(value, tz=timezone.utc)
@@ -66,8 +66,11 @@ def parse_rate_response(payload: dict) -> dict:
             continue
         if isinstance(raw_rate, bool) or not isinstance(raw_rate, (int, float)):
             continue
-        rate = float(raw_rate)
-        if 0 < rate < 1_000_000:
+        try:
+            rate = float(raw_rate)
+        except (OverflowError, TypeError, ValueError):
+            continue
+        if math.isfinite(rate) and 0 < rate < 1_000_000:
             rates[code.upper()] = rate
     if "EUR" not in rates or "USD" not in rates:
         raise CurrencyRateUnavailable("The exchange-rate provider omitted essential currencies.")
