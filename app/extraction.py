@@ -5,7 +5,7 @@ contains at least one scholarship-specific fact. Extracted records remain
 unverified. Every populated fact is accompanied by its source evidence.
 """
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import re
 from urllib.parse import urljoin, urlparse
 
@@ -434,52 +434,73 @@ def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
         return True
     return False
 
-def _parse_deadline_date(value: str | None) -> str | None:
-    """Normalize an explicitly extracted English or German deadline date to ISO format."""
+def _parse_deadline_date(value: str | None, *, today: date | None = None) -> str | None:
+    """Return the next published closing date, or the latest past date if all rounds ended."""
     if not value:
         return None
+    today = today or datetime.now(timezone.utc).date()
+
     numeric_window = GERMAN_NUMERIC_DATE_RANGE_PATTERN.search(value)
     if numeric_window:
-        return (
-            f"{int(numeric_window.group('year')):04d}-"
-            f"{int(numeric_window.group('end_month')):02d}-"
-            f"{int(numeric_window.group('end_day')):02d}"
-        )
+        try:
+            parsed = date(
+                int(numeric_window.group("year")),
+                int(numeric_window.group("end_month")),
+                int(numeric_window.group("end_day")),
+            )
+            return parsed.isoformat()
+        except ValueError:
+            return None
+
     matches = sorted(
         [*DATE_PATTERN.finditer(value), *GERMAN_DATE_PATTERN.finditer(value)],
         key=lambda item: item.start(),
     )
     if not matches:
         return None
-    # For application windows, prefer the first closing date (for example,
-    # "15 January until 1 March") rather than the opening date.
+
+    # Prefer dates explicitly identified as closing dates, not application openings.
     closing_matches = [
         match for match in matches
         if re.search(
-            r"(?i)(?:until|through|bis(?: einschließlich)?|deadline(?:\s+is)?|closes?(?:\s+on)?|closing date|apply by|no later than)\s*$",
+            r"(?i)(?:until|through|bis(?: einschließlich)?|deadline(?:\\s+is)?|closes?(?:\\s+on)?|closing date|apply by|no later than)\\s*$",
             value[max(0, match.start() - 48):match.start()],
         )
     ]
-    match = closing_matches[0] if closing_matches else matches[0]
-    candidate = match.group(0).strip()
-    german_match = GERMAN_DATE_PATTERN.fullmatch(candidate)
-    if german_match:
-        month = GERMAN_MONTHS[german_match.group("month").casefold()]
-        return (
-            f"{int(german_match.group('year')):04d}-"
-            f"{month:02d}-{int(german_match.group('day')):02d}"
-        )
-    # English university pages commonly use ordinal dates such as "November 30th, 2026".
-    candidate = re.sub(r"(?i)(\d{1,2})(?:st|nd|rd|th)\b", r"\1", candidate)
-    for date_format in (
-        "%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y",
-        "%d %B %Y", "%d %b %Y", "%Y-%m-%d",
-    ):
-        try:
-            return datetime.strptime(candidate, date_format).date().isoformat()
-        except ValueError:
+    candidates = closing_matches or matches[:1]
+    parsed_dates: list[date] = []
+    for match in candidates:
+        candidate = match.group(0).strip()
+        german_match = GERMAN_DATE_PATTERN.fullmatch(candidate)
+        if german_match:
+            month = GERMAN_MONTHS[german_match.group("month").casefold()]
+            try:
+                parsed_dates.append(date(
+                    int(german_match.group("year")),
+                    month,
+                    int(german_match.group("day")),
+                ))
+            except ValueError:
+                continue
             continue
-    return None
+
+        # English university pages commonly use ordinal dates such as "November 30th, 2026".
+        candidate = re.sub(r"(?i)(\\d{1,2})(?:st|nd|rd|th)\\b", r"\\1", candidate)
+        for date_format in (
+            "%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y",
+            "%d %B %Y", "%d %b %Y", "%Y-%m-%d",
+        ):
+            try:
+                parsed_dates.append(datetime.strptime(candidate, date_format).date())
+                break
+            except ValueError:
+                continue
+
+    if not parsed_dates:
+        return None
+    upcoming = [item for item in parsed_dates if item >= today]
+    selected = min(upcoming) if upcoming else max(parsed_dates)
+    return selected.isoformat()
 
 
 def _is_generic_title(value: str) -> bool:
