@@ -62,6 +62,7 @@ OPEN_PATTERN = re.compile(r"(?i)\b(applications? (?:(?:are )?(?:now )?)open|now 
 UPCOMING_PATTERN = re.compile(r"(?i)\b(applications? (?:will|are expected to) open|opens? for applications|(?:online )?application portal (?:will )?open(?:s)?\s+(?:on|from|in)|applications? (?:are )?open(?:s)?\s+(?:on|from|starting|beginning))\b")
 DISCONTINUED_PATTERN = re.compile(r"(?i)\b(discontinued|programme has ended|program has ended|no longer offered)\b")
 SHORTLISTED_PATTERN = re.compile(r"(?i)\b(shortlisted candidates|candidates? who (?:have been |were )?shortlisted|only for candidates? shortlisted|shortlist announced|interview shortlist)\b")
+CLOSED_PATTERN = re.compile(r"(?i)\b(application portal (?:is|remains) closed|applications? (?:are )?currently not possible|eine bewerbung ist aktuell nicht möglich|bewerbungsportal ist (?:momentan )?geschlossen)\b")
 
 
 @dataclass
@@ -640,7 +641,7 @@ def _find_heading_section(content_root: BeautifulSoup, heading_names: tuple[str,
                 or (
                     node.name == "p"
                     and re.search(
-                        r"(?i)individuals in the following circumstances are not eligible",
+                        r"(?i)^(?:individuals in the following circumstances are not eligible|nicht förderfähig)\b",
                         _clean(node.get_text(" ", strip=True)),
                     )
                 )
@@ -1140,7 +1141,10 @@ def extract_criteria_from_html(html: str, page_url: str | None = None) -> list[t
         "eligibility": (
             "Eligibility", "Eligibility Criteria", "Who can apply", "Eligible applicants",
             "Scholarship for Studies", "Requirements", "Wer kann sich bewerben",
-            "Voraussetzungen", "Fördervoraussetzungen",
+            "Voraussetzungen", "Fördervoraussetzungen", "Bewerbungsvoraussetzungen",
+            "Vorausgesetzt werden", "Was bringst du mit?",
+            "Requirements for the application for a scholarship",
+            "Requirements for the application for doctoral scholarship support",
         ),
         "ineligibility": (
             "Ineligibility", "Who cannot apply", "Who is not eligible",
@@ -1268,6 +1272,8 @@ def _classify_application_status(
         return "discontinued"
     if SHORTLISTED_PATTERN.search(body_text):
         return "shortlisted_only"
+    if CLOSED_PATTERN.search(body_text):
+        return "closed"
     if ROLLING_PATTERN.search(body_text):
         return "open"
     if deadline_date:
