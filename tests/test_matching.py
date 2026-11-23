@@ -616,6 +616,32 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
                 result = evaluate_criterion(c, {"months_in_germany": invalid_value})
                 self.assertEqual(result["status"], "unknown")
 
+    def test_boolean_requirements_reject_string_and_numeric_lookalikes(self):
+        criterion = self.criterion(
+            "doctoral_admission", "Doctoral admission",
+            "Applicants must have formal admission to doctoral studies.",
+        )
+        for invalid_value in ("false", "true", 0, 1, "0", "1"):
+            with self.subTest(value=invalid_value):
+                result = evaluate_criterion(
+                    criterion, {"doctoral_admission_confirmed": invalid_value}
+                )
+                self.assertEqual(result["status"], "unknown")
+
+    def test_boolean_false_is_not_confused_with_missing(self):
+        criterion = self.criterion(
+            "doctoral_admission", "Doctoral admission",
+            "Applicants must have formal admission to doctoral studies.",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"doctoral_admission_confirmed": False})["status"],
+            "fail",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"doctoral_admission_confirmed": True})["status"],
+            "pass",
+        )
+
     def test_financial_need_is_not_inferred_or_requested(self):
         c = self.criterion("eligibility", "Financial need", "Applicants must demonstrate financial need.")
         result = evaluate_criterion(c, {})
