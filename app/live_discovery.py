@@ -20,6 +20,7 @@ from app.extraction import (
     extract_criteria_from_html,
     _is_mandatory_criterion,
     _parse_deadline_date,
+    augment_curated_programme,
     parse_scholarship_page,
 )
 from app.source_catalog import GERMANY_SOURCES
@@ -347,6 +348,13 @@ async def discover_live_scholarships() -> list[dict]:
                 )
                 return None, [], None
             parsed = parse_scholarship_page(html, url, candidate_title)
+            parsed = augment_curated_programme(
+                parsed,
+                html,
+                url,
+                candidate_title,
+                source.get("provider_name") or source.get("name"),
+            )
             host = _normalized_host(url)
             links = _candidate_links(html, url, host) if host else []
             return (_as_record(parsed, source, url) if parsed else None), links, html
