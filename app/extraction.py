@@ -1437,7 +1437,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
     # eligibility section. Split at the explicit exclusion-introduction sentence.
     embedded_ineligibility_context = (
         _has_explicit_not_supported_heading(content_root)
-        or re.search(r"(?i)\\bnicht förderfähig\\b", body_text) is not None
+        or "nicht förderfähig" in body_text.casefold()
     )
     eligibility_section = fields.get("eligibility")
     if eligibility_section:
