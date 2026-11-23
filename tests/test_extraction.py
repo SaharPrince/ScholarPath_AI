@@ -47,6 +47,78 @@ from app.extraction import (
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
+    def test_avicenna_international_programme_extracts_requirements_and_closed_status(self):
+        html = """
+        <html><body><main>
+          <h1>International Scholarship Programme (ISP)</h1>
+          <p>The ISP supports international students and doctoral candidates studying in Germany.</p>
+          <p>Eine Bewerbung ist aktuell nicht möglich.</p>
+          <h2>Bewerbungsvoraussetzungen</h2>
+          <ul>
+            <li>Überdurchschnittliches Leistungspotential für das Studium und die Forschung.</li>
+            <li>Masterstudium oder Promotion an einer staatlich anerkannten Hochschule in Deutschland.</li>
+            <li>Praktische Ausbildung beim Islamkolleg Deutschland, sofern ein Theologiestudium angestrebt wird.</li>
+          </ul>
+          <p>Nicht förderfähig:</p>
+          <ul><li>Bachelorstudium</li><li>Studium in Teilzeit</li></ul>
+        </main></body></html>
+        """
+        parsed = parse_scholarship_page(
+            html,
+            "https://www.avicenna-studienwerk.de/internationales-stipendienprogramm/",
+            "Avicenna Studienwerk – International Scholarship Programme",
+        )
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed.application_status, "closed")
+        self.assertTrue(any("Masterstudium oder Promotion" in item[2] for item in parsed.criteria))
+        self.assertTrue(any(item[0] == "ineligibility" and "Bachelorstudium" in item[2] for item in parsed.criteria))
+
+    def test_evangelisches_student_programme_extracts_english_requirements_heading(self):
+        html = """
+        <html><body><main>
+          <h1>Scholarship for students</h1>
+          <p>Evangelisches Studienwerk awards scholarships for students at universities in Germany.</p>
+          <h2>Requirements for the application for a scholarship</h2>
+          <ul>
+            <li>Proven social commitment and suitability for the course of studies.</li>
+            <li>Good German language skills for applicants without German citizenship.</li>
+            <li>Valid qualification for university studies.</li>
+            <li>Applicants must not have advanced beyond the third subject-related semester.</li>
+          </ul>
+        </main></body></html>
+        """
+        parsed = parse_scholarship_page(
+            html,
+            "https://www.evstudienwerk.de/english/scholarship-for-students/",
+            "Evangelisches Studienwerk Scholarship for Students",
+        )
+        self.assertIsNotNone(parsed)
+        self.assertGreaterEqual(len(parsed.criteria), 3)
+        self.assertTrue(any("third subject-related semester" in item[2] for item in parsed.criteria))
+
+    def test_evangelisches_doctoral_programme_extracts_its_separate_requirements(self):
+        html = """
+        <html><body><main>
+          <h1>Scholarship for doctoral students</h1>
+          <p>Evangelisches Studienwerk supports doctoral students from all disciplines.</p>
+          <h2>Requirements for the application for doctoral scholarship support</h2>
+          <ul>
+            <li>Above-average study and examination performance.</li>
+            <li>Degree giving entitlement to a doctorate.</li>
+            <li>Admission to the doctorate by the university.</li>
+            <li>Students with a foreign degree must be admitted to a university in Germany for a doctorate.</li>
+          </ul>
+        </main></body></html>
+        """
+        parsed = parse_scholarship_page(
+            html,
+            "https://www.evstudienwerk.de/english/scholarship-for-doctoral-students/",
+            "Evangelisches Studienwerk Doctoral Scholarship",
+        )
+        self.assertIsNotNone(parsed)
+        self.assertGreaterEqual(len(parsed.criteria), 3)
+        self.assertTrue(any("Admission to the doctorate" in item[2] for item in parsed.criteria))
+
     def test_heinrich_boll_faq_adds_shared_and_route_specific_requirements_with_provenance(self):
         parsed = ExtractedPage(
             title="Heinrich Böll Scholarship for International Graduates and PhD Students",
