@@ -8,7 +8,7 @@ from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from app.config import settings
-from app.currency import CurrencyRateUnavailable, get_currency_snapshot
+from app.currency import CurrencyRateUnavailable, build_conversion, get_currency_snapshot
 from app.germany_guide import get_germany_guide
 from app.live_discovery import clear_last_discovery_report, discover_live_scholarships, get_last_discovery_report
 from app.matching import match_profile_to_scholarships
@@ -62,14 +62,19 @@ def health_check() -> dict[str, str]:
 
 
 @app.get("/api/currency-rates", tags=["currency"])
-async def currency_rates() -> dict:
-    """Return cached official daily PKR exchange-rate references for cost planning."""
+async def currency_rates(
+    amount: float = Query(default=1, ge=0, le=1_000_000_000),
+    from_currency: str = Query(default="PKR", min_length=3, max_length=3, pattern="^[A-Za-z]{3}$"),
+    to_currency: str = Query(default="EUR", min_length=3, max_length=3, pattern="^[A-Za-z]{3}$"),
+) -> dict:
+    """Return one indicative conversion; provider rate tables remain server-side."""
     try:
-        return await get_currency_snapshot()
+        snapshot = await get_currency_snapshot()
+        return build_conversion(snapshot, amount, from_currency, to_currency)
     except CurrencyRateUnavailable as exc:
         raise HTTPException(
             status_code=503,
-            detail="Official exchange rates are temporarily unavailable. Please retry later.",
+            detail="Exchange rates are temporarily unavailable. Please try again later.",
             headers={"Retry-After": "300"},
         ) from exc
 
