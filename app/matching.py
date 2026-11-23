@@ -26,15 +26,20 @@ def _boolean(value: Any) -> bool | None:
     return value if isinstance(value, bool) else None
 
 
+def _text(value: Any) -> str:
+    """Return text profile values safely; malformed JSON objects stay unknown."""
+    return value.strip() if isinstance(value, str) else ""
+
+
 def _result(state: str, explanation: str) -> dict[str, str]:
     return {"status": state, "explanation": explanation}
 
 
 def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> dict[str, str]:
     """Return pass/fail/unknown for one mandatory criterion."""
-    kind = (criterion.get("criterion_type") or "").strip().lower()
-    label = (criterion.get("criterion_label") or "").strip()
-    text = re.sub(r"\s+", " ", criterion.get("requirement_text") or "").strip()
+    kind = _text(criterion.get("criterion_type")).lower()
+    label = _text(criterion.get("criterion_label"))
+    text = re.sub(r"\s+", " ", _text(criterion.get("requirement_text"))).strip()
     lower = f"{label} {text}".lower()
 
     # Germany-specific residence and apprenticeship conditions. These checks
@@ -123,7 +128,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 return aliases.get(normalized, normalized)
 
             applicant_institution = canonical_institution(
-                str(profile.get("current_university_name") or "")
+                _text(profile.get("current_university_name"))
             )
             required_normalized = canonical_institution(required_institution)
             enrolled_here = _boolean(profile.get("currently_enrolled_at_current_university"))
@@ -162,7 +167,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         if months <= 15:
             return _result("pass", f"You reported {months:g} months in Germany; the published maximum is 15 months.")
         if re.search(r"\b(?:unless|exception|except|already studied|previously studied|prepar\w*|ausnahme|bereits in deutschland studiert|studienvorbereitung)\b", lower):
-            exception = profile.get("residence_duration_exception")
+            exception = _text(profile.get("residence_duration_exception")).lower()
             if exception == "none":
                 return _result("fail", "You reported more than 15 months in Germany and indicated that neither published exception applies.")
             if exception not in {"prior_study", "study_preparation"}:
@@ -171,7 +176,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         return _result("fail", f"You reported {months:g} months in Germany; the published maximum is 15 months and no exception is stated in this criterion.")
 
     if ("residence permit" in lower or "aufenthaltserlaubnis" in lower) and re.search(r"(?:study|studies|studying|studienzweck|studium)", lower):
-        permit = profile.get("german_residence_permit")
+        permit = _text(profile.get("german_residence_permit")).lower()
         if permit not in {"study", "other", "none"}:
             return _result("unknown", "Select whether your German residence permit is for study purposes.")
         return _result("pass" if permit == "study" else "fail",
@@ -240,7 +245,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
 
     semester = _number(profile.get("current_semester_in_program"))
     if re.search(r"from the second semester onwards|from the second semester onward", lower):
-        target_level = (profile.get("target_study_level") or "").strip().lower()
+        target_level = _text(profile.get("target_study_level")).lower()
         if re.search(r"does not apply to master's students|does not apply to master'?s students", lower):
             if target_level in {"master", "masters", "master's"}:
                 return _result("pass", "The provider exempts Master's students from the second-semester restriction.")
@@ -264,7 +269,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         r"\bvor\s+oder\s+zu\s+beginn\s+des\s+ersten\s+(?:hochschul)?semesters\b",
         lower,
     ):
-        stage = profile.get("first_semester_timing")
+        stage = _text(profile.get("first_semester_timing")).lower()
         if stage not in {"not_started", "at_beginning", "after_beginning", "later_semester"}:
             return _result("unknown", "Confirm whether the Master's programme has not started, is at the beginning of semester 1, or is already underway.")
         if stage in {"after_beginning", "later_semester"}:
@@ -303,7 +308,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("fail", "This FES application window closes at the beginning of the second apprenticeship year.")
         if year == 1:
             return _result("pass", "You reported that you are in the first apprenticeship year, within the published application window.")
-        stage = profile.get("apprenticeship_second_year_stage")
+        stage = _text(profile.get("apprenticeship_second_year_stage")).lower()
         if stage == "beginning":
             return _result("pass", "You reported that you are at the beginning of the second apprenticeship year.")
         if stage == "later":
@@ -335,8 +340,8 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     if kind == "nationality":
         required_pakistani = any(x in lower for x in ("pakistani", "pakistan", "ajk", "azad jammu"))
         if required_pakistani:
-            nationality = (profile.get("nationality") or "").lower()
-            residence = (profile.get("residence_country") or "").lower()
+            nationality = _text(profile.get("nationality")).lower()
+            residence = _text(profile.get("residence_country")).lower()
             if not nationality:
                 return _result("unknown", "Add your nationality to check this requirement.")
             if nationality not in {"pakistani", "pakistan", "pakistani national"}:
@@ -364,7 +369,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 }
                 required_regions = [name for name, aliases in region_aliases.items()
                                     if any(alias in lower for alias in aliases)]
-                domicile = (profile.get("domicile_region") or "").strip().lower()
+                domicile = _text(profile.get("domicile_region")).lower()
                 if len(required_regions) != 1:
                     return _result("unknown", "The official domicile rule lists multiple or unclear regions; it needs a closer check.")
                 if not domicile:
@@ -384,7 +389,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             }
             required_regions = [name for name, aliases in region_aliases.items()
                                 if any(alias in lower for alias in aliases)]
-            domicile = (profile.get("domicile_region") or "").strip().lower()
+            domicile = _text(profile.get("domicile_region")).lower()
             if len(required_regions) != 1:
                 return _result("unknown", "The official domicile rule lists multiple or unclear regions; it needs a closer check.")
             if not domicile:
@@ -395,7 +400,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         return _result("unknown", "This nationality rule needs a specific check against the official wording.")
 
     if kind == "language_requirements":
-        language = (profile.get("german_language_level") or "").strip().upper()
+        language = _text(profile.get("german_language_level")).upper()
         levels = {"NONE": 0, "A1": 1, "A2": 2, "B1": 3, "B2": 4, "C1": 5, "C2": 6}
         required = re.search(r"\b(A1|A2|B1|B2|C1|C2)\b", text, re.IGNORECASE)
         if not language or language not in levels:
@@ -532,7 +537,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         )
 
     if kind in {"academic_requirements", "study_level", "category_i_eligibility", "category_ii_eligibility"}:
-        target = (profile.get("target_study_level") or "").lower()
+        target = _text(profile.get("target_study_level")).lower()
         if re.search(r"\b(?:for|starting|admission to|completed their)\s+(?:a\s+)?master(?:'s)?\b", lower) or "master scholarship" in lower:
             if not target:
                 return _result("unknown", "Choose your intended study level to check this Master's-specific requirement.")
@@ -566,7 +571,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 return _result("informational", f"The exclusion applies to {excluded_level} study, not your selected study level.")
 
         if re.search(r"\b(?:completed|finished)\s+(?:a\s+)?bachelor(?:'s)?\s+degree\b|\b(?:abgeschlossen(?:e[snr]?)?\s+)?bachelor(?:-?studium|-?abschluss)\b", lower):
-            current_level = (profile.get("current_education_level") or "").lower()
+            current_level = _text(profile.get("current_education_level")).lower()
             if current_level not in {"bachelors", "masters", "phd"}:
                 if not current_level:
                     return _result("unknown", "Choose your highest completed education level to check the completed-Bachelor requirement.")
@@ -589,7 +594,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                     "unknown",
                     "The source mentions a university degree but does not clearly establish whether it is a completed prerequisite or the funded study level; review the official wording.",
                 )
-            current_level = (profile.get("current_education_level") or "").lower()
+            current_level = _text(profile.get("current_education_level")).lower()
             level_ranks = {"below_matric": 0, "matric": 1, "intermediate": 2, "bachelors": 3, "masters": 4, "phd": 5}
             rank = level_ranks.get(current_level)
             if rank is None:
@@ -617,10 +622,10 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                             if years > 0 else "The source requires professional experience."))
 
         # Match school and college entry requirements against the student's latest completed level.
-        current_level = (profile.get("current_education_level") or "").lower()
+        current_level = _text(profile.get("current_education_level")).lower()
         level_ranks = {"below_matric": 0, "matric": 1, "intermediate": 2, "bachelors": 3, "masters": 4, "phd": 5}
         current_rank = level_ranks.get(current_level)
-        target = (profile.get("target_study_level") or "").lower()
+        target = _text(profile.get("target_study_level")).lower()
         target_aliases = {
             "matric": {"matric", "ssc", "secondary"},
             "intermediate": {"intermediate", "hssc", "college", "fa", "f.a.", "fsc", "f.sc.", "ics", "i.com"},
@@ -696,7 +701,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("unknown", "Your degree subject must match the scholarship's approved field of study; compare it with the official subject list.")
 
         if "accepted hat categories" in label.lower() or ("hat-i" in lower and "hat-iv" in lower):
-            category = (profile.get("hat_category") or "").upper()
+            category = _text(profile.get("hat_category")).upper()
             if not category:
                 return _result("unknown", "Select your HAT category (I, II, III or IV).")
             if category not in {"HAT-I", "HAT-II", "HAT-III", "HAT-IV"}:
@@ -741,7 +746,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                            f"You reported {years:g} years of education; this criterion requires {minimum} or more.")
 
         if "first division" in lower or "second division" in lower or "third division" in lower:
-            division = (profile.get("latest_degree_division") or "").lower()
+            division = _text(profile.get("latest_degree_division")).lower()
             if not division:
                 return _result("unknown", "Select the division/class of your latest completed degree.")
             if division in {"other", "gpa", "cgpa", "percentage", "unknown"}:
@@ -867,7 +872,7 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
     This deliberately filters only explicit level-specific opportunities. Generic
     awards and unclear criteria remain visible as 'needs more information'.
     """
-    target_raw = (profile.get("target_study_level") or "").strip().lower()
+    target_raw = _text(profile.get("target_study_level")).lower()
     target = re.sub(r"[^a-z0-9]+", " ", target_raw).strip()
     target_aliases = {
         "matric": {"matric", "ssc", "secondary"},
@@ -890,7 +895,7 @@ def _target_level_mismatch(scholarship: dict[str, Any], criteria: list[dict[str,
     if target_key not in {"matric", "intermediate", "bachelors", "master", "phd", "vocational_training"}:
         return None
 
-    title = (scholarship.get("title") or "").lower()
+    title = _text(scholarship.get("title")).lower()
     criteria_text = " ".join(
         f"{item.get('criterion_label') or ''} {item.get('requirement_text') or ''}"
         for item in criteria
