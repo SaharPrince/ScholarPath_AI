@@ -463,7 +463,7 @@ def _parse_deadline_date(value: str | None, *, today: date | None = None) -> str
     closing_matches = [
         match for match in matches
         if re.search(
-            r"(?i)(?:until|through|bis(?: einschließlich)?|deadline(?:\\s+is)?|closes?(?:\\s+on)?|closing date|apply by|no later than)\\s*$",
+            r"(?i)(?:until|through|bis(?: einschließlich)?|deadline(?:\${ch}+is)?|closes?(?:\${ch}+on)?|closing date|apply by|no later than)\${ch}*$",
             value[max(0, match.start() - 48):match.start()],
         )
     ]
@@ -485,7 +485,7 @@ def _parse_deadline_date(value: str | None, *, today: date | None = None) -> str
             continue
 
         # English university pages commonly use ordinal dates such as "November 30th, 2026".
-        candidate = re.sub(r"(?i)(\\d{1,2})(?:st|nd|rd|th)\\b", r"\\1", candidate)
+        candidate = re.sub(r"(?i)(\${ch}{1,2})(?:st|nd|rd|th)\\b", r"\${ch}", candidate)
         for date_format in (
             "%B %d, %Y", "%B %d %Y", "%b %d, %Y", "%b %d %Y",
             "%d %B %Y", "%d %b %Y", "%Y-%m-%d",
