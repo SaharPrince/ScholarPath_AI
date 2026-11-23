@@ -3892,6 +3892,60 @@ def _parse_hec_commonwealth_announcement(
     )
 
 
+def augment_curated_programme(
+    parsed: ExtractedPage | None,
+    html: str,
+    page_url: str,
+    candidate_title: str | None = None,
+    provider_name: str | None = None,
+) -> ExtractedPage | None:
+    """Apply source-specific, evidence-checked rules in both legacy and live discovery.
+
+    If the generic parser cannot classify a curated page, a narrowly allow-listed
+    augmenter may still build a record from facts it can verify in that page.
+    No record is returned from this fallback unless it produces eligibility criteria.
+    """
+    normalized_url = page_url.rstrip("/")
+    augmenters = (
+        (REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL, _augment_regensburg_deutschlandstipendium),
+        (GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL, _augment_goettingen_deutschlandstipendium),
+        (GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL, _augment_goettingen_niedersachsenstipendium),
+        (TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL, _augment_tuebingen_deutschlandstipendium),
+        (KLU_DEUTSCHLANDSTIPENDIUM_URL, _augment_klu_deutschlandstipendium),
+        (OSKAR_KARL_FORSTER_URL, _augment_oskar_karl_forster),
+        (TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL, _augment_tu_berlin_deutschlandstipendium),
+        (KIEL_DEUTSCHLANDSTIPENDIUM_URL, _augment_kiel_deutschlandstipendium),
+        (HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL, _augment_haw_kiel_deutschlandstipendium),
+        (FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL, _augment_fu_berlin_deutschlandstipendium),
+        (ROMANA_SCHOTT_URL, _augment_romana_schott),
+        (AMEND_SCHOLARSHIP_URL, _augment_amend_medical_scholarship),
+    )
+    augmenter = next(
+        (function for url, function in augmenters if normalized_url == url.rstrip("/")),
+        None,
+    )
+    if augmenter is None:
+        return parsed
+
+    created_fallback = parsed is None
+    if parsed is None:
+        parsed = ExtractedPage(
+            title=_clean(candidate_title or "") or normalized_url,
+            description=None,
+            provider_name=_clean(provider_name or "") or None,
+            fields={},
+            criteria=[],
+            evidence=[],
+            application_status="unknown",
+            applicant_category="student",
+        )
+
+    parsed = augmenter(parsed, html, page_url)
+    if created_fallback and not parsed.criteria:
+        return None
+    return parsed
+
+
 async def _fetch_page(client: httpx.AsyncClient, url: str) -> tuple[str | None, str | None]:
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
@@ -4004,75 +4058,12 @@ async def extract_candidate_details(
                         parsed, faq_html, FES_APPRENTICESHIP_FAQ_URL
                     )
 
-            if parsed and candidate["candidate_url"].rstrip("/") == REGENSBURG_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
-                parsed = _augment_regensburg_deutschlandstipendium(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-
-            if parsed and candidate["candidate_url"].rstrip("/") == GOETTINGEN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
-                parsed = _augment_goettingen_deutschlandstipendium(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-
-            if parsed and candidate["candidate_url"].rstrip("/") == GOETTINGEN_NIEDERSACHSENSTIPENDIUM_URL.rstrip("/"):
-                parsed = _augment_goettingen_niedersachsenstipendium(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-
-            if parsed and candidate["candidate_url"].rstrip("/") == TUEBINGEN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
-                parsed = _augment_tuebingen_deutschlandstipendium(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-
-            if parsed and candidate["candidate_url"].rstrip("/") == KLU_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/"):
-                parsed = _augment_klu_deutschlandstipendium(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-
-            if parsed and candidate["candidate_url"].rstrip("/") == OSKAR_KARL_FORSTER_URL.rstrip("/"):
-                parsed = _augment_oskar_karl_forster(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-
-            if (
-                parsed
-                and candidate["candidate_url"].rstrip("/") == TU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
-            ):
-                parsed = _augment_tu_berlin_deutschlandstipendium(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-
-            if (
-                parsed
-                and candidate["candidate_url"].rstrip("/") == KIEL_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
-            ):
-                parsed = _augment_kiel_deutschlandstipendium(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-
-            if (
-                parsed
-                and candidate["candidate_url"].rstrip("/") == HAW_KIEL_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
-            ):
-                parsed = _augment_haw_kiel_deutschlandstipendium(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-            if (
-                parsed
-                and candidate["candidate_url"].rstrip("/") == FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL.rstrip("/")
-            ):
-                parsed = _augment_fu_berlin_deutschlandstipendium(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-
-            if parsed and candidate["candidate_url"].rstrip("/") == ROMANA_SCHOTT_URL.rstrip("/"):
-                parsed = _augment_romana_schott(
-                    parsed, html or "", candidate["candidate_url"]
-                )
-
-            if parsed and candidate["candidate_url"].rstrip("/") == AMEND_SCHOLARSHIP_URL.rstrip("/"):
-                parsed = _augment_amend_medical_scholarship(
-                    parsed, html or "", candidate["candidate_url"]
+            if parsed or html:
+                parsed = augment_curated_programme(
+                    parsed,
+                    html or "",
+                    candidate["candidate_url"],
+                    candidate.get("candidate_title"),
                 )
 
             if (
