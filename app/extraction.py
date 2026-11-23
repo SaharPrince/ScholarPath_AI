@@ -1447,7 +1447,7 @@ def parse_scholarship_page(html: str, page_url: str, candidate_title: str | None
             if item_text and item_text not in excluded_items:
                 excluded_items.append(item_text)
         if excluded_items:
-            fields["ineligibility"] = "\\n".join(excluded_items)[:4000]
+            fields["ineligibility"] = "\n".join(excluded_items)[:4000]
             evidence.append(("ineligibility", fields["ineligibility"]))
         break
 
