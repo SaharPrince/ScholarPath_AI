@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import math
 from datetime import datetime, timezone
 from time import monotonic
 
@@ -109,6 +110,7 @@ async def get_currency_snapshot() -> dict:
                 stale = copy.deepcopy(_cache)
                 stale["is_stale"] = True
                 stale["notice"] = "Showing the last successful rate snapshot because the source could not be refreshed."
+                _cache_expires_at = monotonic() + 300
                 return stale
             if isinstance(exc, CurrencyRateUnavailable):
                 raise
@@ -129,7 +131,7 @@ def build_conversion(snapshot: dict, amount: float, from_currency: str, to_curre
     rates = snapshot.get("rates", {})
     if source not in rates or target not in rates:
         raise CurrencyRateUnavailable("That currency pair is not available.")
-    if isinstance(amount, bool) or not isinstance(amount, (int, float)) or amount < 0:
+    if isinstance(amount, bool) or not isinstance(amount, (int, float)) or not math.isfinite(amount) or amount < 0:
         raise CurrencyRateUnavailable("Enter a valid amount.")
     rate = rates[target] / rates[source]
     return {
