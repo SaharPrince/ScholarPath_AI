@@ -20,6 +20,8 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(criterion, {})["status"], "unknown")
         self.assertEqual(evaluate_criterion(criterion, {"cgpa": 3.4})["status"], "pass")
         self.assertEqual(evaluate_criterion(criterion, {"cgpa": 2.8})["status"], "fail")
+        self.assertEqual(evaluate_criterion(criterion, {"cgpa": -0.1})["status"], "unknown")
+        self.assertEqual(evaluate_criterion(criterion, {"cgpa": 4.1})["status"], "unknown")
 
     def test_percentage_marks_outside_valid_range_remain_unknown(self):
         criterion = self.criterion(
