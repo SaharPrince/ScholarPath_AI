@@ -81,6 +81,19 @@ def _programme_candidate_title(source: dict | None, url: str) -> str | None:
     return source.get("name") if is_curated_detail else None
 
 
+def _parse_curated_page(html: str, final_url: str, source: dict | None):
+    """Use the same provider-specific extraction rules as request-time discovery."""
+    title = _programme_candidate_title(source, final_url)
+    parsed = parse_scholarship_page(html, final_url, title)
+    return augment_curated_programme(
+        parsed,
+        html,
+        final_url,
+        title,
+        (source.get("provider_name") or source.get("name")) if source else None,
+    )
+
+
 async def main() -> None:
     failures: list[str] = []
     blocking_failures: list[str] = []
@@ -211,15 +224,7 @@ async def main() -> None:
             source = curated_programme_sources.get(url)
             try:
                 html, final_url = await get_page(client, url)
-                title = _programme_candidate_title(source, url)
-                parsed = parse_scholarship_page(html, final_url, title)
-                parsed = augment_curated_programme(
-                    parsed,
-                    html,
-                    final_url,
-                    title,
-                    source.get("provider_name") or source.get("name") if source else None,
-                )
+                parsed = _parse_curated_page(html, final_url, source)
                 return url, final_url, parsed, None
             except Exception as exc:
                 return url, None, None, exc
