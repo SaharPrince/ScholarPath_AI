@@ -15,7 +15,7 @@ if str(PROJECT_ROOT) not in sys.path:
 import httpx
 
 from app.discovery import _candidate_links
-from app.extraction import parse_scholarship_page
+from app.extraction import augment_curated_programme, parse_scholarship_page
 from app.source_catalog import GERMANY_SOURCES, OFFICIAL_SOURCES
 from app.live_discovery import _as_record, discover_live_scholarships
 
@@ -213,6 +213,13 @@ async def main() -> None:
                 html, final_url = await get_page(client, url)
                 title = _programme_candidate_title(source, url)
                 parsed = parse_scholarship_page(html, final_url, title)
+                parsed = augment_curated_programme(
+                    parsed,
+                    html,
+                    final_url,
+                    title,
+                    source.get("provider_name") or source.get("name") if source else None,
+                )
                 return url, final_url, parsed, None
             except Exception as exc:
                 return url, None, None, exc
