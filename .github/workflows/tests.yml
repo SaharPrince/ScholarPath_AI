@@ -1,9 +1,11 @@
 name: ScholarPath tests
 
 on:
+  # Run on PR updates, and on direct pushes to the protected default branch.
+  # Avoid running the same feature-branch commit twice (push + pull_request).
   push:
     branches:
-      - "**"
+      - main
   pull_request:
     branches:
       - "**"
