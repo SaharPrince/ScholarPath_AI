@@ -1,10 +1,35 @@
 import httpx
 import unittest
+from unittest.mock import patch
 
-from scripts.live_source_verification import _is_transient_failure, _programme_candidate_title
+from scripts.live_source_verification import _is_transient_failure, _programme_candidate_title, _parse_curated_page
 
 
 class LiveSourceVerificationTests(unittest.TestCase):
+
+    def test_curated_page_verification_uses_the_live_discovery_augmenter(self):
+        url = "https://www.uni-regensburg.de/en/studies/deutschlandstipendium/information-for-students"
+        source = {
+            "name": "University of Regensburg – Deutschlandstipendium",
+            "provider_name": "University of Regensburg",
+            "official_url": url,
+            "source_type": "official_programme",
+        }
+        parsed = object()
+        with (
+            patch("scripts.live_source_verification.parse_scholarship_page", return_value=None),
+            patch("scripts.live_source_verification.augment_curated_programme", return_value=parsed) as augment,
+        ):
+            result = _parse_curated_page("<html></html>", url, source)
+        self.assertIs(result, parsed)
+        augment.assert_called_once_with(
+            None,
+            "<html></html>",
+            url,
+            source["name"],
+            source["provider_name"],
+        )
+
     def test_timeout_is_treated_as_transient(self):
         self.assertTrue(_is_transient_failure(httpx.ReadTimeout("provider timed out")))
 
