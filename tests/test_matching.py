@@ -21,6 +21,25 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(criterion, {"cgpa": 3.4})["status"], "pass")
         self.assertEqual(evaluate_criterion(criterion, {"cgpa": 2.8})["status"], "fail")
 
+    def test_percentage_marks_outside_valid_range_remain_unknown(self):
+        criterion = self.criterion(
+            "academic_requirements",
+            "Minimum marks",
+            "Applicants need at least 60% marks.",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"academic_percentage": 101})["status"],
+            "unknown",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"academic_percentage": -1})["status"],
+            "unknown",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"academic_percentage": 60})["status"],
+            "pass",
+        )
+
     def test_bachelors_profile_excludes_completed_masters_requirement(self):
         result = evaluate_criterion(
             self.criterion("study_level", "Study level", "Applicants should have completed their Master degree within the last 2 years."),
