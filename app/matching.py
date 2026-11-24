@@ -690,8 +690,10 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 scale = float(threshold_match.group(2)) if threshold_match.group(2) else 4.0
                 if reported_cgpa is None:
                     return _result("unknown", "Add your CGPA to check this published academic requirement.")
-                if reported_cgpa > scale:
-                    return _result("unknown", f"Your CGPA scale must be compared with the provider's {scale:g}-point scale.")
+                if not 0 <= reported_cgpa <= scale:
+                    return _result("unknown", f"Enter a CGPA between 0 and {scale:g}; this value cannot be compared safely.")
+                if not 0 <= minimum_cgpa <= scale:
+                    return _result("unknown", f"The published CGPA threshold is outside the provider's {scale:g}-point scale and needs manual review.")
                 return _result(
                     "pass" if reported_cgpa >= minimum_cgpa else "fail",
                     f"Your reported CGPA ({reported_cgpa:g}/{scale:g}) "
