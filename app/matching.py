@@ -673,6 +673,8 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 minimum_percentage = float(percentage_match.group(1))
                 if percentage is None:
                     return _result("unknown", "Add the percentage marks from your latest completed class to check this academic requirement.")
+                if not 0 <= percentage <= 100:
+                    return _result("unknown", "Enter percentage marks between 0 and 100; this value cannot be compared safely.")
                 if percentage < minimum_percentage:
                     return _result("fail", f"Your reported marks ({percentage:g}%) are below the published minimum of {minimum_percentage:g}%.")
                 return _result("pass", f"Your reported marks ({percentage:g}%) meet the published minimum of {minimum_percentage:g}%.")
