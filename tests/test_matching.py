@@ -42,6 +42,28 @@ class ProfileMatchingTests(unittest.TestCase):
             "pass",
         )
 
+    def test_invalid_published_percentage_threshold_remains_unknown(self):
+        criterion = self.criterion(
+            "academic_requirements",
+            "Minimum marks",
+            "Applicants need at least 101% marks.",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"academic_percentage": 100})["status"],
+            "unknown",
+        )
+
+    def test_percentage_threshold_accepts_valid_upper_boundary(self):
+        criterion = self.criterion(
+            "academic_requirements",
+            "Minimum marks",
+            "Applicants need at least 100% marks.",
+        )
+        self.assertEqual(
+            evaluate_criterion(criterion, {"academic_percentage": 100})["status"],
+            "pass",
+        )
+
     def test_bachelors_profile_excludes_completed_masters_requirement(self):
         result = evaluate_criterion(
             self.criterion("study_level", "Study level", "Applicants should have completed their Master degree within the last 2 years."),
