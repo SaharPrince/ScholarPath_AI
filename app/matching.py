@@ -671,6 +671,8 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             if percentage_match and ("%" in lower or "percent" in lower or "marks" in lower):
                 percentage = _number(profile.get("academic_percentage"))
                 minimum_percentage = float(percentage_match.group(1))
+                if not 0 <= minimum_percentage <= 100:
+                    return _result("unknown", "The published percentage threshold is outside the valid 0–100 range and needs manual review.")
                 if percentage is None:
                     return _result("unknown", "Add the percentage marks from your latest completed class to check this academic requirement.")
                 if not 0 <= percentage <= 100:
