@@ -98,6 +98,30 @@ try {
     }));
 
     let matchRequestCount = 0;
+    const alternativeTestScoreResult = {
+      total: 1,
+      likely_eligible: 0,
+      needs_more_information: 1,
+      not_eligible: 0,
+      notice: "Preliminary matching only.",
+      results: [{
+        id: 501,
+        title: "Adaptive Test Scholarship",
+        provider_name: "Official Provider",
+        deadline_text: "Not stated",
+        source_url: sourceUrl,
+        match_status: "needs_more_information",
+        checks_passed: 0,
+        checks_unknown: 1,
+        checks: [{
+          criterion_label: "GRE / HEC-HAT",
+          requirement_text: "Applicants need a GRE score of at least 300 or a HEC-HAT score of at least 60.",
+          status: "unknown",
+          explanation: "Add your GRE or HEC-HAT score to check this alternative requirement.",
+          evidence_url: sourceUrl
+        }]
+      }]
+    };
     await page.route("**/api/match", async route => {
       matchRequestCount += 1;
       const submitted = route.request().postDataJSON();
@@ -132,7 +156,17 @@ try {
           })
         });
       }
-      assert.equal(submitted.age, 20, "the adaptive answer should be included in the second matching request");
+      if (matchRequestCount === 2) {
+        assert.equal(submitted.age, 20, "the adaptive answer should be included in the next matching request");
+        return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(alternativeTestScoreResult)});
+      }
+      if (matchRequestCount === 3) {
+        assert.equal(submitted.test_score_type, "hat", "the selected test type should be submitted");
+        assert.equal(submitted.hat_score, undefined, "the score should be asked separately");
+        return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(alternativeTestScoreResult)});
+      }
+      assert.equal(submitted.test_score_type, "hat");
+      assert.equal(submitted.hat_score, 65, "the selected HEC-HAT score should be submitted as a HAT value");
       return route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -270,8 +304,14 @@ try {
     assert.equal(await page.locator("#matchResults input").count(), 1, "only one adaptive question should be shown at a time");
     await page.locator("#matchResults input").fill("20");
     await page.locator("#adaptiveContinue").click();
+    await page.waitForFunction(() => document.querySelector("#adaptiveLabel")?.textContent === "Which test score would you like to use?");
+    await page.locator("#adaptiveAnswer").selectOption("hat");
+    await page.locator("#adaptiveContinue").click();
+    await page.waitForFunction(() => document.querySelector("#adaptiveLabel")?.textContent === "What was your HEC-HAT score?");
+    await page.locator("#adaptiveAnswer").fill("65");
+    await page.locator("#adaptiveContinue").click();
     await page.waitForFunction(() => document.querySelector("#matchResults h3")?.textContent === "Your scholarship matches");
-    assert.equal(matchRequestCount, 2, "answering the adaptive question should trigger one fresh match");
+    assert.equal(matchRequestCount, 4, "each adaptive answer should trigger exactly one fresh match");
     assert.match(await page.locator("#matchResults").innerText(), /Adaptive Test Scholarship/);
     await page.locator("#matchResults button[data-match]").click();
     await page.waitForSelector("#overlay.show");
