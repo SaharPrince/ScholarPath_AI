@@ -62,6 +62,19 @@ class GermanyGuideTests(unittest.TestCase):
         self.assertIn("one-time codes", content)
         self.assertIn("issuing authority", content)
 
+    def test_time_sensitive_visa_and_work_rules_are_not_frozen_to_old_amounts(self):
+        guide = get_germany_guide()
+        content = " ".join(
+            bullet
+            for section in guide["sections"]
+            for item in section["items"]
+            for bullet in item["bullets"]
+        ).lower()
+        self.assertNotIn("€11,904", content)
+        self.assertNotIn("140 full days", content)
+        self.assertIn("current amount", content)
+        self.assertIn("current student work rules", content)
+
     def test_guide_api_returns_the_catalogue(self):
         result = api.germany_guide()
         self.assertEqual(result["country"], "Germany")
