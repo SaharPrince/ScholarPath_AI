@@ -92,6 +92,18 @@ class MatchingApiVisibilityTests(unittest.IsolatedAsyncioTestCase):
             await api.match_profile(self.profile(target_study_level="space tourism"))
         self.assertEqual(raised.exception.status_code, 422)
 
+    async def test_boolean_profile_fields_reject_string_values(self):
+        with self.assertRaises(api.HTTPException) as raised:
+            await api.match_profile(self.profile(admission_confirmed="true"))
+        self.assertEqual(raised.exception.status_code, 422)
+
+    async def test_numeric_profile_fields_reject_objects_and_non_finite_values(self):
+        for invalid in ({"value": 10}, float("inf"), float("nan"), True):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(api.HTTPException) as raised:
+                    await api.match_profile(self.profile(age=invalid))
+                self.assertEqual(raised.exception.status_code, 422)
+
 
 class BrowserSecurityHeaderTests(unittest.IsolatedAsyncioTestCase):
     async def test_security_headers_apply_without_caching_applicant_post_responses(self):
