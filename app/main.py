@@ -281,6 +281,21 @@ async def match_profile(profile: dict) -> dict:
         "current_education_level": "highest education completed",
         "target_study_level": "next study level",
     }
+    allowed_profile_values = {
+        "current_education_level": {
+            "below_matric", "matric", "intermediate", "bachelors",
+            "masters", "phd", "vocational_training",
+        },
+        "target_study_level": {
+            "matric", "intermediate", "bachelors", "master", "phd",
+            "vocational_training",
+        },
+    }
+    for field, allowed_values in allowed_profile_values.items():
+        value = profile.get(field)
+        if isinstance(value, str) and value not in allowed_values:
+            raise HTTPException(status_code=422, detail=f"{field} is not a supported study level.")
+
     missing_fields = [
         label for field, label in required_fields.items()
         if not isinstance(profile.get(field), str) or not profile[field].strip()
