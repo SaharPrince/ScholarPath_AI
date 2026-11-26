@@ -125,6 +125,70 @@ class MatchingApiVisibilityTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(raised.exception.status_code, 422)
 
 
+    async def test_all_select_profile_fields_accept_supported_choices(self):
+        profile = self.profile(
+            hat_category="IV",
+            latest_degree_division="second",
+            german_language_level="C1",
+            residence_duration_exception="prior_study",
+            german_residence_permit="study",
+            first_semester_timing="at_beginning",
+            domicile_region="Punjab",
+        )
+        with patch("app.main._live_results", new=AsyncMock(return_value=[])):
+            result = await api.match_profile(profile)
+        self.assertEqual(result["total"], 0)
+
+    async def test_select_profile_fields_reject_unsupported_choices(self):
+        invalid_choices = {
+            "hat_category": "V",
+            "latest_degree_division": "excellent",
+            "german_language_level": "D1",
+            "residence_duration_exception": "financial_need",
+            "german_residence_permit": "tourism",
+            "first_semester_timing": "semester_two",
+            "domicile_region": "Atlantis",
+            "test_score_type": "sat",
+        }
+        for field, value in invalid_choices.items():
+            with self.subTest(field=field):
+                with self.assertRaises(api.HTTPException) as raised:
+                    await api.match_profile(self.profile(**{field: value}))
+                self.assertEqual(raised.exception.status_code, 422)
+
+    async def test_count_and_whole_number_score_fields_reject_fractional_values(self):
+        for field, value in (
+            ("age", 19.5),
+            ("hat_score", 59.5),
+            ("gre_score", 300.5),
+            ("university_qs_rank", 100.5),
+            ("years_of_education", 16.5),
+            ("months_in_germany", 2.5),
+            ("remaining_semesters_in_program", 2.5),
+            ("current_semester_in_program", 1.5),
+            ("standard_programme_semesters", 6.5),
+            ("apprenticeship_year", 1.5),
+        ):
+            with self.subTest(field=field):
+                with self.assertRaises(api.HTTPException) as raised:
+                    await api.match_profile(self.profile(**{field: value}))
+                self.assertEqual(raised.exception.status_code, 422)
+
+    async def test_apprenticeship_year_must_match_supported_year_range(self):
+        for value in (0, 5):
+            with self.subTest(value=value):
+                with self.assertRaises(api.HTTPException) as raised:
+                    await api.match_profile(self.profile(apprenticeship_year=value))
+                self.assertEqual(raised.exception.status_code, 422)
+
+    async def test_fractional_cgpa_and_professional_experience_remain_supported(self):
+        with patch("app.main._live_results", new=AsyncMock(return_value=[])):
+            result = await api.match_profile(
+                self.profile(cgpa=3.45, professional_experience_years=2.5)
+            )
+        self.assertEqual(result["total"], 0)
+
+
 class BrowserSecurityHeaderTests(unittest.IsolatedAsyncioTestCase):
     async def test_security_headers_apply_without_caching_applicant_post_responses(self):
         from starlette.requests import Request
