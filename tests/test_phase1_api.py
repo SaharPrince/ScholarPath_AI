@@ -93,6 +93,8 @@ class BrowserSecurityHeaderTests(unittest.IsolatedAsyncioTestCase):
             "camera=(), microphone=(), geolocation=()",
         )
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
+        self.assertIn("default-src 'self'", response.headers["Content-Security-Policy"])
+        self.assertIn("connect-src 'self'", response.headers["Content-Security-Policy"])
         self.assertEqual(response.headers["Cache-Control"], "no-store")
 
 
