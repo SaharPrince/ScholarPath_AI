@@ -246,6 +246,36 @@ async def match_profile(profile: dict) -> dict:
             status_code=422,
             detail=f"Unsupported profile fields: {', '.join(sorted(unknown_fields))}",
         )
+    # Text profile fields are intentionally small and typed. This prevents
+    # malformed JSON values or oversized strings from flowing into matching
+    # explanations and the browser UI.
+    text_field_limits = {
+        "nationality": 80,
+        "residence_country": 80,
+        "target_study_level": 32,
+        "current_education_level": 32,
+        "education_field": 120,
+        "domicile_region": 100,
+        "latest_degree_division": 40,
+        "hat_category": 12,
+        "german_language_level": 24,
+        "residence_duration_exception": 80,
+        "first_semester_timing": 80,
+        "german_residence_permit": 80,
+        "current_university_name": 140,
+    }
+    for field, maximum in text_field_limits.items():
+        value = profile.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, str):
+            raise HTTPException(status_code=422, detail=f"{field} must be text.")
+        if len(value) > maximum:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{field} must be {maximum} characters or fewer.",
+            )
+
     required_fields = {
         "nationality": "nationality",
         "current_education_level": "highest education completed",
@@ -253,7 +283,7 @@ async def match_profile(profile: dict) -> dict:
     }
     missing_fields = [
         label for field, label in required_fields.items()
-        if not str(profile.get(field) or "").strip()
+        if not isinstance(profile.get(field), str) or not profile[field].strip()
     ]
     if missing_fields:
         raise HTTPException(
