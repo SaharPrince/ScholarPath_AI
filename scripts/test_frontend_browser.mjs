@@ -147,7 +147,7 @@ try {
             title: "Adaptive Test Scholarship",
             provider_name: "Official Provider",
             deadline_text: "Not stated",
-            source_url: sourceUrl,
+            source_url: "javascript:alert(1)",
             match_status: "likely_eligible",
             checks_passed: 1,
             checks_unknown: 0,
