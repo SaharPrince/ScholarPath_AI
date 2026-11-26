@@ -60,6 +60,16 @@ class MatchingApiVisibilityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["results"][0]["match_status"], "needs_more_information")
         self.assertIn("Add your age", result["results"][0]["checks"][0]["explanation"])
 
+    async def test_required_profile_fields_must_be_nonempty_text(self):
+        with self.assertRaises(api.HTTPException) as raised:
+            await api.match_profile(self.profile(nationality={"value": "Pakistani"}))
+        self.assertEqual(raised.exception.status_code, 422)
+
+    async def test_oversized_profile_text_is_rejected(self):
+        with self.assertRaises(api.HTTPException) as raised:
+            await api.match_profile(self.profile(education_field="A" * 121))
+        self.assertEqual(raised.exception.status_code, 422)
+
 
 class BrowserSecurityHeaderTests(unittest.IsolatedAsyncioTestCase):
     async def test_security_headers_apply_without_caching_applicant_post_responses(self):
