@@ -702,10 +702,42 @@ const shortText=v=>v?String(v):"Not stated by the source";
 function hasMultipleClauses(value){
  return /[;,]|\b(?:and|or|but|unless|except|as well as|whereas|while|und|oder|aber|außer|ausgenommen|sowie|während|auch wenn)\b/i.test(String(value||""));
 }
+function likelyGermanRequirement(raw){
+ const value=String(raw||"");
+ const tokens=value.match(/\b(?:und|oder|nicht|für|aus|bei|wird|werden|sind|ist|haben|müssen|können|bewerbung|bewerber(?:innen)?|studierende|studierenden|stipendium|stipendien|hochschule|förderung|promovierende|ausbildung|studienabschluss|deutschkenntnisse|sprachkenntnisse|nachweis|zulassung|voraussetzungen|antrag|anträge|staatlich|abgeschlossen|vergeben|bewerben|außer|ausgenommen|sehr|gute|öffentlichen|doppelförderung|medizinischen|hochschullehrer|herkunftsland|drittländern|höchstalter)\b/gi)||[];
+ return tokens.length>=2||/\b(?:promotionszulassung|promotionsabschlussstipendien|deutschkenntnisse|stipendienprogramm)\b/i.test(value);
+}
+function untranslatedGermanSummary(raw){
+ return likelyGermanRequirement(raw)
+  ?"This condition is published in German. A verified English summary is not available yet; review the original wording and confirm its meaning with the provider."
+  :null;
+}
 function summarizeRequirement(text,label){
  const raw=String(text||"").replace(/\s+/g," ").trim();
  const lower=raw.toLowerCase();
  if(!raw)return "Check the official provider page for the full condition.";
+ const exactGerman=[
+  [/^voraussetzung für eine bewerbung sind erste benotete leistungsnachweise und gute deutsche sprachkenntnisse\.?$/i,"Have your first graded academic results and good German-language skills."],
+  [/^voraussetzung für eine bewerbung sind gute deutsche sprachkenntnisse\.?$/i,"Have good German-language skills."],
+  [/^selbst wenn sie ein studium in englischer sprache absolvieren, müssen sie mit ihrer bewerbung ausreichende deutsche sprachkenntnisse nachweisen\.?$/i,"You must show sufficient German-language skills in your application, even if your degree programme is taught in English."],
+  [/^wir akzeptieren ein sprachniveau von b2, auch ohne zertifikat\.?$/i,"The provider accepts German at B2 level, even without a certificate."],
+  [/^promotionszulassung an einer staatlichen oder staatlich anerkannten hochschule in deutschland\.?$/i,"Have formal admission to doctoral studies at a state or state-recognized higher-education institution in Germany."],
+  [/^an einer deutschen hochschule zur promotion zugelassen sein\.?$/i,"Have formal admission to doctoral studies at a higher-education institution in Germany."],
+  [/^sehr guter studienabschluss\.?$/i,"Have completed a previous degree with very good results."],
+  [/^ausgeprägtes gesellschaftliches engagement im sinne der rosa-luxemburg-stiftung\.?$/i,"Show strong civic engagement in line with the Rosa-Luxemburg Foundation's mission."],
+  [/^keine vergabe von promotionsabschlussstipendien\.?$/i,"The foundation does not offer scholarships for the final phase of a doctorate."],
+  [/^eine doppelförderung mit anderen öffentlichen mitteln ist ausgeschlossen(?:\s*\(.*\))?\.?$/i,"You cannot receive this scholarship alongside other public funding."],
+  [/^sie können sich nur für ein stipendienprogramm bewerben!?$/i,"You may apply to only one scholarship programme."],
+  [/^mit ausnahme von promotionen im bereich medizin fördern wir promotionen in allen studiengängen\.?$/i,"Doctoral projects in medicine are excluded; the foundation supports doctoral projects in other fields."],
+  [/^überdurchschnittliche noten im studium haben\.?$/i,"Have above-average grades in your studies."],
+  [/^das studium mit überdurchschnittlichem ergebnis zügig abgeschlossen haben\.?$/i,"Have completed your previous studies promptly and with above-average results."],
+  [/^deren wissenschaftliches vorhaben einen bedeutsamen beitrag zur forschung leistet\.?$/i,"Have a research project that makes a significant contribution to research."],
+  [/^bereits an einer deutschen, staatlichen oder staatlich anerkannten hochschule oder fachhochschule studieren\.?$/i,"Be enrolled at a public or state-recognized university or university of applied sciences in Germany."],
+  [/^betreuung eines\*r hochschullehrers\*in in deutschland\.?$/i,"Have a university supervisor in Germany."],
+  [/^die maximale förderdauer beträgt drei jahre\.?$/i,"Funding is available for up to three years."],
+  [/^private auslandsaufenthalte im herkunftsland oder in drittländern können nicht gefördert werden\.?$/i,"Private stays abroad in your home country or in third countries are not covered by this scholarship."]
+ ];
+ for(const [pattern,summary] of exactGerman)if(pattern.test(raw))return summary;
  // Translate German proficiency wording without weakening "very good" to "good"
  // or dropping a provider-published level and its English-programme clarification.
  const germanLanguageMatch=raw.match(/\b(sehr\s+gute|gute)\s+(?:deutsche?\s+sprachkenntnisse|deutschkenntnisse|kenntnisse\s+der\s+deutschen\s+sprache)\b/i);
@@ -713,7 +745,7 @@ function summarizeRequirement(text,label){
   const languageRemainder=raw
    .replace(/,?\s*auch wenn die dissertation auf englisch verfasst wird/ig,"")
    .replace(/\([^)]*\)/g," ");
-  if(hasMultipleClauses(languageRemainder))return raw;
+  if(hasMultipleClauses(languageRemainder))return untranslatedGermanSummary(raw)||raw;
   const levelMatch=raw.match(/\b(?:niveau|level)\s*(?:of\s*)?(A1|A2|B1|B2|C1|C2)\b/i)
    ||raw.match(/\b(A1|A2|B1|B2|C1|C2)\s*[- ]?niveau\b/i);
   const dshMatch=raw.match(/\bDSH\s*(?:I{1,3}|[1-3])\b/i);
@@ -749,11 +781,11 @@ function summarizeRequirement(text,label){
   [/deutsche staatsangehörige.*eu- oder ewr-staates.*geflüchtete/,"Meet one of the listed status conditions: German citizenship, EU/EEA citizenship, refugee status, or tolerated residence status."]
  ];
  for(const [pattern,summary] of german)if(pattern.test(lower)){
-  if(hasMultipleClauses(raw)&&!/deutsche staatsangehörige.*eu- oder ewr-staates.*geflüchtete/i.test(raw))return raw;
+  if(hasMultipleClauses(raw)&&!/deutsche staatsangehörige.*eu- oder ewr-staates.*geflüchtete/i.test(raw))return untranslatedGermanSummary(raw)||raw;
   return summary;
  }
  // Do not replace a multi-part rule with a short summary of only its first clause.
- if(hasMultipleClauses(raw))return raw;
+ if(hasMultipleClauses(raw))return untranslatedGermanSummary(raw)||raw;
  if(/no upper age limit|there is no upper age limit/.test(lower))return "There is no upper age limit.";
  let m=raw.match(/minimum score of (\d+) out of (\d+) in ([A-Za-z-]+)/i);
  if(m)return "Score at least "+m[1]+" out of "+m[2]+" in "+m[3].toUpperCase()+".";
@@ -778,6 +810,8 @@ function summarizeRequirement(text,label){
  if(/confirmed admission|secured admission/i.test(lower))return "You must have an admission offer.";
  if(/completed their first degree abroad/i.test(lower))return "You must have completed your first university degree outside Germany.";
  if(/completed their graduate degree abroad/i.test(lower))return "You must have completed your graduate degree outside Germany.";
+ const untranslated=untranslatedGermanSummary(raw);
+ if(untranslated)return untranslated;
  return raw.replace(/^(all )?applicants? (are )?(required to|must|should)\s+/i,"")
   .replace(/^(an )?applicant must\s+/i,"").replace(/^must\s+/i,"")
   .replace(/\bplease note that\b/ig,"").replace(/\bfor consideration\b/ig,"").trim();

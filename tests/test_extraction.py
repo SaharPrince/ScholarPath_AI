@@ -829,6 +829,8 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
           <h1>Grundförderung</h1>
           <p>Die Grundförderung für Ausländer:innen richtet sich an internationale Studierende, die an einer deutschen Hochschule eingeschrieben sind und gute Leistungen erbringen möchten.</p>
           <p>Voraussetzung für eine Bewerbung sind erste benotete Leistungsnachweise und gute deutsche Sprachkenntnisse.</p>
+          <p>Selbst wenn Sie ein Studium in englischer Sprache absolvieren, müssen Sie mit Ihrer Bewerbung ausreichende deutsche Sprachkenntnisse nachweisen.</p>
+          <p>Wir akzeptieren ein Sprachniveau von B2, auch ohne Zertifikat.</p>
           <ul>
             <li>bereits an einer deutschen, staatlichen oder staatlich anerkannten Hochschule oder Fachhochschule studieren</li>
             <li>sehr gute deutsche Sprachkenntnisse haben</li>
@@ -851,6 +853,11 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
         self.assertTrue(any("noten im studium" in value for value in texts), repr(texts))
         self.assertTrue(any("gesellschaftspolitisch engagiert" in value for value in texts))
         self.assertTrue(any("sozialen demokratie" in value for value in texts), repr(texts))
+        self.assertTrue(any("ausreichende deutsche sprachkenntnisse" in value for value in texts), repr(texts))
+        b2_statement = next(item for item in page.criteria if "Sprachniveau von B2" in item[2])
+        self.assertEqual(b2_statement[0], "language_requirements")
+        self.assertEqual(b2_statement[1], "German language level clarification")
+        self.assertFalse(_is_mandatory_criterion(b2_statement[0], b2_statement[2]))
 
     def test_extracts_german_fes_apprentice_requirements(self) -> None:
         html = """

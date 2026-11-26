@@ -328,6 +328,11 @@ def _split_criteria_statements(value: str) -> list[str]:
 def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
     """Assign a more useful criterion type to explicit applicant conditions."""
     text = statement.casefold()
+    if re.fullmatch(
+        r"(?i)wir akzeptieren ein sprachniveau von b2, auch ohne zertifikat[.!]?",
+        statement.strip(),
+    ):
+        return "language_requirements", "German language level clarification"
     if re.search(
         r"\b(?:förderfähigkeit beschränkt sich nicht auf das absolvieren einer erstausbildung|"
         r"nicht auf die erstausbildung beschränkt|"
@@ -369,6 +374,13 @@ def _classify_eligibility_statement(statement: str) -> tuple[str, str]:
 
 def _is_mandatory_criterion(criterion_type: str, requirement_text: str) -> bool:
     """Infer mandatory status conservatively, preserving explicit preferences."""
+    if re.fullmatch(
+        r"(?i)wir akzeptieren ein sprachniveau von b2, auch ohne zertifikat[.!]?",
+        requirement_text.strip(),
+    ):
+        # This sentence clarifies the accepted language level; it is not a
+        # second, independent qualification that should be matched separately.
+        return False
     if re.search(
         r"(?i)\bno\s+doctoral\s+completion\s+scholarships?\b|\bkeine\s+promotionsabschlussstipendien\b",
         requirement_text,

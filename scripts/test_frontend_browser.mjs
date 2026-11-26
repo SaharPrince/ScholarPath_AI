@@ -37,6 +37,14 @@ const scholarship = [{
         "ausgeprägtes gesellschaftliches Engagement im Sinne der Rosa-Luxemburg-Stiftung",
       is_mandatory: false,
       evidence_url: sourceUrl
+    },
+    {
+      id: "42-3",
+      criterion_type: "eligibility",
+      criterion_label: "Application timing",
+      requirement_text: "Anträge müssen bis zum 15. Oktober eingereicht werden.",
+      is_mandatory: true,
+      evidence_url: sourceUrl
     }
   ]
 }];
@@ -214,11 +222,20 @@ try {
     const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     assert.equal(horizontalOverflow, false, viewport.name + ": page has horizontal overflow");
 
+    assert.match(await page.locator(".criterion-copy").nth(1).innerText(), /published in German/i);
+    assert.match(await page.locator(".criterion-copy").nth(2).innerText(), /strong civic engagement/i);
     const original = page.locator(".original-wording");
-    assert.equal(await original.count(), 1);
-    await original.locator("summary").click();
-    assert.notEqual(await original.getAttribute("open"), null, viewport.name + ": original wording did not expand");
-    assert.match(await original.locator("p").innerText(), /Sehr gute Deutschkenntnisse/);
+    assert.equal(await original.count(), 3);
+    const originalChecks = [
+      [/Sehr gute Deutschkenntnisse/, "B2 wording"],
+      [/Anträge müssen bis zum 15\. Oktober/, "untranslated German fallback"],
+      [/ausgeprägtes gesellschaftliches Engagement/, "social engagement wording"]
+    ];
+    for (let i = 0; i < originalChecks.length; i += 1) {
+      await original.nth(i).locator("summary").click();
+      assert.notEqual(await original.nth(i).getAttribute("open"), null, viewport.name + ": original wording did not expand (" + originalChecks[i][1] + ")");
+      assert.match(await original.nth(i).locator("p").innerText(), originalChecks[i][0]);
+    }
 
     const evidenceHref = await page.locator(".criterion a").first().getAttribute("href");
     const sourceHref = await page.locator(".links a").first().getAttribute("href");

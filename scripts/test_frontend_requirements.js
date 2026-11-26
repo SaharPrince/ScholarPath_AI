@@ -51,4 +51,43 @@ const compoundPairs = requirementPairs("study_level", "Study requirements", comp
 assert.equal(compoundPairs.length, 1, "compound requirements must not be split into partial summaries");
 assert.match(compoundPairs[0][1], /all disciplines.*full-time.*state-recognized university/i);
 
+assert.equal(
+  summarizeRequirement("Voraussetzung für eine Bewerbung sind erste benotete Leistungsnachweise und gute deutsche Sprachkenntnisse."),
+  "Have your first graded academic results and good German-language skills."
+);
+assert.equal(
+  summarizeRequirement("Selbst wenn Sie ein Studium in englischer Sprache absolvieren, müssen Sie mit Ihrer Bewerbung ausreichende deutsche Sprachkenntnisse nachweisen."),
+  "You must show sufficient German-language skills in your application, even if your degree programme is taught in English."
+);
+assert.equal(
+  summarizeRequirement("Wir akzeptieren ein Sprachniveau von B2, auch ohne Zertifikat."),
+  "The provider accepts German at B2 level, even without a certificate."
+);
+assert.equal(
+  summarizeRequirement("Promotionszulassung an einer staatlichen oder staatlich anerkannten Hochschule in Deutschland"),
+  "Have formal admission to doctoral studies at a state or state-recognized higher-education institution in Germany."
+);
+assert.equal(
+  summarizeRequirement("sehr guter Studienabschluss"),
+  "Have completed a previous degree with very good results."
+);
+assert.equal(
+  summarizeRequirement("ausgeprägtes gesellschaftliches Engagement im Sinne der Rosa-Luxemburg-Stiftung"),
+  "Show strong civic engagement in line with the Rosa-Luxemburg Foundation's mission."
+);
+assert.equal(
+  summarizeRequirement("Keine Vergabe von Promotionsabschlussstipendien"),
+  "The foundation does not offer scholarships for the final phase of a doctorate."
+);
+const untranslatedGerman =
+  "This condition is published in German. A verified English summary is not available yet; review the original wording and confirm its meaning with the provider.";
+assert.equal(
+  summarizeRequirement("Anträge müssen bis zum 15. Oktober eingereicht werden."),
+  untranslatedGerman
+);
+assert.equal(
+  requirementPairs("eligibility", "Application timing", "Anträge müssen bis zum 15. Oktober eingereicht werden.")[0][1],
+  untranslatedGerman
+);
+
 process.stdout.write("Frontend requirement-summary tests passed.\n");
