@@ -6,6 +6,7 @@ unverified. Every populated fact is accompanied by its source evidence.
 """
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
+import ipaddress
 import re
 from urllib.parse import urljoin, urlparse
 
@@ -3991,16 +3992,60 @@ def augment_curated_programme(
     return parsed
 
 
-async def _fetch_page(client: httpx.AsyncClient, url: str) -> tuple[str | None, str | None]:
-    parsed = urlparse(url)
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
-        return None, "Candidate URL is not a safe HTTPS URL."
+def _safe_official_origin(url: str) -> tuple[str, int] | None:
+    """Normalize a public HTTPS origin, rejecting IP literals and nonstandard ports."""
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname
+        port = parsed.port
+        if (
+            parsed.scheme.casefold() != "https"
+            or not host
+            or parsed.username
+            or parsed.password
+            or port not in (None, 443)
+        ):
+            return None
+        normalized_host = host.encode("idna").decode("ascii").casefold().rstrip(".")
+        ipaddress.ip_address(normalized_host)
+        return None
+    except (UnicodeError, ValueError):
+        # ValueError from ipaddress means a valid DNS hostname, not an IP.
+        try:
+            parsed = urlparse(url)
+            host = parsed.hostname
+            port = parsed.port
+            if (
+                parsed.scheme.casefold() != "https"
+                or not host
+                or parsed.username
+                or parsed.password
+                or port not in (None, 443)
+            ):
+                return None
+            normalized_host = host.encode("idna").decode("ascii").casefold().rstrip(".")
+            if not normalized_host or "." not in normalized_host:
+                return None
+            return normalized_host, 443
+        except (UnicodeError, ValueError):
+            return None
+
+
+async def _fetch_page(
+    client: httpx.AsyncClient,
+    url: str,
+    allowed_source_url: str | None = None,
+) -> tuple[str | None, str | None]:
+    origin = _safe_official_origin(url)
+    allowed_origin = _safe_official_origin(allowed_source_url) if allowed_source_url else origin
+    if origin is None or allowed_origin is None or origin != allowed_origin:
+        return None, "Candidate URL is outside its configured official HTTPS origin."
     try:
         async with client.stream("GET", url) as response:
             if response.status_code != 200:
                 return None, f"HTTP {response.status_code}"
-            if urlparse(str(response.url)).hostname != parsed.hostname:
-                return None, "Cross-domain redirect was not followed."
+            if _safe_official_origin(str(response.url)) != origin:
+                return None, "Cross-origin redirect was not followed."
             if "text/html" not in response.headers.get("content-type", "").lower():
                 return None, "Candidate did not return HTML."
             length = response.headers.get("content-length")
@@ -4044,7 +4089,8 @@ async def extract_candidate_details(
             candidate_filter = f" AND c.id IN ({placeholders})"
             candidate_params = tuple(candidate_ids)
         candidates = [dict(row) for row in connection.execute(
-            """SELECT c.id, c.source_id, c.title AS candidate_title, c.candidate_url
+            """SELECT c.id, c.source_id, c.title AS candidate_title, c.candidate_url,
+                      s.official_url AS source_official_url
                FROM discovery_candidates c
                JOIN sources s ON s.id = c.source_id
                WHERE c.status = 'candidate'
@@ -4067,7 +4113,9 @@ async def extract_candidate_details(
     async with httpx.AsyncClient(timeout=timeout, limits=limits, headers=headers,
                                  follow_redirects=False) as client:
         for candidate in candidates:
-            html, error = await _fetch_page(client, candidate["candidate_url"])
+            html, error = await _fetch_page(
+                client, candidate["candidate_url"], candidate["source_official_url"]
+            )
             candidate_path = urlparse(candidate["candidate_url"]).path.casefold()
             is_hec_corridor_overview = (
                 "hec.gov.pk" in (urlparse(candidate["candidate_url"]).hostname or "").casefold()
