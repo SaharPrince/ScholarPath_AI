@@ -926,6 +926,30 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
         })
         self.assertEqual(result["status"], "pass")
 
+    def test_german_university_transliteration_matches_ue_spelling(self):
+        c = self.criterion(
+            "eligibility",
+            "Enrolment",
+            "Applicants must be currently enrolled at the University of Würzburg.",
+        )
+        result = evaluate_criterion(c, {
+            "current_university_name": "University of Wuerzburg",
+            "currently_enrolled_at_current_university": True,
+        })
+        self.assertEqual(result["status"], "pass")
+
+    def test_similarly_named_university_is_not_accepted_by_substring(self):
+        c = self.criterion(
+            "eligibility",
+            "Enrolment",
+            "Applicants must be currently enrolled at the University of Oxford.",
+        )
+        result = evaluate_criterion(c, {
+            "current_university_name": "Oxford Brookes University",
+            "currently_enrolled_at_current_university": True,
+        })
+        self.assertEqual(result["status"], "fail")
+
     def test_preferred_language_is_not_a_mandatory_match_failure(self):
         c = self.criterion("language_requirements", "Language", "German language skills are preferred.", mandatory=False)
         self.assertEqual(evaluate_criterion(c, {})["status"], "informational")
