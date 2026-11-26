@@ -83,6 +83,8 @@ A reachable page, an official provider name, or a future deadline alone does not
 
 - `GET /api/health` — live-discovery service health.
 - `GET /api/sources` — configured official source registry.
+- `GET /api/germany-guide` — concise Germany preparation guidance and official links.
+- `GET /api/currency-rates` — one indicative currency conversion; accepts `amount`, `from_currency`, and `to_currency` query parameters.
 - `GET /api/discovery-status` — coverage metadata for the latest scan, including completed, failed, and timed-out sources.
 - `GET /api/scholarships` — fetch current opportunities from official sources; supports the available status filter.
 - `GET /api/scholarships/{id}` — resolve a result by its URL-derived identifier using fresh source data.
