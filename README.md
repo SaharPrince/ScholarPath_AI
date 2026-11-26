@@ -125,4 +125,10 @@ To run the live-source verification manually, open **Actions → ScholarPath tes
 
 ## Deployment and review
 
-Changes are prepared on an isolated hardening branch and consolidated into `feature/germany-scholarship-catalogue` for review through pull request #16. Preview deployments are for testing. Production is not changed until the pull request is explicitly approved and merged.
+- Vercel serves the FastAPI application through the explicit `app.main:app` entrypoint in `pyproject.toml`; the root `index.py` re-exports the same application for the Python runtime.
+- `.python-version` pins the deployment runtime to Python 3.12, matching the GitHub Actions test environment.
+- The root page is served by the FastAPI application from `app/static/index.html`; API routes remain under `/api/*`.
+- Vercel installs the dependencies declared in `pyproject.toml` (kept aligned with `requirements.txt` for local development and CI).
+- Use preview deployments for validation after the consolidated branch has passed the full suite. Production is not changed until the pull request is explicitly approved and merged.
+
+Changes are prepared on an isolated hardening branch and consolidated into `feature/germany-scholarship-catalogue` for review through pull request #16. No production deployment or merge is part of the implementation-only phase.
