@@ -140,13 +140,26 @@ def build_conversion(snapshot: dict, amount: float, from_currency: str, to_curre
         raise CurrencyRateUnavailable("That currency pair is not available.")
     if isinstance(amount, bool) or not isinstance(amount, (int, float)) or not math.isfinite(amount) or amount < 0:
         raise CurrencyRateUnavailable("Enter a valid amount.")
-    rate = rates[target] / rates[source]
+    source_rate = rates[source]
+    target_rate = rates[target]
+    if any(
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or value <= 0
+        for value in (source_rate, target_rate)
+    ):
+        raise CurrencyRateUnavailable("The selected currency pair has invalid provider rates.")
+    rate = target_rate / source_rate
+    converted_amount = float(amount) * rate
+    if not math.isfinite(rate) or rate <= 0 or not math.isfinite(converted_amount):
+        raise CurrencyRateUnavailable("The selected conversion is outside the supported numeric range.")
     return {
         "amount": float(amount),
         "from_currency": source,
         "to_currency": target,
         "rate": rate,
-        "converted_amount": float(amount) * rate,
+        "converted_amount": converted_amount,
         "rate_date": snapshot["rate_date"],
         "updated_at": snapshot["updated_at"],
         "next_update_at": snapshot["next_update_at"],
