@@ -37,6 +37,14 @@ const scholarship = [{
         "ausgeprägtes gesellschaftliches Engagement im Sinne der Rosa-Luxemburg-Stiftung",
       is_mandatory: false,
       evidence_url: "data:text/html,<script>alert(1)</script>"
+    },
+    {
+      id: "42-3",
+      criterion_type: "eligibility",
+      criterion_label: "Credential URL",
+      requirement_text: "A third-party application portal.",
+      is_mandatory: true,
+      evidence_url: "https://user:password@official.example/eligibility"
     }
   ]
 }];
@@ -217,7 +225,8 @@ try {
             bullets: ["Keep your passport and admission letter in hand luggage."],
             links: [
               { label: "Official travel guidance", url: "https://www.make-it-in-germany.com/" },
-              { label: "Unsafe test link", url: "javascript:alert(1)" }
+              { label: "Unsafe test link", url: "javascript:alert(1)" },
+              { label: "Credential URL", url: "https://user:password@example.com/" }
             ]
           }]
         }]
@@ -275,7 +284,7 @@ try {
     assert.equal(sourceHref, sourceUrl);
     assert.equal(await page.locator(".links a").count(), 1, "unsafe application URLs must be omitted");
     assert.equal(await page.locator(".criterion a").count(), 1, "unsafe evidence URLs must be omitted");
-    assert.equal(await page.locator('a[href^="javascript:"], a[href^="data:"]').count(), 0);
+    assert.equal(await page.locator('a[href^="javascript:"], a[href^="data:"], a[href*="@"]').count(), 0, "unsafe schemes and embedded URL credentials must be omitted");
     await page.locator("#close").click();
     await page.waitForFunction(() => !document.querySelector("#overlay")?.classList.contains("show"));
 
