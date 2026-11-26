@@ -70,6 +70,11 @@ class MatchingApiVisibilityTests(unittest.IsolatedAsyncioTestCase):
             await api.match_profile(self.profile(education_field="A" * 121))
         self.assertEqual(raised.exception.status_code, 422)
 
+    async def test_unsupported_study_level_is_rejected(self):
+        with self.assertRaises(api.HTTPException) as raised:
+            await api.match_profile(self.profile(target_study_level="space tourism"))
+        self.assertEqual(raised.exception.status_code, 422)
+
 
 class BrowserSecurityHeaderTests(unittest.IsolatedAsyncioTestCase):
     async def test_security_headers_apply_without_caching_applicant_post_responses(self):
