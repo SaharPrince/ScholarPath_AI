@@ -1,6 +1,7 @@
 import unittest
 
 from app.matching import evaluate_criterion, match_scholarship
+from scripts.live_source_verification import _safe_redirect_target
 
 
 class ProfileMatchingTests(unittest.TestCase):
@@ -1179,3 +1180,39 @@ class GermanStudyLevelFilteringTests(unittest.TestCase):
         rows = [{"id": 94, "title": "Promotions-förderung"}]
         criteria = {94: [self.criterion("study_level", "Academic qualification", "Promotionsstipendium für Doktorandinnen.")]}
         self.assertEqual(match_profile_to_scholarships(rows, criteria, {"target_study_level": "master"}), [])
+
+
+class SafeOfficialRedirectTests(unittest.TestCase):
+    def test_relative_redirect_stays_on_official_https_host(self):
+        self.assertEqual(
+            _safe_redirect_target(
+                "https://scholarship.example/apply",
+                "/eligibility",
+                "scholarship.example",
+            ),
+            "https://scholarship.example/eligibility",
+        )
+
+    def test_cross_host_redirect_is_rejected(self):
+        with self.assertRaises(ValueError):
+            _safe_redirect_target(
+                "https://official.example/start",
+                "https://attacker.example/collect",
+                "official.example",
+            )
+
+    def test_http_downgrade_redirect_is_rejected(self):
+        with self.assertRaises(ValueError):
+            _safe_redirect_target(
+                "https://official.example/start",
+                "http://official.example/redirected",
+                "official.example",
+            )
+
+    def test_redirect_with_embedded_credentials_is_rejected(self):
+        with self.assertRaises(ValueError):
+            _safe_redirect_target(
+                "https://official.example/start",
+                "https://user:password@official.example/private",
+                "official.example",
+            )
