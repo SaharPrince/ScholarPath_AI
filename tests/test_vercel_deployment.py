@@ -14,6 +14,7 @@ class VercelDeploymentConfigurationTests(unittest.TestCase):
         with (ROOT / "pyproject.toml").open("rb") as config_file:
             config = tomllib.load(config_file)
         self.assertEqual(config["tool"]["vercel"]["entrypoint"], "app.main:app")
+        self.assertEqual(config["project"]["requires-python"], ">=3.12")
         self.assertIs(vercel_app, app)
 
     def test_python_runtime_is_pinned_to_the_ci_minor_version(self):
