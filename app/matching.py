@@ -737,15 +737,35 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("pass", "Your HAT category is one of the categories accepted by the source.")
 
         if re.search(r"\bhat\b", lower) and re.search(r"\bgre\b", lower) and (" or " in lower or "/" in lower):
+            gre_threshold_match = re.search(r"\bGRE\b.{0,50}?\b(\d{3})\b", lower)
+            hat_threshold_match = re.search(r"\bHAT\b.{0,50}?\b(\d{1,3})\s*%?\b", lower)
+            if not gre_threshold_match or not hat_threshold_match:
+                return _result(
+                    "unknown",
+                    "The source does not state clear GRE and HEC-HAT score thresholds; confirm the accepted alternative with the provider.",
+                )
+            minimum_gre = int(gre_threshold_match.group(1))
+            minimum_hat = int(hat_threshold_match.group(1))
+            if not 260 <= minimum_gre <= 340 or not 1 <= minimum_hat <= 100:
+                return _result(
+                    "unknown",
+                    "The published GRE or HEC-HAT threshold is outside the valid score range and needs manual review.",
+                )
             hat = _profile_number(profile, "hat_score", 0, 100)
             gre = _profile_number(profile, "gre_score", 0, 340)
-            hat_ok = hat is not None and hat >= 60
-            gre_ok = gre is not None and gre >= 300
+            hat_ok = hat is not None and hat >= minimum_hat
+            gre_ok = gre is not None and gre >= minimum_gre
             if hat_ok or gre_ok:
-                return _result("pass", "At least one accepted test score meets the published GRE 300 / HEC-HAT 60% alternative.")
+                return _result(
+                    "pass",
+                    f"At least one accepted test score meets the published GRE {minimum_gre} / HEC-HAT {minimum_hat}% alternative.",
+                )
             if hat is None and gre is None:
                 return _result("unknown", "Add your GRE or HEC-HAT score to check this alternative requirement.")
-            return _result("fail", "Neither supplied test score meets the published GRE 300 / HEC-HAT 60% alternative.")
+            return _result(
+                "fail",
+                f"Neither supplied test score meets the published GRE {minimum_gre} / HEC-HAT {minimum_hat}% alternative.",
+            )
 
         if "hat" in lower and re.search(r"\b(?:minimum|min(?:imum)? score|score of)\s*(?:of\s*)?\d{1,3}", lower):
             score = _profile_number(profile, "hat_score", 0, 100)
