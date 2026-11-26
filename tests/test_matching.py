@@ -807,8 +807,13 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
         examples = [
             ("Disability", "Applicants with a disability may apply."),
             ("Religion", "Applicants must belong to the Protestant denomination."),
+            ("Religious identity", "Jewish applicants may apply."),
+            ("Church membership", "Applicants must be members of a church."),
             ("Refugee status", "Applicants must have refugee status."),
+            ("Asylum status", "Applicants must have asylum status."),
             ("Gender", "This scholarship is for women applicants."),
+            ("Gender", "This scholarship is for male applicants."),
+            ("Political activity", "Applicants must be active members of a political party."),
             ("Care responsibilities", "Applicants caring for minor children are eligible."),
         ]
         for label, requirement in examples:
