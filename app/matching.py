@@ -143,7 +143,16 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             def canonical_institution(value: str) -> str:
                 # Normalize accents before comparing official English/German
                 # institution names (e.g. Würzburg / Wuerzburg).
-                folded = unicodedata.normalize("NFKD", value.casefold())
+                # German transliterations must normalize consistently: ü/ue,
+                # ö/oe, ä/ae, and ß/ss are common in applicant-entered names.
+                transliterated = (
+                    value.casefold()
+                    .replace("ä", "ae")
+                    .replace("ö", "oe")
+                    .replace("ü", "ue")
+                    .replace("ß", "ss")
+                )
+                folded = unicodedata.normalize("NFKD", transliterated)
                 ascii_folded = "".join(
                     character for character in folded
                     if not unicodedata.combining(character)
@@ -152,9 +161,10 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 aliases = {
                     "tu berlin": "technical university of berlin",
                     "technical university berlin": "technical university of berlin",
-                    "university of wurzburg": "julius maximilians university of wurzburg",
-                    "julius maximilians universitat wurzburg": "julius maximilians university of wurzburg",
-                    "julius maximilians university wurzburg": "julius maximilians university of wurzburg",
+                    "university of wurzburg": "julius maximilians university of wuerzburg",
+                    "university of wuerzburg": "julius maximilians university of wuerzburg",
+                    "julius maximilians universitaet wuerzburg": "julius maximilians university of wuerzburg",
+                    "julius maximilians university wurzburg": "julius maximilians university of wuerzburg",
                 }
                 return aliases.get(normalized, normalized)
 
@@ -169,7 +179,9 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 return _result("unknown", "Confirm whether you are currently enrolled at the university you entered.")
             if not enrolled_here:
                 return _result("fail", "This opportunity requires current enrolment at the named university.")
-            if required_normalized not in applicant_institution and applicant_institution not in required_normalized:
+            # Require canonical equality. Substring matching can incorrectly
+            # accept a similarly named but different university.
+            if required_normalized != applicant_institution:
                 return _result("fail", f"The published condition requires enrolment at {required_institution}.")
             # If the same source criterion also specifies remaining semesters,
             # continue so both the institution and duration conditions are checked.
