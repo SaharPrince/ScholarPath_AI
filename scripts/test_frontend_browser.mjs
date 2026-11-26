@@ -241,6 +241,8 @@ try {
     await page.locator("#close").click();
     await page.waitForFunction(() => !document.querySelector("#overlay")?.classList.contains("show"));
 
+    assert.equal(await page.locator('#profileForm label[for="profile-nationality"]').count(), 1, "profile inputs should have associated labels");
+    assert.equal(await page.locator('#profileForm label[for="profile-current_education_level"]').count(), 1, "study-level select should have an associated label");
     const education = page.locator('#profileForm [name="current_education_level"]');
     const marksField = page.locator('#profileForm [name="academic_percentage"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
     const cgpaField = page.locator('#profileForm [name="cgpa"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
