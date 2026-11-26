@@ -54,6 +54,22 @@ Unknown must never be treated as eligible. Master's and PhD conditions are disti
 The website interface is intentionally English-only. It does not call a translation provider, send page content to a translation service, or store a language preference. Scholarship providers may publish source material in other languages; the original official source link is always available so applicants can review the provider's own wording.
 
 
+## Student planning tools
+
+- The Germany preparation guide provides concise practical guidance with links to official sources. Its checklist progress is stored in the visitor's browser only; it is not sent to the API.
+- The currency converter uses ExchangeRate-API Open Access to show indicative daily conversions, with PKR as its reference base. It displays the provider attribution and update time, and falls back to the last successful in-memory snapshot when a refresh fails.
+- Currency values are estimates for planning, not bank, card, remittance, or tuition-payment quotes. Banks and transfer services may apply different rates and fees.
+- The eligibility form reveals marks for school/intermediate education and CGPA for university-level education. It asks follow-up questions only when a published criterion needs a missing answer.
+- Personal, political, religious, health, disability, and financial-need conditions are left for applicants to review privately with the provider rather than being collected by the matcher.
+
+## Application security and privacy
+
+- Applicant profile fields are validated and bounded before matching; unsupported fields are rejected.
+- Applicant-specific matching responses use `Cache-Control: no-store`.
+- Dynamic external links are rendered only for HTTPS destinations without embedded URL credentials.
+- Baseline browser headers restrict framing, object embedding, referrers, device permissions, and resource origins. Inline scripts and styles remain allowed because the current single-page interface uses them.
+- Matching is performed in memory. The application does not write applicant profiles or match results to its scholarship database.
+
 ## Trust and application status
 
 These are separate concepts:
@@ -107,4 +123,4 @@ To run the live-source verification manually, open **Actions → ScholarPath tes
 
 ## Deployment and review
 
-Changes are developed on `feature/germany-scholarship-catalogue` and reviewed through pull request #16. Preview deployments are for testing. Production is not changed until the pull request is explicitly approved and merged.
+Changes are prepared on an isolated hardening branch and consolidated into `feature/germany-scholarship-catalogue` for review through pull request #16. Preview deployments are for testing. Production is not changed until the pull request is explicitly approved and merged.
