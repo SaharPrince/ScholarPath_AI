@@ -45,6 +45,26 @@ class ProfileMatchingTests(unittest.TestCase):
                 self.criterion("study_timing", "Remaining semesters", "At least 2 semesters remaining are required."),
                 {"remaining_semesters_in_program": -1},
             ),
+            (
+                self.criterion("academic_requirements", "Professional experience", "Applicants need at least 2 years of professional experience."),
+                {"professional_experience_years": 61},
+            ),
+            (
+                self.criterion("study_timing", "Months remaining", "At least 6 months remaining in the current study programme are required."),
+                {"months_remaining_in_program": 121},
+            ),
+            (
+                self.criterion("study_timing", "Current semester", "Applicants may apply from the second semester onwards."),
+                {"current_semester_in_program": 0},
+            ),
+            (
+                self.criterion("study_timing", "Programme duration", "At least half of the standard study period must remain."),
+                {"remaining_semesters_in_program": 6, "standard_programme_semesters": 31},
+            ),
+            (
+                self.criterion("study_timing", "Apprenticeship year", "The scholarship is available at the beginning of the first and no later than the beginning of the second year of apprenticeship."),
+                {"apprenticeship_year": 6},
+            ),
         ]
         for criterion, profile in cases:
             with self.subTest(field=next(iter(profile))):
