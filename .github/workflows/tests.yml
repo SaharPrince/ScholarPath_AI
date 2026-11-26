@@ -10,12 +10,19 @@ on:
     branches:
       - "**"
   workflow_dispatch:
+    inputs:
+      run_tests:
+        description: "Also run the complete test suite"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 jobs:
   test:
+    if: github.event_name != 'workflow_dispatch' || inputs.run_tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
