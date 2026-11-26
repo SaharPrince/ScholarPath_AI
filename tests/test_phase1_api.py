@@ -96,7 +96,9 @@ class BrowserSecurityHeaderTests(unittest.IsolatedAsyncioTestCase):
         }
 
         async def call_next(_request):
-            return Response("ok")
+            response = Response("ok")
+            response.headers["X-Frame-Options"] = "SAMEORIGIN"
+            return response
 
         response = await api.cache_public_scholarship_reads(Request(scope), call_next)
 
