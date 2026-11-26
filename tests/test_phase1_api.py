@@ -104,6 +104,17 @@ class MatchingApiVisibilityTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(result["total"], 0)
 
+    async def test_apprenticeship_second_year_stage_rejects_unsupported_values(self):
+        with self.assertRaises(api.HTTPException) as raised:
+            await api.match_profile(
+                self.profile(apprenticeship_second_year_stage={"stage": "beginning"})
+            )
+        self.assertEqual(raised.exception.status_code, 422)
+
+        with self.assertRaises(api.HTTPException) as raised:
+            await api.match_profile(apprenticeship_second_year_stage="finished")
+        self.assertEqual(raised.exception.status_code, 422)
+
     async def test_numeric_profile_fields_reject_objects_and_non_finite_values(self):
         for invalid in ({"value": 10}, float("inf"), float("nan"), True):
             with self.subTest(invalid=invalid):
