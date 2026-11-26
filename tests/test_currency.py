@@ -103,6 +103,28 @@ class CurrencyParsingTests(unittest.TestCase):
         with self.assertRaises(CurrencyRateUnavailable):
             build_conversion(snapshot, 1, "USD", "EUR")
 
+    def test_rejects_invalid_provider_rates_in_conversion_snapshot(self):
+        snapshot = {
+            "rates": {"PKR": 1.0, "USD": 0.0, "EUR": 0.003},
+            "rate_date": "2026-11-22",
+            "updated_at": "2026-11-22T00:00:00+00:00",
+            "next_update_at": "2026-11-23T00:00:00+00:00",
+            "source": {"name": "Provider", "url": "https://example.com"},
+        }
+        with self.assertRaises(CurrencyRateUnavailable):
+            build_conversion(snapshot, 1, "USD", "EUR")
+
+    def test_rejects_non_finite_converted_amount(self):
+        snapshot = {
+            "rates": {"PKR": 1.0, "USD": 0.001, "EUR": 0.003},
+            "rate_date": "2026-11-22",
+            "updated_at": "2026-11-22T00:00:00+00:00",
+            "next_update_at": "2026-11-23T00:00:00+00:00",
+            "source": {"name": "Provider", "url": "https://example.com"},
+        }
+        with self.assertRaises(CurrencyRateUnavailable):
+            build_conversion(snapshot, 1e308, "USD", "EUR")
+
 
 class CurrencyApiTests(unittest.IsolatedAsyncioTestCase):
     async def test_currency_endpoint_returns_only_requested_conversion(self):
