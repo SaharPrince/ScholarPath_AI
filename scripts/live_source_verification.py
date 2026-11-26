@@ -6,7 +6,7 @@ the application's database.
 import asyncio
 import sys
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -31,25 +31,57 @@ CORE_SOURCE_NAMES = {
 }
 
 
+def _safe_redirect_target(current_url: str, location: str, original_host: str) -> str:
+    """Allow only HTTPS redirects that remain on the original official host."""
+    target = urljoin(current_url, location)
+    parsed = urlparse(target)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.hostname.casefold() != original_host.casefold()
+    ):
+        raise ValueError("Official-source redirect left its original HTTPS host.")
+    return target
+
+
 async def get_page(client: httpx.AsyncClient, url: str) -> tuple[str, str]:
-    """Fetch an official page, retrying one transient network/server failure."""
-    for attempt in range(2):
-        try:
-            response = await client.get(url)
-            if response.status_code >= 500 and attempt == 0:
-                await asyncio.sleep(0.5)
-                continue
-            response.raise_for_status()
-            content_type = response.headers.get("content-type", "").lower()
-            if "text/html" not in content_type and "application/xhtml+xml" not in content_type:
-                raise ValueError(f"Expected HTML, received {content_type or 'unknown content type'}")
-            return response.text, str(response.url)
-        except httpx.TransportError:
-            if attempt == 0:
-                await asyncio.sleep(0.5)
-                continue
-            raise
-    raise RuntimeError(f"Unable to fetch official page after retry: {url}")
+    """Fetch an official page with bounded, same-host HTTPS redirects and one retry."""
+    initial = urlparse(url)
+    if initial.scheme != "https" or not initial.hostname or initial.username or initial.password:
+        raise ValueError("Official source URL must be HTTPS and contain no credentials.")
+    original_host = initial.hostname
+    current_url = url
+    redirects = 0
+    while True:
+        response = None
+        for attempt in range(2):
+            try:
+                response = await client.get(current_url, follow_redirects=False)
+                if response.status_code >= 500 and attempt == 0:
+                    await asyncio.sleep(0.5)
+                    continue
+                break
+            except httpx.TransportError:
+                if attempt == 0:
+                    await asyncio.sleep(0.5)
+                    continue
+                raise
+        if response is None:
+            raise RuntimeError(f"Unable to fetch official page after retry: {current_url}")
+        if response.status_code in {301, 302, 303, 307, 308}:
+            location = response.headers.get("location")
+            if not location or redirects >= 3:
+                raise ValueError("Official-source redirect is missing a target or exceeds the redirect limit.")
+            current_url = _safe_redirect_target(current_url, location, original_host)
+            redirects += 1
+            continue
+        response.raise_for_status()
+        content_type = response.headers.get("content-type", "").lower()
+        if "text/html" not in content_type and "application/xhtml+xml" not in content_type:
+            raise ValueError(f"Expected HTML, received {content_type or 'unknown content type'}")
+        return response.text, str(response.url)
 
 
 def _is_transient_failure(error: Exception) -> bool:
