@@ -833,6 +833,7 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
     def test_sensitive_personal_conditions_are_left_for_private_provider_review(self):
         examples = [
             ("Disability", "Applicants with a disability may apply."),
+            ("Health condition", "Applicants with a chronic medical condition may apply."),
             ("Religion", "Applicants must belong to the Protestant denomination."),
             ("Religious identity", "Jewish applicants may apply."),
             ("Ethnicity", "Applicants must belong to the specified ethnic group."),
