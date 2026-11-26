@@ -136,26 +136,33 @@ def build_conversion(snapshot: dict, amount: float, from_currency: str, to_curre
     source = from_currency.upper()
     target = to_currency.upper()
     rates = snapshot.get("rates", {})
-    if source not in rates or target not in rates:
+    if not isinstance(rates, dict) or source not in rates or target not in rates:
         raise CurrencyRateUnavailable("That currency pair is not available.")
-    if isinstance(amount, bool) or not isinstance(amount, (int, float)) or not math.isfinite(amount) or amount < 0:
+    if isinstance(amount, bool) or not isinstance(amount, (int, float)):
         raise CurrencyRateUnavailable("Enter a valid amount.")
-    source_rate = rates[source]
-    target_rate = rates[target]
-    if any(
-        isinstance(value, bool)
-        or not isinstance(value, (int, float))
-        or not math.isfinite(value)
-        or value <= 0
-        for value in (source_rate, target_rate)
+    try:
+        numeric_amount = float(amount)
+        source_rate = float(rates[source])
+        target_rate = float(rates[target])
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise CurrencyRateUnavailable("The selected amount or provider rates are invalid.") from exc
+    if not math.isfinite(numeric_amount) or numeric_amount < 0:
+        raise CurrencyRateUnavailable("Enter a valid amount.")
+    if (
+        isinstance(rates[source], bool)
+        or isinstance(rates[target], bool)
+        or not math.isfinite(source_rate)
+        or not math.isfinite(target_rate)
+        or source_rate <= 0
+        or target_rate <= 0
     ):
         raise CurrencyRateUnavailable("The selected currency pair has invalid provider rates.")
     rate = target_rate / source_rate
-    converted_amount = float(amount) * rate
+    converted_amount = numeric_amount * rate
     if not math.isfinite(rate) or rate <= 0 or not math.isfinite(converted_amount):
         raise CurrencyRateUnavailable("The selected conversion is outside the supported numeric range.")
     return {
-        "amount": float(amount),
+        "amount": numeric_amount,
         "from_currency": source,
         "to_currency": target,
         "rate": rate,
