@@ -60,7 +60,7 @@ The website interface is intentionally English-only. It does not call a translat
 - The currency converter uses ExchangeRate-API Open Access to show indicative daily conversions, with PKR as its reference base. It displays the provider attribution and update time, and falls back to the last successful in-memory snapshot when a refresh fails.
 - Currency values are estimates for planning, not bank, card, remittance, or tuition-payment quotes. Banks and transfer services may apply different rates and fees.
 - The eligibility form reveals marks for school/intermediate education and CGPA for university-level education. It asks follow-up questions only when a published criterion needs a missing answer; GRE/HEC-HAT alternatives ask which test the applicant wants to use before requesting that score.
-- Personal, political, religious, health, disability, refugee-status, family-care, gender, and financial-need conditions are left for applicants to review privately with the provider rather than being collected by the matcher.
+- Personal, political, religious, health, disability, refugee-status, family-care, gender, ethnicity, caste, and financial-need conditions are left for applicants to review privately with the provider rather than being collected by the matcher.
 
 ## Application security and privacy
 
