@@ -52,15 +52,14 @@ async def cache_public_scholarship_reads(request, call_next):
     # Baseline browser protections apply to API errors and the static application
     # as well as successful JSON responses. The CSP deliberately avoids a
     # restrictive script/style policy because the current UI uses inline assets.
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-    response.headers.setdefault(
-        "Content-Security-Policy",
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
         "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'self'; "
-        "form-action 'self'; frame-ancestors 'none'; object-src 'none'",
+        "form-action 'self'; frame-ancestors 'none'; object-src 'none'"
     )
     return response
 
