@@ -61,5 +61,40 @@ class MatchingApiVisibilityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Add your age", result["results"][0]["checks"][0]["explanation"])
 
 
+class BrowserSecurityHeaderTests(unittest.IsolatedAsyncioTestCase):
+    async def test_security_headers_apply_without_caching_applicant_post_responses(self):
+        from starlette.requests import Request
+        from starlette.responses import Response
+
+        scope = {
+            "type": "http",
+            "asgi": {"version": "3.0"},
+            "http_version": "1.1",
+            "method": "POST",
+            "scheme": "https",
+            "path": "/api/match",
+            "raw_path": b"/api/match",
+            "query_string": b"",
+            "headers": [],
+            "client": ("testclient", 12345),
+            "server": ("testserver", 443),
+        }
+
+        async def call_next(_request):
+            return Response("ok")
+
+        response = await api.cache_public_scholarship_reads(Request(scope), call_next)
+
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+        self.assertEqual(response.headers["Referrer-Policy"], "strict-origin-when-cross-origin")
+        self.assertEqual(
+            response.headers["Permissions-Policy"],
+            "camera=(), microphone=(), geolocation=()",
+        )
+        self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
+        self.assertNotIn("Cache-Control", response.headers)
+
+
 if __name__ == "__main__":
     unittest.main()
