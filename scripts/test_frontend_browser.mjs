@@ -256,7 +256,8 @@ try {
     await page.locator("#matchButton").click();
     await page.waitForSelector("#adaptiveContinue");
     assert.equal(await page.locator("#matchResults h3").innerText(), "One more thing");
-    assert.equal(await page.locator("#matchResults h4").innerText(), "How old are you?");
+    assert.equal(await page.locator("#matchResults label[for="adaptiveAnswer"]").innerText(), "How old are you?");
+    assert.equal(await page.locator("#adaptiveAnswer").getAttribute("aria-describedby"), "adaptiveScholarship");
     assert.equal(await page.locator("#matchResults input").count(), 1, "only one adaptive question should be shown at a time");
     await page.locator("#matchResults input").fill("20");
     await page.locator("#adaptiveContinue").click();
