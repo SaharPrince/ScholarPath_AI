@@ -814,6 +814,8 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
             ("Disability", "Applicants with a disability may apply."),
             ("Religion", "Applicants must belong to the Protestant denomination."),
             ("Religious identity", "Jewish applicants may apply."),
+            ("Ethnicity", "Applicants must belong to the specified ethnic group."),
+            ("Caste", "Applicants from the specified caste may apply."),
             ("Church membership", "Applicants must be members of a church."),
             ("Refugee status", "Applicants must have refugee status."),
             ("Asylum status", "Applicants must have asylum status."),
