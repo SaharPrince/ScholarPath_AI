@@ -93,7 +93,7 @@ class BrowserSecurityHeaderTests(unittest.IsolatedAsyncioTestCase):
             "camera=(), microphone=(), geolocation=()",
         )
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
-        self.assertNotIn("Cache-Control", response.headers)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
 
 
 if __name__ == "__main__":
