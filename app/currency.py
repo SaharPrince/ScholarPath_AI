@@ -112,13 +112,24 @@ async def get_currency_snapshot() -> dict:
             return copy.deepcopy(_cache)
         try:
             snapshot = await _fetch_snapshot()
+            if snapshot.get("is_stale"):
+                raise CurrencyRateUnavailable("The provider's latest rate snapshot is too old to use safely.")
         except Exception as exc:
             if _cache is not None:
-                stale = copy.deepcopy(_cache)
-                stale["is_stale"] = True
-                stale["notice"] = "Showing the last successful rate snapshot because the source could not be refreshed."
-                _cache_expires_at = monotonic() + 300
-                return stale
+                try:
+                    cached_updated = datetime.fromisoformat(_cache["updated_at"])
+                    cached_age = (datetime.now(timezone.utc) - cached_updated).total_seconds()
+                except (KeyError, TypeError, ValueError):
+                    cached_age = float("inf")
+                if 0 <= cached_age <= MAX_RATE_AGE_SECONDS:
+                    stale = copy.deepcopy(_cache)
+                    stale["is_stale"] = True
+                    stale["notice"] = "Showing the last successful rate snapshot because the source could not be refreshed."
+                    _cache_expires_at = monotonic() + 300
+                    return stale
+                raise CurrencyRateUnavailable(
+                    "The exchange-rate source is unavailable and the last saved rate snapshot is too old to display."
+                ) from exc
             if isinstance(exc, CurrencyRateUnavailable):
                 raise
             raise CurrencyRateUnavailable("The exchange-rate provider is temporarily unavailable.") from exc
