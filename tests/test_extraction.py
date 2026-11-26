@@ -42,8 +42,45 @@ import unittest
 
 from app.extraction import (
     _clean, _classify_application_status, _classify_applicant_category, _classify_eligibility_statement,
+    _safe_official_origin,
     _is_generic_title, _parse_deadline_date, _find_application_url, _is_mandatory_criterion, _extract_description_criteria, _split_criteria_statements, extract_criteria_from_html, parse_scholarship_page, _save_evidence, _parse_hec_knowledge_corridor, _remove_site_chrome,
 )
+
+
+class OfficialExtractionOriginTests(unittest.TestCase):
+    def test_accepts_public_standard_https_dns_origins(self):
+        self.assertEqual(
+            _safe_official_origin("https://www.daad.de/en/"),
+            ("www.daad.de", 443),
+        )
+        self.assertEqual(
+            _safe_official_origin("https://WWW.DAAD.DE:443/path"),
+            ("www.daad.de", 443),
+        )
+
+    def test_rejects_insecure_or_nonstandard_origins(self):
+        for url in (
+            "http://www.daad.de/",
+            "https://user:pass@www.daad.de/",
+            "https://www.daad.de:8443/",
+            "https://localhost/",
+            "https://127.0.0.1/",
+            "https://[::1]/",
+            "https://internal/",
+        ):
+            with self.subTest(url=url):
+                self.assertIsNone(_safe_official_origin(url))
+
+    def test_candidate_must_match_configured_source_origin(self):
+        source = "https://www.daad.de/en/"
+        self.assertEqual(
+            _safe_official_origin("https://www.daad.de/scholarships/"),
+            _safe_official_origin(source),
+        )
+        self.assertNotEqual(
+            _safe_official_origin("https://evil.example/"),
+            _safe_official_origin(source),
+        )
 
 
 class ScholarshipPageExtractionTests(unittest.TestCase):
