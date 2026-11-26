@@ -190,6 +190,18 @@ class CurrencyCacheFallbackTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(CurrencyRateUnavailable):
                 await currency_service.get_currency_snapshot()
 
+    async def test_cached_snapshot_is_rejected_after_age_limit_even_before_ttl_expires(self):
+        currency_service._cache = self.snapshot(
+            timedelta(seconds=currency_service.MAX_RATE_AGE_SECONDS + 1)
+        )
+        currency_service._cache_expires_at = currency_service.monotonic() + 3600
+        with patch(
+            "app.currency._fetch_snapshot",
+            new=AsyncMock(side_effect=CurrencyRateUnavailable("offline")),
+        ):
+            with self.assertRaises(CurrencyRateUnavailable):
+                await currency_service.get_currency_snapshot()
+
     async def test_provider_snapshot_older_than_maximum_age_is_rejected(self):
         old_snapshot = self.snapshot(timedelta(days=4))
         old_snapshot["is_stale"] = True
