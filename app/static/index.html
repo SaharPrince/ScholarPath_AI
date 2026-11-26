@@ -916,6 +916,12 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail();});
 
 // Keep the profile form short: reveal only fields relevant to the selected study route.
 const profileForm=$("profileForm");
+profileForm.querySelectorAll(".profile-field").forEach((wrapper,index)=>{
+ const label=wrapper.querySelector("label"),control=wrapper.querySelector("input,select,textarea");
+ if(!label||!control)return;
+ if(!control.id)control.id=control.name?"profile-"+control.name:"profile-field-"+index;
+ label.htmlFor=control.id;
+});
 const profileField=name=>profileForm.querySelector('[name="'+name+'"]')?.closest(".profile-field");
 function setProfileField(name,visible){
  const wrapper=profileField(name);if(!wrapper)return;
