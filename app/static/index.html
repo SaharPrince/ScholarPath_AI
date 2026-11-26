@@ -930,7 +930,6 @@ function setProfileField(name,visible){
 }
 function updateProfileFields(){
  const current=profileForm.elements.current_education_level.value;
- const target=profileForm.elements.target_study_level.value;
  const universityLevel=["bachelors","masters","phd"].includes(current);
  // Fail closed: every field starts hidden and disabled. Only the short starter
  // profile is revealed here; specialist details are requested by the adaptive
