@@ -287,6 +287,27 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(evaluate_criterion(c, {"gre_score": 305})["status"], "pass")
         self.assertEqual(evaluate_criterion(c, {"hat_score": 50, "gre_score": 280})["status"], "fail")
 
+    def test_gre_or_hat_alternative_uses_the_published_thresholds(self):
+        c = self.criterion(
+            "academic_requirements",
+            "GRE or HEC-HAT",
+            "GRE score 310 and above/HEC-HAT score 70% and above",
+        )
+        self.assertEqual(evaluate_criterion(c, {"gre_score": 305})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {"hat_score": 65})["status"], "fail")
+        self.assertEqual(evaluate_criterion(c, {"gre_score": 315})["status"], "pass")
+        self.assertEqual(evaluate_criterion(c, {"hat_score": 75})["status"], "pass")
+
+    def test_gre_or_hat_alternative_with_unparseable_thresholds_stays_unknown(self):
+        c = self.criterion(
+            "academic_requirements",
+            "GRE or HEC-HAT",
+            "GRE or HEC-HAT may be accepted; contact the provider for the required scores.",
+        )
+        result = evaluate_criterion(c, {})
+        self.assertEqual(result["status"], "unknown")
+        self.assertIn("thresholds", result["explanation"])
+
     def test_category_i_and_ii_are_alternative_routes(self):
         scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
         criteria = [
