@@ -21,6 +21,19 @@ def _number(value: Any) -> float | None:
     return number if math.isfinite(number) else None
 
 
+def _profile_number(
+    profile: dict[str, Any],
+    field: str,
+    minimum: float,
+    maximum: float,
+) -> float | None:
+    """Accept a numeric answer only when it falls inside the UI's valid domain."""
+    number = _number(profile.get(field))
+    if number is None or not minimum <= number <= maximum:
+        return None
+    return number
+
+
 def _boolean(value: Any) -> bool | None:
     """Accept only actual JSON booleans; never interpret strings or numbers as consent/status."""
     return value if isinstance(value, bool) else None
@@ -161,7 +174,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         )
 
     if re.search(r"(?:not have been in germany for more than|have not been in germany for more than|not been in germany for more than|no more than)\s*15\s*months?|(?:nicht länger als|nicht mehr als|höchstens)\s*15\s*monate?", lower):
-        months = _number(profile.get("months_in_germany"))
+        months = _profile_number(profile, "months_in_germany", 0, 1200)
         if months is None:
             return _result("unknown", "Add how many months you have been in Germany to check this residence-duration rule.")
         if months <= 15:
@@ -209,7 +222,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             "ein": 1, "eine": 1, "zwei": 2, "drei": 3, "vier": 4, "fünf": 5, "sechs": 6,
         }
         minimum_semesters = int(raw_minimum) if raw_minimum.isdigit() else semester_words[raw_minimum]
-        remaining = _number(profile.get("remaining_semesters_in_program"))
+        remaining = _profile_number(profile, "remaining_semesters_in_program", 0, 30)
         if remaining is None:
             return _result("unknown", "Add how many semesters remain in your current study programme to check this requirement.")
         if remaining < minimum_semesters:
@@ -221,8 +234,8 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         r"mindestens\s+die\s+h[aä]lfte\s+der\s+regelstudienzeit\s+(?:muss\s+)?verbleib",
         lower,
     ):
-        remaining = _number(profile.get("remaining_semesters_in_program"))
-        standard = _number(profile.get("standard_programme_semesters"))
+        remaining = _profile_number(profile, "remaining_semesters_in_program", 0, 30)
+        standard = _profile_number(profile, "standard_programme_semesters", 1, 30)
         if remaining is None or standard is None or standard <= 0:
             return _result("unknown", "Add the standard total and remaining semesters of your programme to check the half-duration rule.")
         minimum = standard / 2
@@ -236,14 +249,14 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         r"\bbis\s+drei\s+semester\s+vor\s+ende\s+der\s+regelstudienzeit\b",
         lower,
     ):
-        remaining = _number(profile.get("remaining_semesters_in_program"))
+        remaining = _profile_number(profile, "remaining_semesters_in_program", 0, 30)
         if remaining is None:
             return _result("unknown", "Add how many semesters remain in your standard study period to check this application window.")
         if remaining < 3:
             return _result("fail", f"You reported {remaining:g} semesters remaining; this application window requires at least 3 semesters before the standard end.")
         timing_matched = True
 
-    semester = _number(profile.get("current_semester_in_program"))
+    semester = _profile_number(profile, "current_semester_in_program", 1, 30)
     if re.search(r"from the second semester onwards|from the second semester onward", lower):
         target_level = _text(profile.get("target_study_level")).lower()
         if re.search(r"does not apply to master's students|does not apply to master'?s students", lower):
@@ -289,7 +302,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         return _result("pass", "Your reported study timing meets the published application window.")
 
     if re.search(r"(?:at least|minimum of|mindestens)\s*(?:6|six|sechs)\s*months?.{0,80}(?:remaining|left|rest|verbleib)", lower):
-        remaining = _number(profile.get("months_remaining_in_program"))
+        remaining = _profile_number(profile, "months_remaining_in_program", 0, 120)
         if remaining is None:
             return _result("unknown", "Add how many months remain in your current study programme.")
         return _result("pass" if remaining >= 6 else "fail",
@@ -301,7 +314,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         r"am anfang des ersten.*ausbildungsjahr)",
         lower,
     ):
-        year = _number(profile.get("apprenticeship_year"))
+        year = _profile_number(profile, "apprenticeship_year", 1, 5)
         if year is None:
             return _result("unknown", "Add your current apprenticeship year to check this application window.")
         if year < 1 or year > 2:
@@ -433,7 +446,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                 "informational",
                 "The provider explicitly allows applicants above the stated age to apply in the described circumstances. Review the provider's explanation requirements; do not treat this wording as an automatic age-based rejection.",
             )
-        age = _number(profile.get("age"))
+        age = _profile_number(profile, "age", 13, 100)
         if age is None:
             return _result("unknown", "Add your age to check the published age limit.")
         if re.search(r"(?i)\b(?:exceptions?|ausnahmen?)\b", lower):
@@ -602,7 +615,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             if rank < level_ranks["bachelors"]:
                 return _result("fail", "This requirement needs a completed university degree.")
             if "professional experience" in lower or "work experience" in lower:
-                years = _number(profile.get("professional_experience_years"))
+                years = _profile_number(profile, "professional_experience_years", 0, 60)
                 if years is None:
                     return _result("unknown", "Add your relevant professional experience in years to check this requirement.")
                 if years <= 0:
@@ -610,7 +623,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("pass", "Your completed university degree meets this qualification requirement.")
 
         if "professional experience" in lower or "work experience" in lower:
-            years = _number(profile.get("professional_experience_years"))
+            years = _profile_number(profile, "professional_experience_years", 0, 60)
             if years is None:
                 return _result("unknown", "Add your relevant professional experience in years to check this requirement.")
             minimum_match = re.search(r"(?:at least|minimum of|minimum)\s*(\d+(?:\.\d+)?)\s*years?", lower)
@@ -715,8 +728,8 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("pass", "Your HAT category is one of the categories accepted by the source.")
 
         if re.search(r"\bhat\b", lower) and re.search(r"\bgre\b", lower) and (" or " in lower or "/" in lower):
-            hat = _number(profile.get("hat_score"))
-            gre = _number(profile.get("gre_score"))
+            hat = _profile_number(profile, "hat_score", 0, 100)
+            gre = _profile_number(profile, "gre_score", 0, 340)
             hat_ok = hat is not None and hat >= 60
             gre_ok = gre is not None and gre >= 300
             if hat_ok or gre_ok:
@@ -726,7 +739,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("fail", "Neither supplied test score meets the published GRE 300 / HEC-HAT 60% alternative.")
 
         if "hat" in lower and re.search(r"\b(?:minimum|min(?:imum)? score|score of)\s*(?:of\s*)?\d{1,3}", lower):
-            score = _number(profile.get("hat_score"))
+            score = _profile_number(profile, "hat_score", 0, 100)
             if score is None:
                 return _result("unknown", "Add your HAT score to check this requirement.")
             match = re.search(r"\b(?:minimum|min(?:imum)? score|score of)\s*(?:of\s*)?(\d{1,3})", lower)
@@ -735,7 +748,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                            f"Your HAT score is {score:g}; the stated minimum is {minimum:g}.")
 
         if re.search(r"\bgre\b", lower) and re.search(r"\b300\b", lower):
-            score = _number(profile.get("gre_score"))
+            score = _profile_number(profile, "gre_score", 0, 340)
             if score is None:
                 return _result("unknown", "Add your GRE score to check this requirement.")
             return _result("pass" if score >= 300 else "fail",
@@ -743,7 +756,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
 
         years_match = re.search(r"\b(16|17|18)\s*(?:/\s*(17|18)\s*)?years?\b", lower)
         if years_match and ("degree" in lower or "education" in lower or "bachelor" in lower or "master" in lower):
-            years = _number(profile.get("years_of_education"))
+            years = _profile_number(profile, "years_of_education", 0, 30)
             if years is None:
                 return _result("unknown", "Add the total years of completed higher education.")
             required = [int(x) for x in years_match.groups() if x]
@@ -770,7 +783,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                            else "Your reported degree division does not meet this rule.")
 
         if "top 50" in lower or "qs 1–50" in lower or "qs 1-50" in lower:
-            rank = _number(profile.get("university_qs_rank"))
+            rank = _profile_number(profile, "university_qs_rank", 1, 2000)
             admitted = _boolean(profile.get("admission_confirmed"))
             if rank is None or admitted is None:
                 return _result("unknown", "Add your university's QS rank and confirm whether you have admission.")
@@ -779,7 +792,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                            "Your admission and university rank meet the top-50 rule." if ok
                            else "This category requires confirmed admission to a QS top-50 university.")
         if "top 51-100" in lower or "top 51–100" in lower or "51-100" in lower or "51–100" in lower:
-            rank = _number(profile.get("university_qs_rank"))
+            rank = _profile_number(profile, "university_qs_rank", 1, 2000)
             admitted = _boolean(profile.get("admission_confirmed"))
             if rank is None or admitted is None:
                 return _result("unknown", "Add your university's QS rank and confirm whether you have admission.")
