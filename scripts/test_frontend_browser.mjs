@@ -235,6 +235,16 @@ try {
 
     await page.goto("http://127.0.0.1:8000/", { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".card");
+    const sensitiveFollowUp = await page.evaluate(() => adaptiveNextQuestion([{
+      title: "Private eligibility condition",
+      checks: [{status:"unknown",explanation:"The provider lists a personal, political, or sensitive circumstance. This matcher does not ask you to disclose it; review the official condition privately with the provider."}]
+    }]));
+    assert.equal(sensitiveFollowUp, null, "sensitive provider conditions must not trigger an applicant question");
+    const unclearThresholdFollowUp = await page.evaluate(() => adaptiveNextQuestion([{
+      title: "Unclear test-score threshold",
+      checks: [{status:"unknown",explanation:"The source does not state clear GRE and HEC-HAT score thresholds; confirm the accepted alternative with the provider."}]
+    }]));
+    assert.equal(unclearThresholdFollowUp, null, "unclear score thresholds must be reviewed with the provider rather than prompting for a score");
 
     await page.waitForSelector(".guide-section");
     await page.waitForFunction(() => document.querySelector("#discoveryCoverage")?.textContent?.includes("Some official pages could not be reached"));
