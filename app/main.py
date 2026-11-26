@@ -321,6 +321,8 @@ async def match_profile(profile: dict) -> dict:
         "current_education_level": "highest education completed",
         "target_study_level": "next study level",
     }
+    # Validate every select-backed profile field against the same finite set
+    # of choices presented by the UI. Optional empty values remain unanswered.
     allowed_profile_values = {
         "current_education_level": {
             "below_matric", "matric", "intermediate", "bachelors",
@@ -331,13 +333,65 @@ async def match_profile(profile: dict) -> dict:
             "vocational_training",
         },
         "test_score_type": {"gre", "hat"},
+        "hat_category": {"I", "II", "III", "IV"},
+        "latest_degree_division": {"first", "second", "third", "other"},
+        "german_language_level": {"NONE", "A1", "A2", "B1", "B2", "C1", "C2"},
+        "residence_duration_exception": {"prior_study", "study_preparation", "none"},
+        "german_residence_permit": {"study", "other", "none"},
+        "first_semester_timing": {
+            "not_started", "at_beginning", "after_beginning", "later_semester",
+        },
         "apprenticeship_second_year_stage": {"beginning", "later"},
+        "domicile_region": {
+            "Punjab", "Sindh", "Khyber Pakhtunkhwa", "Balochistan",
+            "Islamabad Capital Territory", "Azad Jammu and Kashmir", "Gilgit-Baltistan",
+        },
     }
     for field, allowed_values in allowed_profile_values.items():
         value = profile.get(field)
-        if isinstance(value, str) and value not in allowed_values:
-            description = "study level" if field in {"current_education_level", "target_study_level"} else "test type"
-            raise HTTPException(status_code=422, detail=f"{field} is not a supported {description}.")
+        if value is not None and value != "" and value not in allowed_values:
+            descriptions = {
+                "current_education_level": "current education level",
+                "target_study_level": "target study level",
+                "test_score_type": "test type",
+                "hat_category": "HAT category",
+                "latest_degree_division": "degree division",
+                "german_language_level": "German language level",
+                "residence_duration_exception": "residence exception",
+                "german_residence_permit": "residence permit purpose",
+                "first_semester_timing": "semester start stage",
+                "apprenticeship_second_year_stage": "apprenticeship stage",
+                "domicile_region": "domicile region",
+            }
+            raise HTTPException(
+                status_code=422,
+                detail=f"{field} is not a supported {descriptions[field]}.",
+            )
+
+    # These fields represent counts or whole-number scores. Reject fractions
+    # instead of letting an invalid value silently pass a dropdown/range check.
+    integer_fields = {
+        "age", "hat_score", "gre_score", "university_qs_rank",
+        "years_of_education", "months_in_germany",
+        "months_remaining_in_program", "remaining_semesters_in_program",
+        "current_semester_in_program", "standard_programme_semesters",
+        "apprenticeship_year",
+    }
+    for field in integer_fields:
+        value = profile.get(field)
+        if value is None or value == "":
+            continue
+        try:
+            if not float(value).is_integer():
+                raise HTTPException(status_code=422, detail=f"{field} must be a whole number.")
+        except (OverflowError, TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=f"{field} must be a valid whole number.") from exc
+    if profile.get("apprenticeship_year") not in (None, ""):
+        if not 1 <= float(profile["apprenticeship_year"]) <= 4:
+            raise HTTPException(
+                status_code=422,
+                detail="apprenticeship_year must be between 1 and 4.",
+            )
 
     missing_fields = [
         label for field, label in required_fields.items()
