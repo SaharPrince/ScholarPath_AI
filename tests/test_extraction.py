@@ -1074,6 +1074,22 @@ class ScholarshipPageExtractionTests(unittest.TestCase):
     def test_past_deadline_marks_that_cycle_closed(self) -> None:
         self.assertEqual(_classify_application_status("Application deadline: 1 January 2020", "2020-01-01"), "closed")
 
+    def test_stale_explicit_open_or_upcoming_status_cannot_override_past_deadline(self) -> None:
+        self.assertEqual(
+            _classify_application_status("Applications are open", "2020-01-01", "open"),
+            "closed",
+        )
+        self.assertEqual(
+            _classify_application_status("Applications will open soon", "2020-01-01", "upcoming"),
+            "closed",
+        )
+
+    def test_explicit_open_status_is_preserved_when_deadline_is_future(self) -> None:
+        self.assertEqual(
+            _classify_application_status("Programme details", "2099-01-01", "open"),
+            "open",
+        )
+
     def test_future_deadline_alone_does_not_mean_open(self) -> None:
         self.assertEqual(_classify_application_status("Application deadline: 1 January 2099", "2099-01-01"), "unknown")
 
