@@ -752,20 +752,47 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
                     "unknown",
                     "The published GRE or HEC-HAT threshold is outside the valid score range and needs manual review.",
                 )
+            selected_test = _text(profile.get("test_score_type")).lower()
             hat = _profile_number(profile, "hat_score", 0, 100)
             gre = _profile_number(profile, "gre_score", 0, 340)
-            hat_ok = hat is not None and hat >= minimum_hat
-            gre_ok = gre is not None and gre >= minimum_gre
-            if hat_ok or gre_ok:
+
+            # The adaptive form asks the applicant to choose one accepted test.
+            # When a choice is present, never let an unrelated/stale score field
+            # satisfy the alternative on the applicant's behalf. Keep the
+            # legacy either-score behavior only for callers that omit the choice.
+            if selected_test == "hat":
+                if hat is None:
+                    return _result("unknown", "Add your HEC-HAT score to check this alternative requirement.")
+                meets_requirement = hat >= minimum_hat
+                selected_label = "HEC-HAT"
+                reported_score = hat
+                minimum_score = minimum_hat
+            elif selected_test == "gre":
+                if gre is None:
+                    return _result("unknown", "Add your GRE score to check this alternative requirement.")
+                meets_requirement = gre >= minimum_gre
+                selected_label = "GRE"
+                reported_score = gre
+                minimum_score = minimum_gre
+            else:
+                hat_ok = hat is not None and hat >= minimum_hat
+                gre_ok = gre is not None and gre >= minimum_gre
+                if hat_ok or gre_ok:
+                    return _result(
+                        "pass",
+                        f"At least one accepted test score meets the published GRE {minimum_gre} / HEC-HAT {minimum_hat}% alternative.",
+                    )
+                if hat is None and gre is None:
+                    return _result("unknown", "Add your GRE or HEC-HAT score to check this alternative requirement.")
                 return _result(
-                    "pass",
-                    f"At least one accepted test score meets the published GRE {minimum_gre} / HEC-HAT {minimum_hat}% alternative.",
+                    "fail",
+                    f"Neither supplied test score meets the published GRE {minimum_gre} / HEC-HAT {minimum_hat}% alternative.",
                 )
-            if hat is None and gre is None:
-                return _result("unknown", "Add your GRE or HEC-HAT score to check this alternative requirement.")
+
             return _result(
-                "fail",
-                f"Neither supplied test score meets the published GRE {minimum_gre} / HEC-HAT {minimum_hat}% alternative.",
+                "pass" if meets_requirement else "fail",
+                f"Your selected {selected_label} score ({reported_score:g}) "
+                f"{'meets' if meets_requirement else 'is below'} the published minimum of {minimum_score:g}.",
             )
 
         if "hat" in lower and re.search(r"\b(?:minimum|min(?:imum)? score|score of)\s*(?:of\s*)?\d{1,3}", lower):
