@@ -798,10 +798,16 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
         )
 
     def test_financial_need_is_not_inferred_or_requested(self):
-        c = self.criterion("eligibility", "Financial need", "Applicants must demonstrate financial need.")
-        result = evaluate_criterion(c, {})
-        self.assertEqual(result["status"], "unknown")
-        self.assertIn("does not ask for income", result["explanation"])
+        examples = [
+            ("Financial need", "Applicants must demonstrate financial need."),
+            ("Low income", "The award is reserved for low-income applicants."),
+            ("Income assessment", "Applicants are selected through a means-tested assessment."),
+        ]
+        for label, requirement in examples:
+            with self.subTest(label=label):
+                result = evaluate_criterion(self.criterion("eligibility", label, requirement), {})
+                self.assertEqual(result["status"], "unknown")
+                self.assertIn("does not ask for income", result["explanation"])
 
     def test_sensitive_personal_conditions_are_left_for_private_provider_review(self):
         examples = [
