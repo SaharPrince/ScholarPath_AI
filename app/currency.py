@@ -140,18 +140,25 @@ def build_conversion(snapshot: dict, amount: float, from_currency: str, to_curre
         raise CurrencyRateUnavailable("That currency pair is not available.")
     if isinstance(amount, bool) or not isinstance(amount, (int, float)):
         raise CurrencyRateUnavailable("Enter a valid amount.")
+    raw_source_rate = rates[source]
+    raw_target_rate = rates[target]
+    if (
+        isinstance(raw_source_rate, bool)
+        or isinstance(raw_target_rate, bool)
+        or not isinstance(raw_source_rate, (int, float))
+        or not isinstance(raw_target_rate, (int, float))
+    ):
+        raise CurrencyRateUnavailable("The selected currency pair has invalid provider rates.")
     try:
         numeric_amount = float(amount)
-        source_rate = float(rates[source])
-        target_rate = float(rates[target])
+        source_rate = float(raw_source_rate)
+        target_rate = float(raw_target_rate)
     except (OverflowError, TypeError, ValueError) as exc:
         raise CurrencyRateUnavailable("The selected amount or provider rates are invalid.") from exc
     if not math.isfinite(numeric_amount) or numeric_amount < 0:
         raise CurrencyRateUnavailable("Enter a valid amount.")
     if (
-        isinstance(rates[source], bool)
-        or isinstance(rates[target], bool)
-        or not math.isfinite(source_rate)
+        not math.isfinite(source_rate)
         or not math.isfinite(target_rate)
         or source_rate <= 0
         or target_rate <= 0
