@@ -127,7 +127,7 @@ class MatchingApiVisibilityTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_all_select_profile_fields_accept_supported_choices(self):
         profile = self.profile(
-            hat_category="IV",
+            hat_category="HAT-IV",
             latest_degree_division="second",
             german_language_level="C1",
             residence_duration_exception="prior_study",
@@ -141,7 +141,7 @@ class MatchingApiVisibilityTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_select_profile_fields_reject_unsupported_choices(self):
         invalid_choices = {
-            "hat_category": "V",
+            "hat_category": "HAT-V",
             "latest_degree_division": "excellent",
             "german_language_level": "D1",
             "residence_duration_exception": "financial_need",
