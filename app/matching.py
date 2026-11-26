@@ -737,8 +737,8 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             return _result("pass", "Your HAT category is one of the categories accepted by the source.")
 
         if re.search(r"\bhat\b", lower) and re.search(r"\bgre\b", lower) and (" or " in lower or "/" in lower):
-            gre_threshold_match = re.search(r"\bGRE\b.{0,50}?\b(\d{3})\b", lower)
-            hat_threshold_match = re.search(r"\bHAT\b.{0,50}?\b(\d{1,3})\s*%?\b", lower)
+            gre_threshold_match = re.search(r"\bgre\b.{0,50}?\b(\d{3})\b", lower)
+            hat_threshold_match = re.search(r"\bhat\b.{0,50}?\b(\d{1,3})\s*%?\b", lower)
             if not gre_threshold_match or not hat_threshold_match:
                 return _result(
                     "unknown",
