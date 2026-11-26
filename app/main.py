@@ -43,8 +43,11 @@ async def cache_public_scholarship_reads(request, call_next):
         elif is_source_registry or is_germany_guide:
             # Curated reference content changes only with a code deployment.
             response.headers["Cache-Control"] = "public, s-maxage=3600, stale-while-revalidate=86400"
-    # POST /api/match is intentionally excluded: applicant-specific results must
-    # never be stored in a shared cache.
+    # Applicant-specific matching responses contain profile-derived information.
+    # Explicitly prevent browser, proxy, and CDN storage of both request results
+    # and any future cacheable POST response.
+    if request.method == "POST" and path == "/api/match":
+        response.headers["Cache-Control"] = "no-store"
 
     # Baseline browser protections apply to API errors and the static application
     # as well as successful JSON responses. The CSP deliberately avoids a
