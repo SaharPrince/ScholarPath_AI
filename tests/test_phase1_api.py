@@ -60,6 +60,23 @@ class MatchingApiVisibilityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["results"][0]["match_status"], "needs_more_information")
         self.assertIn("Add your age", result["results"][0]["checks"][0]["explanation"])
 
+    async def test_test_score_type_is_accepted_for_adaptive_gre_or_hat_follow_up(self):
+        row = self.scholarship([
+            self.criterion(
+                "academic_requirements",
+                "GRE / HEC-HAT",
+                "Applicants need a GRE score of at least 300 or a HEC-HAT score of at least 60.",
+            ),
+        ])
+        with patch("app.main._live_results", new=AsyncMock(return_value=[row])):
+            result = await api.match_profile(self.profile(test_score_type="hat"))
+        self.assertEqual(result["needs_more_information"], 1)
+
+    async def test_test_score_type_rejects_unsupported_choices(self):
+        with self.assertRaises(api.HTTPException) as raised:
+            await api.match_profile(self.profile(test_score_type="sat"))
+        self.assertEqual(raised.exception.status_code, 422)
+
     async def test_required_profile_fields_must_be_nonempty_text(self):
         with self.assertRaises(api.HTTPException) as raised:
             await api.match_profile(self.profile(nationality={"value": "Pakistani"}))
