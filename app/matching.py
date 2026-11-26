@@ -74,11 +74,18 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
         )
 
     if re.search(
-        r"(?i)\b(?:refugee|asylum\s+seeker|disabilit(?:y|ies)|disabled|"
-        r"chronic\s+illness|religion|religious|denomination|muslim|christian|political\s+engagement|politisch(?:es|er|e)?\s+engagement|"
-        r"protestant|catholic|gender|women|woman|female|single\s+parent|"
+        r"(?i)\b(?:refugee|asylum\s+(?:seeker|status)|disabilit(?:y|ies)|disabled|"
+        r"chronic\s+illness|religion|religious|denomination|faith\s+(?:affiliation|identity|membership)|"
+        r"muslim|christian|protestant|catholic|jewish|judaism|buddhist|buddhism|hindu|hinduism|"
+        r"sikh|sikhism|orthodox|anglican|church\s+membership|church\s+member|"
+        r"members?\s+of\s+(?:a|the)\s+church|"
+        r"political\s+(?:engagement|activity|activities|party|affiliation|membership)|"
+        r"members?\s+of\s+(?:a|the)\s+political\s+part(?:y|ies)|"
+        r"politisch(?:es|er|e)?\s+engagement|"
+        r"gender|women|woman|female|men|man|male|transgender|non[- ]?binary|single\s+parent|"
         r"minor\s+child(?:ren)?|caregiv(?:er|ing)|care\s+responsibilit(?:y|ies)|"
-        r"family\s+responsibilit(?:y|ies)|social\s+democra(?:cy|tic)|political\s+(?:beliefs?|ideolog(?:y|ies)|alignment)|gesellschaftspolitisch|werte[n]?\s+der\s+sozialen\s+demokratie)\b",
+        r"family\s+responsibilit(?:y|ies)|social\s+democra(?:cy|tic)|"
+        r"political\s+(?:beliefs?|ideolog(?:y|ies)|alignment)|gesellschaftspolitisch|werte[n]?\s+der\s+sozialen\s+demokratie)\b",
         lower,
     ):
         return _result(
