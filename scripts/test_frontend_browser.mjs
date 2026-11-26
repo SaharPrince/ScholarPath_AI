@@ -17,7 +17,7 @@ const scholarship = [{
   status: "unverified",
   source_name: "Rosa-Luxemburg-Stiftung",
   source_url: sourceUrl,
-  application_url: null,
+  application_url: "javascript:alert(1)",
   applicant_category: "doctoral",
   criteria: [
     {
@@ -36,7 +36,7 @@ const scholarship = [{
       requirement_text:
         "ausgeprägtes gesellschaftliches Engagement im Sinne der Rosa-Luxemburg-Stiftung",
       is_mandatory: false,
-      evidence_url: sourceUrl
+      evidence_url: "data:text/html,<script>alert(1)</script>"
     }
   ]
 }];
@@ -151,7 +151,13 @@ try {
             match_status: "likely_eligible",
             checks_passed: 1,
             checks_unknown: 0,
-            checks: []
+            checks: [{
+              criterion_label: "Test criterion",
+              requirement_text: "A published condition.",
+              status: "unknown",
+              explanation: "Confirm the condition with the provider.",
+              evidence_url: "javascript:alert(1)"
+            }]
           }]
         })
       });
@@ -171,7 +177,10 @@ try {
           items: [{
             title: "Pack your documents",
             bullets: ["Keep your passport and admission letter in hand luggage."],
-            links: [{ label: "Official travel guidance", url: "https://www.make-it-in-germany.com/" }]
+            links: [
+              { label: "Official travel guidance", url: "https://www.make-it-in-germany.com/" },
+              { label: "Unsafe test link", url: "javascript:alert(1)" }
+            ]
           }]
         }]
       })
@@ -195,6 +204,8 @@ try {
 
     assert.match(await page.locator("#germanyGuideTitle").innerText(), /Germany preparation guide/);
     assert.match(await page.locator(".guide-section summary").innerText(), /Travelling from Pakistan/);
+    assert.equal(await page.locator(".guide-links a").count(), 1, "unsafe guide URLs must not become links");
+    assert.match(await page.locator(".guide-links a").first().getAttribute("href"), /^https:\/\//);
     const guideTask = page.locator("[data-guide-task]");
     await guideTask.check();
     assert.equal(await page.locator("#guideProgressText").innerText(), "Preparation checklist complete");
@@ -224,6 +235,9 @@ try {
     const sourceHref = await page.locator(".links a").first().getAttribute("href");
     assert.equal(evidenceHref, sourceUrl);
     assert.equal(sourceHref, sourceUrl);
+    assert.equal(await page.locator(".links a").count(), 1, "unsafe application URLs must be omitted");
+    assert.equal(await page.locator(".criterion a").count(), 1, "unsafe evidence URLs must be omitted");
+    assert.equal(await page.locator('a[href^="javascript:"], a[href^="data:"]').count(), 0);
     await page.locator("#close").click();
     await page.waitForFunction(() => !document.querySelector("#overlay")?.classList.contains("show"));
 
@@ -249,6 +263,10 @@ try {
     await page.waitForFunction(() => document.querySelector("#matchResults h3")?.textContent === "Your scholarship matches");
     assert.equal(matchRequestCount, 2, "answering the adaptive question should trigger one fresh match");
     assert.match(await page.locator("#matchResults").innerText(), /Adaptive Test Scholarship/);
+    await page.locator("#matchResults button[data-match]").click();
+    await page.waitForSelector("#overlay.show");
+    assert.equal(await page.locator("#detailBody a").count(), 0, "unsafe match-result source and evidence URLs must be omitted");
+    assert.equal(await page.locator('a[href^="javascript:"], a[href^="data:"]').count(), 0);
 
     await page.close();
   }
