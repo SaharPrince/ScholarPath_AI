@@ -79,6 +79,29 @@ class DiscoveryParsingTests(unittest.TestCase):
         self.assertIsNone(_normalized_host("http://portal.example/"))
         self.assertEqual(_normalized_host("https://portal.example/"), "portal.example")
 
+    def test_source_rejects_ip_literals_local_hosts_and_nonstandard_ports(self) -> None:
+        for url in (
+            "https://127.0.0.1/",
+            "https://10.0.0.1/",
+            "https://[::1]/",
+            "https://localhost/",
+            "https://internal/",
+            "https://portal.example:8443/",
+            "https://user:pass@portal.example/",
+        ):
+            with self.subTest(url=url):
+                self.assertIsNone(_normalized_host(url))
+
+    def test_source_normalizes_case_trailing_dot_and_idna(self) -> None:
+        self.assertEqual(
+            _normalized_host("https://PORTAL.EXAMPLE./"),
+            "portal.example",
+        )
+        self.assertEqual(
+            _normalized_host("https://münchen.example/"),
+            "xn--mnchen-3ya.example",
+        )
+
 
     def test_excludes_sign_in_contact_archive_and_download_links(self) -> None:
         html = """
