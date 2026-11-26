@@ -80,7 +80,7 @@ assert.equal(
   "The foundation does not offer scholarships for the final phase of a doctorate."
 );
 const untranslatedGerman =
-  "This condition is published in German. A verified English summary is not available yet; review the original wording and confirm its meaning with the provider.";
+  "This condition is published in German. A verified English summary is not available yet; review the original wording and confirm its meaning with the provider";
 assert.equal(
   summarizeRequirement("Anträge müssen bis zum 15. Oktober eingereicht werden."),
   untranslatedGerman
