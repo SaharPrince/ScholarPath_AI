@@ -1,10 +1,11 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
 
 from app import main as api
+import app.currency as currency_service
 from app.currency import (
     CurrencyRateUnavailable,
     build_conversion,
@@ -147,6 +148,57 @@ class CurrencyParsingTests(unittest.TestCase):
         }
         with self.assertRaises(CurrencyRateUnavailable):
             build_conversion(snapshot, 10**1000, "USD", "EUR")
+
+
+class CurrencyCacheFallbackTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        currency_service._cache = None
+        currency_service._cache_expires_at = 0.0
+
+    def tearDown(self):
+        currency_service._cache = None
+        currency_service._cache_expires_at = 0.0
+
+    def snapshot(self, age):
+        updated = datetime.now(timezone.utc) - age
+        return {
+            "base": "PKR",
+            "rates": {"PKR": 1.0, "USD": 0.004, "EUR": 0.003},
+            "rate_date": updated.date().isoformat(),
+            "updated_at": updated.isoformat(),
+            "next_update_at": (updated + timedelta(days=1)).isoformat(),
+            "source": {"name": "Provider", "url": "https://example.com"},
+            "is_stale": False,
+        }
+
+    async def test_recent_cached_snapshot_is_used_when_refresh_fails(self):
+        currency_service._cache = self.snapshot(timedelta(hours=1))
+        with patch(
+            "app.currency._fetch_snapshot",
+            new=AsyncMock(side_effect=CurrencyRateUnavailable("offline")),
+        ):
+            result = await currency_service.get_currency_snapshot()
+        self.assertTrue(result["is_stale"])
+        self.assertIn("last successful rate snapshot", result["notice"])
+
+    async def test_expired_cached_snapshot_is_not_used_indefinitely(self):
+        currency_service._cache = self.snapshot(timedelta(days=4))
+        with patch(
+            "app.currency._fetch_snapshot",
+            new=AsyncMock(side_effect=CurrencyRateUnavailable("offline")),
+        ):
+            with self.assertRaises(CurrencyRateUnavailable):
+                await currency_service.get_currency_snapshot()
+
+    async def test_provider_snapshot_older_than_maximum_age_is_rejected(self):
+        old_snapshot = self.snapshot(timedelta(days=4))
+        old_snapshot["is_stale"] = True
+        with patch(
+            "app.currency._fetch_snapshot",
+            new=AsyncMock(return_value=old_snapshot),
+        ):
+            with self.assertRaises(CurrencyRateUnavailable):
+                await currency_service.get_currency_snapshot()
 
 
 class CurrencyApiTests(unittest.IsolatedAsyncioTestCase):
