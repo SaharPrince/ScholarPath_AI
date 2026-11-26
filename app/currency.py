@@ -99,16 +99,28 @@ async def _fetch_snapshot() -> dict:
     return snapshot
 
 
+def _cached_snapshot_is_usable(snapshot: dict) -> bool:
+    """Do not serve a cached rate snapshot after its absolute freshness limit."""
+    try:
+        updated = datetime.fromisoformat(snapshot["updated_at"])
+        if updated.tzinfo is None:
+            return False
+        age = (datetime.now(timezone.utc) - updated).total_seconds()
+    except (KeyError, TypeError, ValueError):
+        return False
+    return 0 <= age <= MAX_RATE_AGE_SECONDS and not snapshot.get("is_stale", False)
+
+
 async def get_currency_snapshot() -> dict:
     """Return an in-process cached provider snapshot; never expose it from the API."""
     global _cache, _cache_expires_at
     now = monotonic()
-    if _cache is not None and now < _cache_expires_at:
+    if _cache is not None and now < _cache_expires_at and _cached_snapshot_is_usable(_cache):
         return copy.deepcopy(_cache)
 
     async with _cache_lock:
         now = monotonic()
-        if _cache is not None and now < _cache_expires_at:
+        if _cache is not None and now < _cache_expires_at and _cached_snapshot_is_usable(_cache):
             return copy.deepcopy(_cache)
         try:
             snapshot = await _fetch_snapshot()
