@@ -77,6 +77,7 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
     if re.search(
         r"(?i)\b(?:refugee|asylum\s+(?:seeker|status)|disabilit(?:y|ies)|disabled|"
         r"chronic\s+illness|religion|religious|denomination|faith\s+(?:affiliation|identity|membership)|"
+        r"race|racial|ethnic(?:ity|\s+group|\s+background)?|caste|"
         r"muslim|christian|protestant|catholic|jewish|judaism|buddhist|buddhism|hindu|hinduism|"
         r"sikh|sikhism|orthodox|anglican|church\s+membership|church\s+member|"
         r"members?\s+of\s+(?:a|the)\s+church|"
