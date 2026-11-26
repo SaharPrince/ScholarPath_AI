@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import math
 import secrets
 from pathlib import Path
 from time import monotonic
@@ -276,6 +277,43 @@ async def match_profile(profile: dict) -> dict:
                 status_code=422,
                 detail=f"{field} must be {maximum} characters or fewer.",
             )
+
+    # Reject malformed scalar types at the API boundary instead of silently
+    # treating objects, arrays, booleans, or non-finite numbers as answers.
+    boolean_fields = {
+        "dual_national", "regular_government_employee", "public_university_faculty",
+        "approved_rd_researcher", "receiving_other_scholarship", "has_phd",
+        "admission_confirmed", "currently_enrolled_in_germany",
+        "apprenticeship_second_year_stage", "recognized_apprenticeship",
+        "has_training_contract", "currently_enrolled_at_current_university",
+        "applied_to_current_university", "doctoral_admission_confirmed",
+        "doctoral_project_final_phase",
+    }
+    for field in boolean_fields:
+        value = profile.get(field)
+        if value is not None and not isinstance(value, bool):
+            raise HTTPException(status_code=422, detail=f"{field} must be a boolean.")
+
+    numeric_fields = {
+        "age", "academic_percentage", "cgpa", "years_of_education",
+        "hat_score", "gre_score", "university_qs_rank",
+        "professional_experience_years", "months_in_germany",
+        "months_remaining_in_program", "remaining_semesters_in_program",
+        "current_semester_in_program", "standard_programme_semesters",
+        "apprenticeship_year",
+    }
+    for field in numeric_fields:
+        value = profile.get(field)
+        if value is None or value == "":
+            continue
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+            raise HTTPException(status_code=422, detail=f"{field} must be a number.")
+        try:
+            numeric_value = float(value)
+        except (OverflowError, TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=f"{field} must be a valid number.") from exc
+        if not math.isfinite(numeric_value):
+            raise HTTPException(status_code=422, detail=f"{field} must be a finite number.")
 
     required_fields = {
         "nationality": "nationality",
