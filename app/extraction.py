@@ -1254,35 +1254,40 @@ def _classify_application_status(
     deadline_date: str | None,
     source_status: str | None = None,
 ) -> str:
-    """Prefer an explicit programme-page status over inference from dates or prose."""
+    """Classify current availability without letting a stale status revive an expired round."""
+    normalized = ""
     if source_status:
         normalized = _clean(source_status).casefold().replace("-", " ").replace("_", " ")
-        explicit_statuses = {
-            "open": "open",
-            "currently open": "open",
-            "accepting applications": "open",
-            "closed": "closed",
-            "upcoming": "upcoming",
-            "not yet open": "upcoming",
-            "shortlisted only": "shortlisted_only",
-            "discontinued": "discontinued",
-        }
-        if normalized in explicit_statuses:
-            return explicit_statuses[normalized]
-    if DISCONTINUED_PATTERN.search(body_text):
+
+    # Definitive terminal states take precedence over all inferred date/status
+    # signals. An explicit "open" flag is not enough to override an expired
+    # closing date: providers sometimes leave stale status labels on old rounds.
+    if normalized == "discontinued" or DISCONTINUED_PATTERN.search(body_text):
         return "discontinued"
-    if SHORTLISTED_PATTERN.search(body_text):
+    if normalized == "shortlisted only" or SHORTLISTED_PATTERN.search(body_text):
         return "shortlisted_only"
-    if CLOSED_PATTERN.search(body_text):
+    if normalized == "closed" or CLOSED_PATTERN.search(body_text):
         return "closed"
     if ROLLING_PATTERN.search(body_text):
         return "open"
+
     if deadline_date:
         try:
             if datetime.strptime(deadline_date, "%Y-%m-%d").date() < datetime.now(timezone.utc).date():
                 return "closed"
         except ValueError:
+            # An unreadable date must not be used to infer either open or closed.
             pass
+
+    explicit_statuses = {
+        "open": "open",
+        "currently open": "open",
+        "accepting applications": "open",
+        "upcoming": "upcoming",
+        "not yet open": "upcoming",
+    }
+    if normalized in explicit_statuses:
+        return explicit_statuses[normalized]
     if OPEN_PATTERN.search(body_text):
         return "open"
     if UPCOMING_PATTERN.search(body_text):
