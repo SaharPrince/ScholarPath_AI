@@ -1,6 +1,6 @@
 """Concise, source-backed preparation guide for students moving to Germany."""
 
-GUIDE_VERSION = "2026-11-22"
+GUIDE_VERSION = "2026-11-26"
 
 GERMANY_GUIDE = [
     {
@@ -20,7 +20,7 @@ GERMANY_GUIDE = [
         "items": [
             {"title": "Apply through the official portal", "bullets": ["Follow the Consular Services Portal instructions for your region in Pakistan.", "Complete the interactive questionnaire and upload every document it requests.", "Incomplete files can delay processing; do not rely on old checklists or agents promising appointments."], "links": [{"label": "German Missions in Pakistan — student visa", "url": "https://pakistan.diplo.de/pk-en/service/2-study-visa-seite-1676104"}, {"label": "German Missions — consular services and fraud warning", "url": "https://pakistan.diplo.de/service"}]},
             {"title": "Prepare your documents", "bullets": ["Valid passport, application forms, biometric photo and appointment/portal confirmations.", "University admission letter, CV, motivation letter if requested, and language proof.", "School/university certificates and transcripts; include previous degrees and required attestations.", "Proof of funding: scholarship, blocked account or an accepted formal commitment, as applicable.", "Travel health insurance for the initial period if required; keep copies of every submission."], "links": [{"label": "Official student visa information", "url": "https://pakistan.diplo.de/pk-en/service/2-study-visa-seite-1676104"}]},
-            {"title": "Understand financial proof", "bullets": ["The federal study-visa page lists €11,904 for a blocked account for 2026; check the current amount and accepted alternatives before applying.", "A scholarship or formal declaration of commitment may be accepted if it meets the current rules.", "Do not assume a future part-time job or an informal promise of free accommodation replaces visa financial proof."], "links": [{"label": "Federal study visa requirements", "url": "https://www.make-it-in-germany.com/en/visa-recognition/visa-types/studying"}]},
+            {"title": "Understand financial proof", "bullets": ["Check the federal study-visa page for the current blocked-account amount and accepted alternatives before applying; do not rely on figures copied from an older checklist.", "A scholarship or formal declaration of commitment may be accepted if it meets the current rules.", "Do not assume a future part-time job or an informal promise of free accommodation replaces visa financial proof."], "links": [{"label": "Federal study visa requirements", "url": "https://www.make-it-in-germany.com/en/visa-recognition/visa-types/studying"}]},
         ],
     },
     {
@@ -87,7 +87,7 @@ GERMANY_GUIDE = [
         "subtitle": "Plan for everyday expenses; do not depend on finding a job immediately.",
         "items": [
             {"title": "Keep monthly costs under control", "bullets": ["Compare rent by city and include heating, electricity, internet and deposit—not just advertised base rent.", "Cook at home, compare supermarket prices, use student cafeterias (Mensa) and check student discounts.", "Ask your university whether the semester contribution includes local public transport.", "Keep an emergency reserve for unexpected travel, housing or health costs."], "links": [{"label": "DAAD — living and accommodation", "url": "https://www.daad.de/en/studying-in-germany/living-in-germany/"}]},
-            {"title": "Understand student work limits", "bullets": ["The 2026 federal guidance allows many non-EU students up to 140 full days or 280 half-days per year; check your residence permit and current rules.", "A job is not guaranteed, and German language skills can widen the options.", "Do not use expected job income as a substitute for the financial proof required before the visa is issued."], "links": [{"label": "Federal government — studying and working", "url": "https://www.make-it-in-germany.com/en/study-vocational-training/studying-in-germany/work"}]},
+            {"title": "Understand student work limits", "bullets": ["Check the current federal student work rules and the conditions printed on your residence permit before accepting a job; work limits and permitted arrangements can change.", "A job is not guaranteed, and German language skills can widen the options.", "Do not use expected job income as a substitute for the financial proof required before the visa is issued."], "links": [{"label": "Federal government — studying and working", "url": "https://www.make-it-in-germany.com/en/study-vocational-training/studying-in-germany/work"}]},
         ],
     },
     {
