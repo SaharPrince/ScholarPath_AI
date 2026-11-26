@@ -284,7 +284,7 @@ async def match_profile(profile: dict) -> dict:
         "dual_national", "regular_government_employee", "public_university_faculty",
         "approved_rd_researcher", "receiving_other_scholarship", "has_phd",
         "admission_confirmed", "currently_enrolled_in_germany",
-        "apprenticeship_second_year_stage", "recognized_apprenticeship",
+        "recognized_apprenticeship",
         "has_training_contract", "currently_enrolled_at_current_university",
         "applied_to_current_university", "doctoral_admission_confirmed",
         "doctoral_project_final_phase",
