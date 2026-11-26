@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 import re
+import unicodedata
 from typing import Any
 
 
@@ -140,7 +141,14 @@ def evaluate_criterion(criterion: dict[str, Any], profile: dict[str, Any]) -> di
             required_institution,
         ):
             def canonical_institution(value: str) -> str:
-                normalized = re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+                # Normalize accents before comparing official English/German
+                # institution names (e.g. Würzburg / Wuerzburg).
+                folded = unicodedata.normalize("NFKD", value.casefold())
+                ascii_folded = "".join(
+                    character for character in folded
+                    if not unicodedata.combining(character)
+                )
+                normalized = re.sub(r"[^a-z0-9]+", " ", ascii_folded).strip()
                 aliases = {
                     "tu berlin": "technical university of berlin",
                     "technical university berlin": "technical university of berlin",
