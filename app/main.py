@@ -265,6 +265,7 @@ async def match_profile(profile: dict) -> dict:
         "german_residence_permit": 80,
         "current_university_name": 140,
         "test_score_type": 8,
+        "apprenticeship_second_year_stage": 24,
     }
     for field, maximum in text_field_limits.items():
         value = profile.get(field)
@@ -330,6 +331,7 @@ async def match_profile(profile: dict) -> dict:
             "vocational_training",
         },
         "test_score_type": {"gre", "hat"},
+        "apprenticeship_second_year_stage": {"beginning", "later"},
     }
     for field, allowed_values in allowed_profile_values.items():
         value = profile.get(field)
