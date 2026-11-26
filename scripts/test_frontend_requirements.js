@@ -83,7 +83,7 @@ const untranslatedGerman =
   "This condition is published in German. A verified English summary is not available yet; review the original wording and confirm its meaning with the provider";
 assert.equal(
   summarizeRequirement("Anträge müssen bis zum 15. Oktober eingereicht werden."),
-  untranslatedGerman
+  untranslatedGerman + "."
 );
 assert.equal(
   requirementPairs("eligibility", "Application timing", "Anträge müssen bis zum 15. Oktober eingereicht werden.")[0][1],
