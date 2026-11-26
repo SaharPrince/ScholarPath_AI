@@ -1,3 +1,4 @@
+import json
 import tomllib
 import unittest
 from pathlib import Path
@@ -22,6 +23,13 @@ class VercelDeploymentConfigurationTests(unittest.TestCase):
 
     def test_frontend_entry_file_is_available_to_the_fastapi_route(self):
         self.assertTrue((ROOT / "app" / "static" / "index.html").is_file())
+
+    def test_vercel_function_bundle_excludes_development_only_files(self):
+        config = json.loads((ROOT / "vercel.json").read_text())
+        exclusions = config["functions"]["app/main.py"]["excludeFiles"]
+        self.assertIn("tests/**", exclusions)
+        self.assertIn("scripts/**", exclusions)
+        self.assertNotIn("app/static/**", exclusions)
 
 
 if __name__ == "__main__":
