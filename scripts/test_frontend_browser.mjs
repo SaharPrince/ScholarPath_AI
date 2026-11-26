@@ -97,6 +97,10 @@ try {
       })
     }));
 
+    const selectedTestType = viewport.name === "desktop" ? "gre" : "hat";
+    const selectedScoreField = selectedTestType === "gre" ? "gre_score" : "hat_score";
+    const selectedScore = selectedTestType === "gre" ? 315 : 65;
+    const selectedScoreLabel = selectedTestType === "gre" ? "What was your GRE score?" : "What was your HEC-HAT score?";
     let matchRequestCount = 0;
     const alternativeTestScoreResult = {
       total: 1,
@@ -161,12 +165,12 @@ try {
         return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(alternativeTestScoreResult)});
       }
       if (matchRequestCount === 3) {
-        assert.equal(submitted.test_score_type, "hat", "the selected test type should be submitted");
-        assert.equal(submitted.hat_score, undefined, "the score should be asked separately");
+        assert.equal(submitted.test_score_type, selectedTestType, "the selected test type should be submitted");
+        assert.equal(submitted[selectedScoreField], undefined, "the score should be asked separately");
         return route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(alternativeTestScoreResult)});
       }
-      assert.equal(submitted.test_score_type, "hat");
-      assert.equal(submitted.hat_score, 65, "the selected HEC-HAT score should be submitted as a HAT value");
+      assert.equal(submitted.test_score_type, selectedTestType);
+      assert.equal(submitted[selectedScoreField], selectedScore, "the selected test score should be submitted under the correct field");
       return route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -305,10 +309,10 @@ try {
     await page.locator("#matchResults input").fill("20");
     await page.locator("#adaptiveContinue").click();
     await page.waitForFunction(() => document.querySelector("#adaptiveLabel")?.textContent === "Which test score would you like to use?");
-    await page.locator("#adaptiveAnswer").selectOption("hat");
+    await page.locator("#adaptiveAnswer").selectOption(selectedTestType);
     await page.locator("#adaptiveContinue").click();
-    await page.waitForFunction(() => document.querySelector("#adaptiveLabel")?.textContent === "What was your HEC-HAT score?");
-    await page.locator("#adaptiveAnswer").fill("65");
+    await page.waitForFunction(expected => document.querySelector("#adaptiveLabel")?.textContent === expected, selectedScoreLabel);
+    await page.locator("#adaptiveAnswer").fill(String(selectedScore));
     await page.locator("#adaptiveContinue").click();
     await page.waitForFunction(() => document.querySelector("#matchResults h3")?.textContent === "Your scholarship matches");
     assert.equal(matchRequestCount, 4, "each adaptive answer should trigger exactly one fresh match");
