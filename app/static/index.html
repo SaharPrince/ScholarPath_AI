@@ -980,6 +980,7 @@ const adaptiveQuestions = {
  cgpa:["What is your CGPA on a 4.0 scale?","number",0,4],
  education_field:["What is your degree subject or field of study?","text"],
  hat_category:["Which HAT category applies to your test?","options",[["I","Category I"],["II","Category II"],["III","Category III"],["IV","Category IV"]]],
+ test_score_type:["Which test score would you like to use?", "options", [["gre","GRE"],["hat","HEC-HAT"]]],
  hat_score:["What was your HEC-HAT score?","number",0,100],
  gre_score:["What was your GRE score?","number",0,340],
  years_of_education:["How many years of higher education have you completed?","number",0,30],
@@ -1020,7 +1021,8 @@ const adaptiveMatchers = [
  [/CGPA/i,"cgpa"],
  [/degree subject must match|approved field of study/i,"education_field"],
  [/HAT category/i,"hat_category"],
- [/GRE or HEC.HAT score|GRE.*HEC.HAT|HAT score/i,"hat_score"],
+ [/GRE or HEC.HAT score|GRE.*HEC.HAT/i,"test_score_type"],
+ [/HAT score/i,"hat_score"],
  [/GRE score/i,"gre_score"],
  [/total years of completed higher education/i,"years_of_education"],
  [/division\/class of your latest completed degree/i,"latest_degree_division"],
@@ -1041,6 +1043,7 @@ function adaptiveNextQuestion(results){
    for(const [pattern,field] of adaptiveMatchers){if(pattern.test(explanation)){key=field;break;}}
    if(/standard total and remaining semesters/i.test(explanation)&&adaptiveHas("remaining_semesters_in_program"))key="standard_programme_semesters";
    if(/QS rank and confirm whether you have admission/i.test(explanation)&&adaptiveHas("university_qs_rank")&&!adaptiveHas("admission_confirmed"))key="admission_confirmed";
+   if(key==="test_score_type"&&adaptiveHas("test_score_type"))key=adaptiveProfile.test_score_type==="gre"?"gre_score":"hat_score";
    if(key==="regular_government_employee")key=["regular_government_employee","public_university_faculty","approved_rd_researcher"].find(k=>!adaptiveHas(k));
    if(key&&!adaptiveHas(key)&&adaptiveQuestions[key])return {key,definition:adaptiveQuestions[key],scholarship:scholarship.title};
   }
