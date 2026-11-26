@@ -11,6 +11,45 @@ class ProfileMatchingTests(unittest.TestCase):
             "evidence_url": "https://official.example/eligibility",
         }
 
+    def test_out_of_range_profile_numbers_remain_unknown(self):
+        cases = [
+            (
+                self.criterion("age_limit", "Maximum age", "Applicants must be under 35 years old."),
+                {"age": -1},
+            ),
+            (
+                self.criterion("age_limit", "Maximum age", "Applicants must be under 35 years old."),
+                {"age": 101},
+            ),
+            (
+                self.criterion("residence_duration", "Time in Germany", "Applicants must not have been in Germany for more than 15 months."),
+                {"months_in_germany": -1},
+            ),
+            (
+                self.criterion("academic_requirements", "Minimum HAT score", "Minimum score of 60 out of 100 in HAT test."),
+                {"hat_score": 101},
+            ),
+            (
+                self.criterion("academic_requirements", "GRE score", "Applicants must have a GRE score of at least 300."),
+                {"gre_score": 341},
+            ),
+            (
+                self.criterion("university_rank", "University ranking", "Applicants need admission to a QS top 50 university."),
+                {"university_qs_rank": 0, "admission_confirmed": True},
+            ),
+            (
+                self.criterion("academic_requirements", "Years of education", "Applicants need 16 years of education."),
+                {"years_of_education": 31},
+            ),
+            (
+                self.criterion("study_timing", "Remaining semesters", "At least 2 semesters remaining are required."),
+                {"remaining_semesters_in_program": -1},
+            ),
+        ]
+        for criterion, profile in cases:
+            with self.subTest(field=next(iter(profile))):
+                self.assertEqual(evaluate_criterion(criterion, profile)["status"], "unknown")
+
     def test_cgpa_requirement_uses_cgpa_profile_field(self):
         criterion = self.criterion(
             "academic_requirements",
