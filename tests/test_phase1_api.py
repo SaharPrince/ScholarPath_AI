@@ -97,6 +97,13 @@ class MatchingApiVisibilityTests(unittest.IsolatedAsyncioTestCase):
             await api.match_profile(self.profile(admission_confirmed="true"))
         self.assertEqual(raised.exception.status_code, 422)
 
+    async def test_apprenticeship_second_year_stage_remains_a_text_choice(self):
+        with patch("app.main._live_results", new=AsyncMock(return_value=[])):
+            result = await api.match_profile(
+                self.profile(apprenticeship_second_year_stage="beginning")
+            )
+        self.assertEqual(result["total"], 0)
+
     async def test_numeric_profile_fields_reject_objects_and_non_finite_values(self):
         for invalid in ({"value": 10}, float("inf"), float("nan"), True):
             with self.subTest(invalid=invalid):
