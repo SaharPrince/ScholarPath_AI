@@ -1,4 +1,5 @@
 import asyncio
+import ipaddress
 import logging
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
@@ -47,12 +48,28 @@ def _daad_database_page_urls(source_url: str) -> list[str]:
 
 
 def _normalized_host(url: str) -> str | None:
-    parsed = urlparse(url)
-    if parsed.scheme != "https" or not parsed.hostname:
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname
+        port = parsed.port
+        if (
+            parsed.scheme.casefold() != "https"
+            or not host
+            or parsed.username
+            or parsed.password
+            or port not in (None, 443)
+        ):
+            return None
+        normalized_host = host.encode("idna").decode("ascii").casefold().rstrip(".")
+        if not normalized_host or "." not in normalized_host:
+            return None
+        try:
+            ipaddress.ip_address(normalized_host)
+        except ValueError:
+            return normalized_host
         return None
-    if parsed.username or parsed.password or parsed.port not in (None, 443):
+    except (UnicodeError, ValueError):
         return None
-    return parsed.hostname.lower().rstrip(".")
 
 
 def _link_label(anchor) -> str:
