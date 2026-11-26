@@ -243,6 +243,12 @@ try {
 
     assert.equal(await page.locator('#profileForm label[for="profile-nationality"]').count(), 1, "profile inputs should have associated labels");
     assert.equal(await page.locator('#profileForm label[for="profile-current_education_level"]').count(), 1, "study-level select should have an associated label");
+    for (const name of ["age", "education_field", "german_language_level", "professional_experience_years", "residence_country", "admission_confirmed", "current_university_name", "domicile_region"]) {
+      const field = page.locator('#profileForm [name="' + name + '"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
+      assert.equal(await field.isVisible(), false, name + " should be requested only when a published criterion needs it");
+    }
+    assert.equal(await page.locator('#profileForm [name="nationality"]').isVisible(), true, "nationality should remain in the short starter form");
+    assert.equal(await page.locator('#profileForm [name="current_education_level"]').isVisible(), true, "highest education should remain in the short starter form");
     const education = page.locator('#profileForm [name="current_education_level"]');
     const marksField = page.locator('#profileForm [name="academic_percentage"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
     const cgpaField = page.locator('#profileForm [name="cgpa"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
