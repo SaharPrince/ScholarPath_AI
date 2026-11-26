@@ -4007,29 +4007,17 @@ def _safe_official_origin(url: str) -> tuple[str, int] | None:
         ):
             return None
         normalized_host = host.encode("idna").decode("ascii").casefold().rstrip(".")
-        ipaddress.ip_address(normalized_host)
-        return None
-    except (UnicodeError, ValueError):
-        # ValueError from ipaddress means a valid DNS hostname, not an IP.
-        try:
-            parsed = urlparse(url)
-            host = parsed.hostname
-            port = parsed.port
-            if (
-                parsed.scheme.casefold() != "https"
-                or not host
-                or parsed.username
-                or parsed.password
-                or port not in (None, 443)
-            ):
-                return None
-            normalized_host = host.encode("idna").decode("ascii").casefold().rstrip(".")
-            if not normalized_host or "." not in normalized_host:
-                return None
-            return normalized_host, 443
-        except (UnicodeError, ValueError):
+        if not normalized_host or "." not in normalized_host:
             return None
-
+        try:
+            ipaddress.ip_address(normalized_host)
+        except ValueError:
+            pass
+        else:
+            return None
+        return normalized_host, 443
+    except (UnicodeError, ValueError):
+        return None
 
 async def _fetch_page(
     client: httpx.AsyncClient,
