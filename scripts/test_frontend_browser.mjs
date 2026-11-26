@@ -296,6 +296,7 @@ try {
     }
     assert.equal(await page.locator('#profileForm [name="nationality"]').isVisible(), true, "nationality should remain in the short starter form");
     assert.equal(await page.locator('#profileForm [name="current_education_level"]').isVisible(), true, "highest education should remain in the short starter form");
+    assert.match(await page.locator(".privacy-note").innerText(), /do not ask you to disclose sensitive personal/i);
     const education = page.locator('#profileForm [name="current_education_level"]');
     const marksField = page.locator('#profileForm [name="academic_percentage"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
     const cgpaField = page.locator('#profileForm [name="cgpa"]').locator("xpath=ancestor::div[contains(@class,'profile-field')][1]");
