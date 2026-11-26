@@ -296,7 +296,8 @@ async def match_profile(profile: dict) -> dict:
     for field, allowed_values in allowed_profile_values.items():
         value = profile.get(field)
         if isinstance(value, str) and value not in allowed_values:
-            raise HTTPException(status_code=422, detail=f"{field} is not a supported study level.")
+            description = "study level" if field in {"current_education_level", "target_study_level"} else "test type"
+            raise HTTPException(status_code=422, detail=f"{field} is not a supported {description}.")
 
     missing_fields = [
         label for field, label in required_fields.items()
