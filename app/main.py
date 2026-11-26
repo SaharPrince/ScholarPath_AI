@@ -238,6 +238,7 @@ async def match_profile(profile: dict) -> dict:
         "current_university_name", "currently_enrolled_at_current_university",
         "applied_to_current_university",
         "doctoral_admission_confirmed", "doctoral_project_final_phase",
+        "test_score_type",
     }
     unknown_fields = set(profile) - allowed
     if unknown_fields:
@@ -262,6 +263,7 @@ async def match_profile(profile: dict) -> dict:
         "first_semester_timing": 80,
         "german_residence_permit": 80,
         "current_university_name": 140,
+        "test_score_type": 8,
     }
     for field, maximum in text_field_limits.items():
         value = profile.get(field)
@@ -289,6 +291,7 @@ async def match_profile(profile: dict) -> dict:
             "matric", "intermediate", "bachelors", "master", "phd",
             "vocational_training",
         },
+        "test_score_type": {"gre", "hat"},
     }
     for field, allowed_values in allowed_profile_values.items():
         value = profile.get(field)
