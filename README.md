@@ -95,7 +95,7 @@ The scholarship list and detail endpoints do not read from a persisted scholarsh
 
 ## Run locally
 
-1. Use Python 3.11 or newer.
+1. Use Python 3.12 or newer, matching the deployment and CI runtime.
 2. Create and activate a virtual environment.
 3. Install dependencies:
 
