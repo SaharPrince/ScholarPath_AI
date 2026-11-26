@@ -308,6 +308,45 @@ class ProfileMatchingTests(unittest.TestCase):
         self.assertEqual(result["status"], "unknown")
         self.assertIn("thresholds", result["explanation"])
 
+    def test_selected_hat_score_cannot_be_satisfied_by_an_unselected_gre_score(self):
+        c = self.criterion(
+            "academic_requirements",
+            "GRE or HEC-HAT",
+            "GRE score 310 and above/HEC-HAT score 70% and above",
+        )
+        result = evaluate_criterion(c, {
+            "test_score_type": "hat",
+            "hat_score": 65,
+            "gre_score": 320,
+        })
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("selected HEC-HAT", result["explanation"])
+
+    def test_selected_gre_score_cannot_be_satisfied_by_an_unselected_hat_score(self):
+        c = self.criterion(
+            "academic_requirements",
+            "GRE or HEC-HAT",
+            "GRE score 310 and above/HEC-HAT score 70% and above",
+        )
+        result = evaluate_criterion(c, {
+            "test_score_type": "gre",
+            "gre_score": 305,
+            "hat_score": 80,
+        })
+        self.assertEqual(result["status"], "fail")
+        self.assertIn("selected GRE", result["explanation"])
+
+    def test_selected_test_without_its_score_remains_unknown(self):
+        c = self.criterion(
+            "academic_requirements",
+            "GRE or HEC-HAT",
+            "GRE score 310 and above/HEC-HAT score 70% and above",
+        )
+        for selected_test in ("gre", "hat"):
+            with self.subTest(selected_test=selected_test):
+                result = evaluate_criterion(c, {"test_score_type": selected_test})
+                self.assertEqual(result["status"], "unknown")
+
     def test_category_i_and_ii_are_alternative_routes(self):
         scholarship = {"id": 7, "title": "Test", "status": "unverified", "application_status": "open"}
         criteria = [
