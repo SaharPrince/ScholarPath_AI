@@ -2822,6 +2822,34 @@ class HecCommonwealthAnnouncementTests(unittest.TestCase):
         self.assertTrue(all(result.criteria_sources[item] == FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL for item in result.criteria))
 
 
+    def test_fu_berlin_recognizes_first_person_enrolment_and_acceptance_wording(self):
+        parsed = ExtractedPage(
+            title="Freie Universität Berlin Deutschlandstipendium",
+            description=None,
+            provider_name="Freie Universität Berlin",
+        )
+        html = """
+        <html><body><main>
+          <h1>Am I eligible to apply?</h1>
+          <p>I am enrolled as a student at Freie Universität during the funding period for which I wish to apply.</p>
+          <p>Or I have received a letter of acceptance from Freie Universität Berlin and will begin my studies there in my first semester.</p>
+          <p>During the entire funding period, I will still be within the standard time to degree for my degree program.</p>
+          <p>Students from all countries are welcome to apply if they fulfil the eligibility criteria.</p>
+        </main></body></html>
+        """
+        result = _augment_fu_berlin_deutschlandstipendium(parsed, html)
+        study_rule = next(
+            item for item in result.criteria
+            if item[1] == "Study at Freie Universität Berlin"
+        )
+        self.assertIn("standard time to degree", study_rule[2])
+        self.assertTrue(
+            any(item[1] == "International applicants" for item in result.criteria)
+        )
+        self.assertTrue(
+            all(url == FU_BERLIN_DEUTSCHLANDSTIPENDIUM_URL for url in result.criteria_sources.values())
+        )
+
     def test_privacy_only_santander_page_is_not_promoted_as_a_scholarship(self):
         html = """
         <html><head><title>Scholarships of the Openbank Deutschland AG</title></head>
