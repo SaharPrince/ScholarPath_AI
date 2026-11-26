@@ -997,6 +997,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
         r"studieren|erlernen|engagiert|engagieren|identifizieren|"
         r"haben|sind|stehen|erhalten|ausbildung|ausbildungsberuf|"
         r"ausbildungsjahr\w*|ausbildungsvertrag|sprachkenntnisse|deutschkenntnisse|"
+        r"wir akzeptieren ein sprachniveau|sprachniveau|"
         r"unter \d{1,2}\s+jahre|wohnsitz|anerkannt(?:e|en|er))\b"
     )
     applicant_signal = re.compile(
@@ -1105,7 +1106,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
             has_actor = bool(applicant_signal.search(statement))
             has_qualification = bool(re.search(
                 r"(?i)\b(?:degree|bachelor|master|doctorate|phd|gpa|grade|"
-                r"academic|language|ielts|toefl|experience|age|nationality|"
+                r"academic|language|sprachniveau|ielts|toefl|experience|age|nationality|"
                 r"citizenship|residence|enrol(?:led|ment)|study level|"
                 r"studium|ausbildung|ausbildungsberuf|ausbildungsjahr\w*|"
                 r"hochschule|fachhochschule|deutschkenntnisse|sprachkenntnisse|"
@@ -1116,7 +1117,12 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
             if not (has_actor or has_qualification or statement_is_implied_list_condition):
                 continue
             lowered = statement.casefold()
-            if re.search(r"(?i)\b(preferred|preferable|desirable|recommended|encourage(?:d|s)?|"
+            if re.fullmatch(
+                r"(?i)wir akzeptieren ein sprachniveau von b2, auch ohne zertifikat[.!]?",
+                statement,
+            ):
+                kind, label = _classify_eligibility_statement(statement)
+            elif re.search(r"(?i)\b(preferred|preferable|desirable|recommended|encourage(?:d|s)?|"
                          r"particularly welcome|priority (?:will be|is) given|welcome applications|"
                          r"an advantage|besonders willkommen|engagiert(?:e|en)?|"
                          r"ausdrücklich zu einer bewerbung ermutigt|bevorzugt berücksichtigt)\b", statement):
@@ -1124,7 +1130,7 @@ def _extract_unlabelled_criteria(content_root: BeautifulSoup) -> list[tuple[str,
             elif re.search(r"(?i)\b(ineligible|not eligible|cannot apply|must not)\b", statement):
                 kind, label = "ineligibility", "Ineligibility"
             elif re.search(r"(?i)\b(language|ielts|toefl|german|english proficiency|"
-                            r"deutschkenntnisse|sprachkenntnisse)\b", statement):
+                            r"deutschkenntnisse|sprachkenntnisse|sprachniveau)\b", statement):
                 kind, label = "language_requirements", "Language requirements"
             elif re.search(r"(?i)\b(age|years old|younger than|older than|"
                             r"unter \d{1,2} jahre|über \d{1,2} jahre)\b", statement):
