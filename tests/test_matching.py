@@ -914,6 +914,18 @@ class GermanScholarshipMatchingTests(unittest.TestCase):
             "current_university_name": "TU Berlin",
         })["status"], "unknown")
 
+    def test_german_university_alias_matches_accented_official_name(self):
+        c = self.criterion(
+            "eligibility",
+            "Enrolment",
+            "Applicants must be currently enrolled at the University of Würzburg.",
+        )
+        result = evaluate_criterion(c, {
+            "current_university_name": "Julius-Maximilians-Universität Würzburg",
+            "currently_enrolled_at_current_university": True,
+        })
+        self.assertEqual(result["status"], "pass")
+
     def test_preferred_language_is_not_a_mandatory_match_failure(self):
         c = self.criterion("language_requirements", "Language", "German language skills are preferred.", mandatory=False)
         self.assertEqual(evaluate_criterion(c, {})["status"], "informational")
