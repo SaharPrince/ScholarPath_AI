@@ -986,7 +986,7 @@ const adaptiveQuestions = {
 };
 const adaptiveMatchers = [
  [/Add your age|age limit/i,"age"],
- [/country of permanent residence|country of permanent residence/i,"residence_country"],
+ [/country of permanent residence|permanent residence country/i,"residence_country"],
  [/hold another nationality/i,"dual_national"],
  [/province or region of domicile|province or region of domicile/i,"domicile_region"],
  [/German language level/i,"german_language_level"],
@@ -1024,7 +1024,7 @@ const adaptiveMatchers = [
  [/public university faculty member/i,"public_university_faculty"],
  [/approved R&D researcher/i,"approved_rd_researcher"],
  [/university.degree requirement|highest education level.*university.degree/i,"current_education_level"]
-];;
+];
 let adaptiveProfile={};
 function adaptiveHas(key){return adaptiveProfile[key]!==undefined&&adaptiveProfile[key]!==null&&adaptiveProfile[key]!=="";}
 function adaptiveNextQuestion(results){
@@ -1051,7 +1051,7 @@ function adaptiveNormalize(){
 function adaptiveRenderQuestion(question){
  const box=$("matchResults"),[label,type,a,b]=question.definition;
  box.classList.add("show");
- box.innerHTML="<h3>One more thing</h3><p>One of the scholarships needs this detail to check its published eligibility requirements.</p><div class='criterion'><p class='eyebrow' id='adaptiveScholarship'></p><h4 id='adaptiveLabel'></h4><div id='adaptiveControl' style='margin-top:12px'></div><button type='button' id='adaptiveContinue' class='primary' style='margin-top:14px'>Continue →</button></div>";
+ box.innerHTML="<h3>One more thing</h3><p>One of the scholarships needs this detail to check its published eligibility requirements.</p><div class='criterion'><p class='eyebrow' id='adaptiveScholarship'></p><label id='adaptiveLabel' for='adaptiveAnswer' style='display:block;font-weight:700'></label><div id='adaptiveControl' style='margin-top:12px'></div><button type='button' id='adaptiveContinue' class='primary' style='margin-top:14px'>Continue →</button></div>";
  box.querySelector("#adaptiveScholarship").textContent=question.scholarship||"Scholarship eligibility";
  box.querySelector("#adaptiveLabel").textContent=label;
  let control;
@@ -1064,7 +1064,7 @@ function adaptiveRenderQuestion(question){
   control=document.createElement("input");control.type=type;control.placeholder=type==="number"?"Enter a number":"Type your answer";
   if(a!==undefined)control.min=a;if(b!==undefined)control.max=b;
  }
- control.required=true;control.style.cssText="width:100%;min-height:46px;padding:10px 12px;border:1px solid #d8e2dc;border-radius:10px;font:inherit";
+ control.id="adaptiveAnswer";if(type==="number"){control.step="any";control.inputMode="decimal";}else if(type==="text"){control.maxLength=140;}control.required=true;control.setAttribute("aria-describedby","adaptiveScholarship");control.style.cssText="width:100%;min-height:46px;padding:10px 12px;border:1px solid #d8e2dc;border-radius:10px;font:inherit";
  box.querySelector("#adaptiveControl").appendChild(control);
  box.querySelector("#adaptiveContinue").addEventListener("click",()=>{if(!control.reportValidity())return;adaptiveProfile[question.key]=control.value;adaptiveRun();});
 }
